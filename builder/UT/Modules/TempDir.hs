@@ -14,7 +14,7 @@ import System.FilePath ((</>))
 import System.IO (writeFile)
 
 tempDirPath :: FilePath
-tempDirPath = "build/UT/.mock/tempdir"
+tempDirPath = "builder/UT/.mock/tempdir"
 
 -- Suite for deterministic temp directory lifecycle management.
 suiteName :: String

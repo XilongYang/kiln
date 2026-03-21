@@ -14,7 +14,7 @@ import System.FilePath ((</>))
 import System.IO (writeFile)
 
 fixtureRoot :: FilePath
-fixtureRoot = "build/UT/.mock/template"
+fixtureRoot = "builder/UT/.mock/template"
 
 utComponentDir :: FilePath
 utComponentDir = fixtureRoot </> "component"
