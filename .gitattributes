@@ -1,0 +1,7 @@
+# Exclude static site output / frontend assets from GitHub language stats
+*.html linguist-generated
+*.css linguist-generated
+
+# Exclude resource directory from language stats
+res/** linguist-generated
+
