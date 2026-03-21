@@ -8,7 +8,7 @@ import System.IO (writeFile, readFile)
 import System.Process (callProcess)
 
 main :: IO ()
-main = withTempDir $ do
+main = withTempDir tempPath $ do
   templatePost <- genTemplate templatePostPath 
   writeFile tempTemplatePostPath templatePost
   templateIndex <- genTemplate templateIndexPath 
@@ -19,5 +19,4 @@ main = withTempDir $ do
     , "--template=" ++ tempTemplatePostPath
     , "-o", postPath ++ "/" ++ "hello.html"
     ]
-
 

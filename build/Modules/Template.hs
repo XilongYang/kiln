@@ -13,20 +13,29 @@ type ComponentName = String
 type ComponentHtml = String
 
 genTemplate :: FilePath -> IO TemplateHtml
-genTemplate template = do
+genTemplate = genTemplateFrom templateComponentPath
+
+genTemplateFrom :: FilePath -> FilePath -> IO TemplateHtml
+genTemplateFrom componentDir template = do
   templateHtml <- readFile template
-  components <- loadComponents
+  components <- loadComponentsFrom componentDir
   return (expandComponents templateHtml components)
 
 loadComponents :: IO [(ComponentName, ComponentHtml)]
-loadComponents = do
-  componentFiles <- listDirectory templateComponentPath
+loadComponents = loadComponentsFrom templateComponentPath
+
+loadComponentsFrom :: FilePath -> IO [(ComponentName, ComponentHtml)]
+loadComponentsFrom componentDir = do
+  componentFiles <- listDirectory componentDir
   let htmlFiles = filter (\f -> takeExtension f == ".html") componentFiles
-  mapM loadComponent(sort htmlFiles)
+  mapM (loadComponentFrom componentDir) (sort htmlFiles)
 
 loadComponent :: FilePath -> IO (ComponentName, ComponentHtml)
-loadComponent filename = do
-  let fullPath = templateComponentPath </> filename
+loadComponent = loadComponentFrom templateComponentPath
+
+loadComponentFrom :: FilePath -> FilePath -> IO (ComponentName, ComponentHtml)
+loadComponentFrom componentDir filename = do
+  let fullPath = componentDir </> filename
   html <- readFile fullPath 
   return (takeBaseName filename, html)
 
@@ -36,4 +45,3 @@ expandComponents templateHtml componentList = foldl replaceComponents templateHt
     replaceComponents templateHtml' (componentName, componentHtml) = 
       replace (placeholder componentName) componentHtml templateHtml'
     placeholder componentName = replace componentPlaceholderToken componentName componentPlaceholderPattern
-
