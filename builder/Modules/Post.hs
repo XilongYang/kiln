@@ -1,6 +1,5 @@
 module Modules.Post where
 
-import Modules.Config
 import Modules.Utils.String
 
 import System.FilePath
@@ -24,28 +23,21 @@ data PostMeta = PostMeta
 data Post = Post
   { postName       :: PostName
   , postSourcePath :: FilePath
-  , postOutputPath :: FilePath
-  , postUrl        :: Url
   , postContent    :: Markdown
   , postMeta       :: PostMeta
   } deriving (Show, Eq)
 
--- Loads a markdown file from `srcPath`, then resolves its derived paths/URL
--- and parses metadata from the front matter block.
+-- Loads a markdown file and parses metadata from the front matter block.
 parsePost :: FilePath -> IO Post
-parsePost filename = do
-  let name = takeBaseName filename
-  let sourcePath = srcPath </> filename
-  let outputPath = postPath </> filename
-  let url = webPost ++ "/" ++ filename
+parsePost pathToParse = do
+  let name = takeBaseName pathToParse
+  let sourcePath = pathToParse
   content <- readFile sourcePath 
   let meta = parsePostMeta $ splitFrontMatter sourcePath content 
 
   return Post 
     { postName = name
-    , postSourcePath = sourcePath
-    , postOutputPath = outputPath
-    , postUrl  = url
+    , postSourcePath = sourcePath 
     , postContent = content 
     , postMeta = meta}
 

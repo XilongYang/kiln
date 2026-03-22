@@ -25,7 +25,7 @@ suiteName = "Post"
 testCases :: [TestCase]
 testCases =
   [ mkTestCase "parseMetaLine returns empty pair for empty input" $
-      assertEq "parseMetaLine should return empty key/value on empty input"
+    assertEq "parseMetaLine should return empty key/value on empty input"
         ("", "")
         (parseMetaLine "")
   , mkTestCase "parseMetaLine splits key/value by the first colon" $
@@ -74,16 +74,13 @@ testCases =
       assertThrows "splitFrontMatter should reject content without closing delimiter" $
         pure (splitFrontMatter "fixture.md" "title: ---\nk:v")
   , mkTestCase "parsePost loads content and resolves paths/url/meta" $ do
-      let filename = "../builder/UT/.mock/src/parse-post-fixture.md"
-      let sourcePath = srcPath </> filename
-      let outputPath = postPath </> filename
-      let url = webPost ++ "/" ++ filename
-      content <- readFile sourcePath
+      let filename = "builder/UT/.mock/src/parse-post-fixture.md"
+      let name = takeBaseName filename 
+      let sourcePath = filename
+      content <- readFile filename
       post <- parsePost filename
       assertEq "parsePost should derive postName from filename" (takeBaseName filename) (postName post)
       assertEq "parsePost should resolve source path" sourcePath (postSourcePath post)
-      assertEq "parsePost should resolve output path" outputPath (postOutputPath post)
-      assertEq "parsePost should resolve web URL" url (postUrl post)
       assertEq "parsePost should load full source markdown content" content (postContent post)
       assertEq "parsePost should parse front matter into PostMeta"
         (PostMeta "Fixture Title" "Fixture Author" "2026-03-22")
