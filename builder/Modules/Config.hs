@@ -64,8 +64,10 @@ componentPlaceholderToken :: String
 componentPlaceholderToken = "name"
 
 -- Public URL root for generated pages.
+webRoot :: String
 webRoot = "/"
 
 -- Public URL prefix for generated post pages.
+webPost :: String
 webPost = webRoot ++ "posts"
 
