@@ -18,7 +18,7 @@ srcPath = rootPath </> "src"
 
 -- Output directory for generated post pages.
 postPath :: FilePath
-postPath = rootPath </> "posts"
+postPath = rootPath </> "post"
 
 -- Output path for the generated site index page.
 indexPath :: FilePath
@@ -68,6 +68,6 @@ webRoot :: String
 webRoot = "/"
 
 -- Public URL prefix for generated post pages.
-webPost :: String
-webPost = webRoot ++ "posts"
+webPostPath :: String
+webPostPath = webRoot ++ "post/"
 

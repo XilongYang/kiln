@@ -2,6 +2,7 @@ module Main where
 
 import UT.TestUtils.TestSuite (runSuite)
 
+import qualified UT.Modules.BuildPlan as UtBuildPlan
 import qualified UT.Modules.OrphanCheck as UtOrphanCheck
 import qualified UT.Modules.Post as UtPost
 import qualified UT.Modules.String as UtString
@@ -17,6 +18,7 @@ main = do
       , runSuite UtTempDir.suiteName UtTempDir.testCases
       , runSuite UtPost.suiteName UtPost.testCases
       , runSuite UtOrphanCheck.suiteName UtOrphanCheck.testCases
+      , runSuite UtBuildPlan.suiteName UtBuildPlan.testCases
       ]
   if and results
     then putStrLn "All UT passed."
