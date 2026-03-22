@@ -2,21 +2,21 @@ module Main where
 
 import Modules.Config
 import Modules.Template
-import Modules.Utils.TempDir
+import Modules.Utils.TempDir (withTempDir)
+import Modules.Utils.OrphanCheck (checkOrphans)
 
-import System.IO (writeFile, readFile)
-import System.Process (callProcess)
+import System.IO (writeFile)
 
+-- Build entrypoint:
+-- 1) recreate temp workspace;
+-- 2) report generated post pages that no longer have source markdown;
+-- 3) render templates into temp files for downstream steps.
 main :: IO ()
 main = withTempDir tempPath $ do
+  checkOrphans
+
   templatePost <- genTemplate templatePostPath 
   writeFile tempTemplatePostPath templatePost
   templateIndex <- genTemplate templateIndexPath 
   writeFile tempTemplateIndexPath templateIndex
-
-  callProcess "pandoc"
-    [ srcPath ++ "/" ++ "Dabble_in_Machine_Learning_1_Prelude_and_Categories.md"
-    , "--template=" ++ tempTemplatePostPath
-    , "-o", postPath ++ "/" ++ "hello.html"
-    ]
 
