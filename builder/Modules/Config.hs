@@ -28,13 +28,13 @@ indexPath = rootPath </> "index.html"
 tempPath :: FilePath
 tempPath = rootPath </> "temp"
 
--- Temporary rendered post template passed to downstream tools.
-tempTemplatePostPath :: FilePath
-tempTemplatePostPath = tempPath </> "post.html"
+-- Temporary rendered post template.
+renderedTemplatePostPath :: FilePath
+renderedTemplatePostPath = tempPath </> "post.html"
 
 -- Temporary rendered index template.
-tempTemplateIndexPath :: FilePath
-tempTemplateIndexPath = tempPath </> "index.html"
+renderedTemplateIndexPath :: FilePath
+renderedTemplateIndexPath = tempPath </> "index.html"
 
 -- Root directory for source HTML templates.
 templatePath :: FilePath

@@ -16,7 +16,7 @@ main = withTempDir tempPath $ do
   checkOrphans
 
   templatePost <- genTemplate templatePostPath 
-  writeFile tempTemplatePostPath templatePost
+  writeFile renderedTemplatePostPath templatePost
   templateIndex <- genTemplate templateIndexPath 
-  writeFile tempTemplateIndexPath templateIndex
+  writeFile renderedTemplateIndexPath templateIndex
 

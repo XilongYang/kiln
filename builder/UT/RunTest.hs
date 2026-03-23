@@ -3,6 +3,7 @@ module Main where
 import UT.TestUtils.TestSuite (runSuite)
 import UT.TestUtils.Colors
 
+import qualified UT.Modules.Builder as UtBuilder
 import qualified UT.Modules.BuildPlan as UtBuildPlan
 import qualified UT.Modules.OrphanCheck as UtOrphanCheck
 import qualified UT.Modules.Post as UtPost
@@ -20,6 +21,7 @@ main = do
       , runSuite UtPost.suiteName UtPost.testCases
       , runSuite UtOrphanCheck.suiteName UtOrphanCheck.testCases
       , runSuite UtBuildPlan.suiteName UtBuildPlan.testCases
+      , runSuite UtBuilder.suiteName UtBuilder.testCases
       ]
   if and results
     then putStrLn $ makeColor colorGreen "All UT passed."

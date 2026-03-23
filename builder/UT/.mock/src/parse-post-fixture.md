@@ -14,9 +14,16 @@ bodys
 bodys
 bodys
 
+```C
+Code1
+```
+
 ## Sub Title2
 
 bodys
 bodys
 bodys
 
+```Haskell
+Code2
+```

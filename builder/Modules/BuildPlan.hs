@@ -22,12 +22,14 @@ data PostBuildPlan = PostBuildPlan
   { planPost :: Post
   , planPreprocessedPath :: FilePath
   , planTargetHtmlPath   :: FilePath
+  , planPostTemplatePath :: FilePath
   , planPostUrl          :: Url
   } deriving (Show, Eq)
 
 -- Inputs required to build the index page.
 data IndexBuildPlan = IndexBuildPlan 
   { planPosts            :: [Post]
+  , planIndexTemplatePath :: FilePath
   , planIndexUrl         :: Url
   } deriving (Show, Eq)
 
@@ -37,6 +39,7 @@ mkBuildPostPlan post = PostBuildPlan
   { planPost = post
   , planPreprocessedPath = tempPath </> (postName post ++ ".md")
   , planTargetHtmlPath = postPath </> (postName post ++ ".html")
+  , planPostTemplatePath = renderedTemplatePostPath
   , planPostUrl = webPostPath ++ postName post ++ ".html"
   }
 
@@ -44,6 +47,7 @@ mkBuildPostPlan post = PostBuildPlan
 mkBuildIndexPlan :: [Post] -> IndexBuildPlan
 mkBuildIndexPlan posts = IndexBuildPlan
   { planPosts = posts
+  , planIndexTemplatePath = renderedTemplateIndexPath 
   , planIndexUrl = webRoot ++ "index.html"
   }
 
