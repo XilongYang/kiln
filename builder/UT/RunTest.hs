@@ -1,6 +1,7 @@
 module Main where
 
 import UT.TestUtils.TestSuite (runSuite)
+import UT.TestUtils.Colors
 
 import qualified UT.Modules.BuildPlan as UtBuildPlan
 import qualified UT.Modules.OrphanCheck as UtOrphanCheck
@@ -21,5 +22,5 @@ main = do
       , runSuite UtBuildPlan.suiteName UtBuildPlan.testCases
       ]
   if and results
-    then putStrLn "All UT passed."
-    else putStrLn "Some UT failed."
+    then putStrLn $ makeColor colorGreen "All UT passed."
+    else putStrLn $ makeColor colorRed "Some UT failed."

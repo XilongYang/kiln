@@ -4,7 +4,16 @@ module UT.TestUtils.TestSuite
   , runSuite
   ) where
 
+import UT.TestUtils.Colors
+
 import Control.Exception (SomeException, displayException, try)
+
+-- Pre-colored status tags for per-test output lines.
+okTag :: String
+okTag = makeColor colorGreen "[OK]"
+
+ngTag :: String
+ngTag = makeColor colorRed "[NG]" 
 
 -- Minimal test helpers for the local UT runner.
 --
@@ -39,11 +48,12 @@ runSuite suiteName cases = do
     runIndexedCase (idx, (title, action)) = do
       result <- try action :: IO (Either SomeException ())
       case result of
+        -- Pass path: print the green marker and continue.
         Right _ -> do
-          putStrLn ("[OK] Test Case#" ++ show idx ++ " " ++ title)
+          putStrLn (okTag ++ " Test Case#" ++ show idx ++ " " ++ title)
           pure True
+        -- Fail path: print the red marker and surface exception message.
         Left err -> do
-          putStrLn ("[NG] Test Case#" ++ show idx ++ " " ++ title)
+          putStrLn (ngTag ++ " Test Case#" ++ show idx ++ " " ++ title)
           putStrLn ("Message: " ++ displayException err)
           pure False
-
