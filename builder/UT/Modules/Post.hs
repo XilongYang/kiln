@@ -4,6 +4,7 @@ import Modules.Config
 import Modules.Post
   ( Post(..)
   , PostMeta(..)
+  , extractPostAbstract
   , metaDelimiter
   , parseMetaLine
   , parsePost
@@ -64,9 +65,22 @@ testCases =
               , ""
               , "Body"
               ]
+      let (meta, remain) = splitFrontMatter "fixture.md" content
       assertEq "splitFrontMatter should parse each metadata line"
         [("title", "Hello"), ("author", "Xilong"), ("date", "2026-03-22")]
-        (splitFrontMatter "fixture.md" content)
+        meta
+      assertEq "splitFrontMatter should keep remaining body payload"
+        "\nBody\n"
+        remain
+  , mkTestCase "extractPostAbstract splits around section marker token" $ do
+      let content = "intro line\n## \ncontent line\n"
+      let (abstract, remain) = extractPostAbstract content
+      assertEq "extractPostAbstract should return intro block before marker"
+        "intro line\n"
+        abstract
+      assertEq "extractPostAbstract should return marker and trailing lines as content"
+        "## \ncontent line\n"
+        remain
   , mkTestCase "splitFrontMatter throws without opening delimiter" $
       assertThrows "splitFrontMatter should reject content without opening delimiter" $
         pure (splitFrontMatter "fixture.md" "title: x\n---\n")
@@ -74,14 +88,16 @@ testCases =
       assertThrows "splitFrontMatter should reject content without closing delimiter" $
         pure (splitFrontMatter "fixture.md" "title: ---\nk:v")
   , mkTestCase "parsePost loads content and resolves paths/url/meta" $ do
-      let filename = "builder/UT/.mock/src/parse-post-fixture.md"
-      let name = takeBaseName filename 
-      let sourcePath = filename
-      content <- readFile filename
-      post <- parsePost filename
-      assertEq "parsePost should derive postName from filename" (takeBaseName filename) (postName post)
+      let sourcePath = "builder/UT/.mock/src/parse-post-fixture.md"
+      post <- parsePost sourcePath
+      assertEq "parsePost should derive postName from filename" (takeBaseName sourcePath) (postName post)
       assertEq "parsePost should resolve source path" sourcePath (postSourcePath post)
-      assertEq "parsePost should load full source markdown content" content (postContent post)
+      assertEq "parsePost should keep extracted abstract block"
+        "\nAbstract l##ine1\n### Abstract line2##\n##Abstract line3\n\n"
+        (postAbstract post)
+      assertEq "parsePost should keep remaining markdown body"
+        "## Sub Title1\n\nbodys\nbodys\nbodys\n\n## Sub Title2\n\nbodys\nbodys\nbodys\n\n"
+        (postContent post)
       assertEq "parsePost should parse front matter into PostMeta"
         (PostMeta "Fixture Title" "Fixture Author" "2026-03-22")
         (postMeta post)

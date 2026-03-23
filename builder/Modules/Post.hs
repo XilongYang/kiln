@@ -4,6 +4,7 @@ import Modules.Utils.String
 
 import System.FilePath
 import System.IO (readFile)
+import Data.List (isPrefixOf)
 
 -- Canonical post filename stem (without extension).
 type PostName = String
@@ -23,23 +24,36 @@ data PostMeta = PostMeta
 data Post = Post
   { postName       :: PostName
   , postSourcePath :: FilePath
+  -- Renderable markdown content after abstract extraction.
   , postContent    :: Markdown
+  -- Lead markdown snippet extracted before the main section marker.
+  , postAbstract   :: Markdown
   , postMeta       :: PostMeta
   } deriving (Show, Eq)
 
--- Loads a markdown file and parses metadata from the front matter block.
+-- Loads a markdown file, parses front matter metadata, and splits the body
+-- into abstract/main sections.
 parsePost :: FilePath -> IO Post
 parsePost pathToParse = do
   let name = takeBaseName pathToParse
   let sourcePath = pathToParse
-  content <- readFile sourcePath 
-  let meta = parsePostMeta $ splitFrontMatter sourcePath content 
+  rawContent <- readFile sourcePath 
+  let (rawMeta, body) = splitFrontMatter sourcePath rawContent
+  let (abstract, content) = extractPostAbstract body 
 
   return Post 
     { postName = name
     , postSourcePath = sourcePath 
     , postContent = content 
-    , postMeta = meta}
+    , postAbstract = abstract 
+    , postMeta = parsePostMeta rawMeta}
+
+-- Splits post body into `(abstract, content)` around the first heading marker.
+--
+-- The input is expected to be markdown lines after front matter handling.
+extractPostAbstract :: Markdown -> (Markdown, Markdown)
+extractPostAbstract content = merge $ break (isPrefixOf "## ") $ lines content
+  where merge (a, b) = (unlines a, unlines b)
 
 -- Projects known metadata keys into `PostMeta`.
 --
@@ -57,18 +71,18 @@ parsePostMeta pairs =
         Just value -> value
         Nothing    -> ""
 
--- Splits markdown front matter into key/value pairs.
+-- Splits markdown front matter into `(metadata, remain-content)`.
 --
 -- The content must start with `metaDelimiter`, and the metadata section must
 -- end with another `metaDelimiter`.
-splitFrontMatter :: FilePath -> Markdown -> [(String, String)]
+splitFrontMatter :: FilePath -> Markdown -> ([(String, String)], Markdown)
 splitFrontMatter path content =
   case lines content of
     (metaDelimiter:rest) ->
       let (metaLines, remain) = break (== metaDelimiter) rest
       in case remain of
-           [] -> error ("missing closing delimiter in " ++ path)
-           otherwise -> map parseMetaLine metaLines
+           (metaDelimiter:body) -> (map parseMetaLine metaLines, unlines body)
+           otherwise -> error ("missing closing delimiter in " ++ path)
     _ -> error ("missing opening delimiter in " ++ path)
 
 -- Front matter delimiter used in markdown posts.
