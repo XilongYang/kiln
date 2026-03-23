@@ -60,9 +60,9 @@ testCases =
       assertEq "revertMeta should serialize delimiters and keys in fixed order"
         (unlines
           [ metaDelimiter
-          , "title:T"
-          , "author:A"
-          , "date:2026-03-22"
+          , "title: T"
+          , "author: A"
+          , "date: 2026-03-22"
           , metaDelimiter
           ])
         rendered

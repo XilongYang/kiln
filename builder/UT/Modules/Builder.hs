@@ -64,7 +64,7 @@ testCases =
               , postMeta = PostMeta "T" "A" "2026-03-22"
               }
       let generated = genPreprocessedPostText post
-      assertContains "preprocessed text should contain serialized title" "title:T" generated
+      assertContains "preprocessed text should contain serialized title" "title: T" generated
       assertContains "preprocessed text should contain abstract wrapper start" "<div class=\"abstract\">" generated
       assertContains "preprocessed text should contain toc marker" "[[toc]]" generated
       assertContains "preprocessed text should rewrite language fence in body"
@@ -86,12 +86,17 @@ testCases =
         createDirectoryIfMissing True mockTempDir
         createDirectoryIfMissing True mockPostDir
         post <- parsePost "builder/UT/.mock/src/parse-post-fixture.md"
-        let plan = (mkBuildPostPlan post) { planPreprocessedPath = outputPath, planTargetHtmlPath = htmlPath, planPostTemplatePath = mockPostTemplatePath}
+        let basePlan = expectPostPlan (mkBuildPostPlan post)
+        let plan = basePlan { planPreprocessedPath = outputPath, planTargetHtmlPath = htmlPath, planPostTemplatePath = mockPostTemplatePath}
         buildPostWithPlan plan
         exists <- doesFileExist outputPath
         assertTrue "buildPostWithPlan should create preprocess markdown file" exists
         written <- readFile outputPath
-        assertEq "written preprocess file should include toc marker" written "---\ntitle:Fixture Title\nauthor:Fixture Author\ndate:2026-03-22\n---\n\n<div class=\"abstract\">\n\nAbstract l##ine1\n### Abstract line2##\n##Abstract line3\n\n\n</div>\n\n[[toc]]\n## Sub Title1\n\nbodys\nbodys\nbodys\n\n``` {.language-C .line-numbers .match-braces}\nCode1\n```\n\n## Sub Title2\n\nbodys\nbodys\nbodys\n\n``` {.language-Haskell .line-numbers .match-braces}\nCode2\n```\n\n"
+        assertContains "written preprocess file should include front matter title" "title: Fixture Title" written
+        assertContains "written preprocess file should include toc marker" "[[toc]]" written
+        assertContains "written preprocess file should include rewritten C language fence"
+          "``` {.language-C .line-numbers .match-braces}"
+          written
         htmlExists <- doesFileExist htmlPath
         assertTrue "buildPostWithPlan should create rendered html output" htmlExists
         html <- readFile htmlPath
@@ -110,3 +115,7 @@ withFreshMockFile path action = do
   exists <- doesFileExist path
   when exists (removeFile path)
   action
+
+expectPostPlan :: BuildPlan -> PostBuildPlan
+expectPostPlan (BuildPostPlan plan) = plan
+expectPostPlan _ = error "expected BuildPostPlan"

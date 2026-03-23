@@ -34,8 +34,8 @@ data IndexBuildPlan = IndexBuildPlan
   } deriving (Show, Eq)
 
 -- Constructs a post-page build plan from a parsed source post.
-mkBuildPostPlan :: Post -> PostBuildPlan
-mkBuildPostPlan post = PostBuildPlan
+mkBuildPostPlan :: Post -> BuildPlan
+mkBuildPostPlan post = BuildPostPlan PostBuildPlan
   { planPost = post
   , planPreprocessedPath = tempPath </> (postName post ++ ".md")
   , planTargetHtmlPath = postPath </> (postName post ++ ".html")
@@ -44,8 +44,8 @@ mkBuildPostPlan post = PostBuildPlan
   }
 
 -- Constructs an index-page build plan from all parsed posts.
-mkBuildIndexPlan :: [Post] -> IndexBuildPlan
-mkBuildIndexPlan posts = IndexBuildPlan
+mkBuildIndexPlan :: [Post] -> BuildPlan
+mkBuildIndexPlan posts = BuildIndexPlan IndexBuildPlan
   { planPosts = posts
   , planIndexTemplatePath = renderedTemplateIndexPath 
   , planIndexUrl = webRoot ++ "index.html"

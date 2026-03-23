@@ -7,6 +7,8 @@ import Modules.Utils.String
 import Data.List (isPrefixOf)
 import System.IO (writeFile)
 import System.Process (callProcess)
+import System.FilePath
+import System.Directory (createDirectoryIfMissing)
 
 -- Executes one build plan with incremental guard.
 --
@@ -55,7 +57,7 @@ genPreprocessedPostText :: Post -> String
 genPreprocessedPostText post = unlines
   [ rawMeta
   , abstract
-  , "[[toc]]"
+  , "[[toc]]\n"
   , rewriteLanguageMarks $ postContent post
   ]
   where
@@ -102,5 +104,7 @@ mkPandocArgs inputPath templatePath outputPath =
 
 -- Executes pandoc with standardized flags used by the builder.
 runPandoc :: FilePath -> FilePath -> FilePath -> IO ()
-runPandoc inputPath templatePath outputPath =
+runPandoc inputPath templatePath outputPath = do
+  createDirectoryIfMissing True (takeDirectory outputPath)
   callProcess "pandoc" (mkPandocArgs inputPath templatePath outputPath)
+

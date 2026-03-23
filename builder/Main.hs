@@ -4,8 +4,13 @@ import Modules.Config
 import Modules.Template
 import Modules.Utils.TempDir (withTempDir)
 import Modules.Utils.OrphanCheck (checkOrphans)
+import Modules.Post
+import Modules.BuildPlan
+import Modules.Builder
 
 import System.IO (writeFile)
+import System.Directory (listDirectory)
+import System.FilePath
 
 -- Build entrypoint:
 -- 1) recreate temp workspace;
@@ -19,4 +24,11 @@ main = withTempDir tempPath $ do
   writeFile renderedTemplatePostPath templatePost
   templateIndex <- genTemplate templateIndexPath 
   writeFile renderedTemplateIndexPath templateIndex
+
+  postNames <- listDirectory srcPath
+  let postPaths = map (\f -> srcPath </> f) postNames 
+  posts <- mapM parsePost postPaths
+  let postBuildPlans = map mkBuildPostPlan posts
+  mapM_ executeBuildPlan postBuildPlans 
+
 

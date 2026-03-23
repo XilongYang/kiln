@@ -106,8 +106,8 @@ parseMetaLine str = trimPair $ break (== ':') str
 revertMeta :: PostMeta -> String
 revertMeta meta = unlines 
   [ metaDelimiter 
-  , "title:" ++ metaTitle meta
-  , "author:" ++ metaAuthor meta
-  , "date:" ++ metaDate meta
+  , "title: " ++ metaTitle meta
+  , "author: " ++ metaAuthor meta
+  , "date: " ++ metaDate meta
   , metaDelimiter
   ]
