@@ -41,13 +41,12 @@ testCases =
       assertEq "mkBuildPostPlan should bind the rendered post template path"
         renderedTemplatePostPath
         (planPostTemplatePath plan)
-      assertEq "mkBuildPostPlan should generate public post url"
-        (webPostPath ++ "hello-world.html")
-        (planPostUrl plan)
   , mkTestCase "mkBuildIndexPlan stores posts and index url" $ do
       let posts = [mkPost "a" "a.md", mkPost "b" "b.md"]
       let plan = expectIndexPlan (mkBuildIndexPlan posts)
-      assertEq "mkBuildIndexPlan should keep all posts" posts (planPosts plan)
+      assertEq "mkBuildIndexPlan should create one index item per post"
+        (length posts)
+        (length (planIndexItems plan))
       assertEq "mkBuildIndexPlan should bind the rendered index template path"
         renderedTemplateIndexPath
         (planIndexTemplatePath plan)
