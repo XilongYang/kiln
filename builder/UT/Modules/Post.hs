@@ -9,6 +9,7 @@ import Modules.Post
   , parseMetaLine
   , parsePost
   , parsePostMeta
+  , revertMeta
   , splitFrontMatter
   )
 import UT.TestUtils.Asserts
@@ -54,6 +55,24 @@ testCases =
       assertEq "parsePostMeta should fallback missing fields to empty"
         (PostMeta "t" "" "")
         parsed
+  , mkTestCase "revertMeta writes canonical markdown front matter text" $ do
+      let rendered = revertMeta (PostMeta "T" "A" "2026-03-22")
+      assertEq "revertMeta should serialize delimiters and keys in fixed order"
+        (unlines
+          [ metaDelimiter
+          , "title:T"
+          , "author:A"
+          , "date:2026-03-22"
+          , metaDelimiter
+          ])
+        rendered
+  , mkTestCase "revertMeta round-trip keeps PostMeta fields unchanged" $ do
+      let meta = PostMeta "Fixture Title" "Fixture Author" "2026-03-22"
+      let serialized = revertMeta meta
+      let (pairs, _) = splitFrontMatter "roundtrip.md" (serialized ++ "\nbody")
+      assertEq "parsePostMeta . splitFrontMatter . revertMeta should preserve metadata"
+        meta
+        (parsePostMeta pairs)
   , mkTestCase "splitFrontMatter parses metadata block between delimiters" $ do
       let content =
             unlines

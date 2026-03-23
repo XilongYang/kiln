@@ -98,3 +98,16 @@ parseMetaLine str = trimPair $ break (== ':') str
   where
     trimPair (a, b:bs) = (trim a, trim bs)
     trimPair _ = error ("invalid metadata line: " ++ str)
+
+-- Serializes `PostMeta` back to canonical markdown front matter.
+--
+-- The output always contains both opening and closing `metaDelimiter` lines
+-- and writes keys in the fixed order: title, author, date.
+revertMeta :: PostMeta -> String
+revertMeta meta = unlines 
+  [ metaDelimiter 
+  , "title:" ++ metaTitle meta
+  , "author:" ++ metaAuthor meta
+  , "date:" ++ metaDate meta
+  , metaDelimiter
+  ]
