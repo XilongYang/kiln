@@ -1,15 +1,15 @@
 module Modules.BuildPlan where
 
-import Modules.Post
-import Modules.IndexItem
 import Modules.Config
+import Modules.IndexItem
+import Modules.Post
 import Modules.TypeAlias
 
-import System.FilePath
 import System.Directory
   ( doesFileExist
   , getModificationTime
   )
+import System.FilePath
 
 -- Build steps emitted by the planner.
 --

@@ -1,11 +1,10 @@
 module Modules.Builder.IndexBuilder where
 
+import Data.List (sortOn)
+import qualified Data.Map.Strict as Map
 import Modules.IndexItem
 import Modules.TypeAlias
 import Modules.Utils.String
-
-import Data.List (sortOn)
-import qualified Data.Map.Strict as Map
 
 -- Fills an index template by injecting generated post-list HTML.
 genIndexHtml :: [IndexItem] -> Html -> Html

@@ -1,12 +1,11 @@
 module Modules.Template where
 
+import Data.List (sort)
 import Modules.Config
 import Modules.Utils.String
 
 import System.Directory (listDirectory)
 import System.FilePath
-import System.IO (readFile)
-import Data.List (sort)
 
 -- HTML content after all component placeholders have been expanded.
 type TemplateHtml = String

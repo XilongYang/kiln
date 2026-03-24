@@ -4,9 +4,8 @@ module UT.TestUtils.TestSuite
   , runSuite
   ) where
 
-import UT.TestUtils.Colors
-
 import Control.Exception (SomeException, displayException, try)
+import UT.TestUtils.Colors
 
 -- Pre-colored status tags for per-test output lines.
 okTag :: String

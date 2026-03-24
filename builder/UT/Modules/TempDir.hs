@@ -1,17 +1,15 @@
 module UT.Modules.TempDir (suiteName, testCases) where
 
-import Modules.Utils.TempDir
-import UT.TestUtils.TestSuite
-import UT.TestUtils.Asserts
-
 import Control.Exception (throwIO)
+import Modules.Utils.TempDir
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
   , doesFileExist
   )
 import System.FilePath ((</>))
-import System.IO (writeFile)
+import UT.TestUtils.Asserts
+import UT.TestUtils.TestSuite
 
 tempDirPath :: FilePath
 tempDirPath = "builder/UT/.mock/tempdir"

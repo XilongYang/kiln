@@ -1,7 +1,7 @@
 module Main where
 
-import UT.TestUtils.TestSuite (runSuite)
 import UT.TestUtils.Colors
+import UT.TestUtils.TestSuite (runSuite)
 
 import qualified UT.Modules.Builder as UtBuilder
 import qualified UT.Modules.BuildPlan as UtBuildPlan

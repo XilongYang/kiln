@@ -1,20 +1,18 @@
 module UT.Modules.BuildPlan (suiteName, testCases) where
 
+import Control.Concurrent (threadDelay)
+import Control.Monad (when)
 import Modules.BuildPlan
 import Modules.Config
 import Modules.Post (Post(..), PostMeta(..))
-import UT.TestUtils.Asserts
-import UT.TestUtils.TestSuite
-
-import Control.Concurrent (threadDelay)
-import Control.Monad (when)
 import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
   , removeFile
   )
 import System.FilePath ((</>))
-import System.IO (writeFile)
+import UT.TestUtils.Asserts
+import UT.TestUtils.TestSuite
 
 mockSrcDir :: FilePath
 mockSrcDir = "builder/UT/.mock/src"

@@ -1,22 +1,21 @@
 module UT.Modules.Builder (suiteName, testCases) where
 
-import Modules.Builder
-import Modules.BuildPlan
-import Modules.IndexItem (IndexItem(..))
-import Modules.Builder.PostBuilder
-import Modules.Builder.IndexBuilder
-import Modules.Post (Post(..), PostMeta(..), parsePost)
-import UT.TestUtils.Asserts
-import UT.TestUtils.TestSuite
-
 import Control.Monad (when)
 import Data.List (isPrefixOf)
+import Modules.BuildPlan
+import Modules.Builder
+import Modules.Builder.IndexBuilder
+import Modules.Builder.PostBuilder
+import Modules.IndexItem (IndexItem(..))
+import Modules.Post (Post(..), PostMeta(..), parsePost)
 import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
   , removeFile
   )
 import System.FilePath ((</>))
+import UT.TestUtils.Asserts
+import UT.TestUtils.TestSuite
 
 mockTempDir :: FilePath
 mockTempDir = "builder/UT/.mock/temp"

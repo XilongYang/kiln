@@ -1,6 +1,5 @@
 module UT.Modules.Post (suiteName, testCases) where
 
-import Modules.Config
 import Modules.Post
   ( Post(..)
   , PostMeta(..)
@@ -12,13 +11,10 @@ import Modules.Post
   , revertMeta
   , splitFrontMatter
   )
+
+import System.FilePath (takeBaseName)
 import UT.TestUtils.Asserts
 import UT.TestUtils.TestSuite
-
-import Control.Exception (finally)
-import System.Directory (doesFileExist, removeFile)
-import System.FilePath ((</>), takeBaseName)
-import System.IO (writeFile)
 
 -- Suite for post metadata line parsing.
 suiteName :: String

@@ -7,7 +7,7 @@ module UT.TestUtils.Asserts
   , assertThrows
   ) where
 
-import Control.Exception (SomeException, displayException, evaluate, try)
+import Control.Exception (SomeException, evaluate, try)
 import Data.List (isInfixOf)
 
 -- Aborts the current test case with a formatted assertion failure message.

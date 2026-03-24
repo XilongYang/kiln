@@ -1,17 +1,16 @@
 module UT.Modules.Template (suiteName, testCases) where
 
-import Modules.Template
-import UT.TestUtils.TestSuite
-import UT.TestUtils.Asserts
-
 import Data.List (isInfixOf)
+import Modules.Template
+
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
   , removePathForcibly
   )
 import System.FilePath ((</>))
-import System.IO (writeFile)
+import UT.TestUtils.Asserts
+import UT.TestUtils.TestSuite
 
 fixtureRoot :: FilePath
 fixtureRoot = "builder/UT/.mock/template"

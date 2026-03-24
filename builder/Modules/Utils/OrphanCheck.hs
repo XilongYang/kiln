@@ -1,14 +1,14 @@
 module Modules.Utils.OrphanCheck where
 
+import Control.Monad (unless)
+import Data.List ((\\))
 import Modules.Config
 
-import System.FilePath
 import System.Directory
   ( doesDirectoryExist
   , listDirectory
   )
-import Data.List ((\\))
-import Control.Monad (unless)
+import System.FilePath
 
 -- Checks the runtime filesystem and prints warning lines for orphaned output
 -- pages. Missing output directory is treated as "nothing to check".
@@ -36,4 +36,3 @@ findOrphanPosts postDir postFiles srcFiles =
       srcNameList = map takeBaseName $ filter (\f -> takeExtension f == ".md") srcFiles
       orphanNames = postNameList \\ srcNameList
   in map (\name -> postDir </> name <.> "html") orphanNames
-

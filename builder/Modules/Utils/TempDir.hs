@@ -1,8 +1,7 @@
 module Modules.Utils.TempDir where
 
 import Control.Exception (bracket)
-import System.Directory (createDirectory, removeDirectoryRecursive)
-import System.Directory (doesDirectoryExist)
+import System.Directory (createDirectory, doesDirectoryExist, removeDirectoryRecursive)
 
 -- Runs an action inside a freshly recreated temporary directory.
 -- Any existing directory at the target path is removed first, and the

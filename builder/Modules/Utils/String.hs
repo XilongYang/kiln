@@ -1,7 +1,7 @@
 module Modules.Utils.String where
 
-import Data.List (isPrefixOf)
 import Data.Char (isSpace)
+import Data.List (isPrefixOf)
 
 -- Replaces all non-overlapping occurrences of a substring (old) with another substring (new) in the input string.
 -- If 'old' is the empty string, the input is returned unchanged.
@@ -20,4 +20,3 @@ trim :: String -> String
 trim = f . f
   where
     f = reverse . dropWhile isSpace
-

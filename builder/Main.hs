@@ -1,14 +1,13 @@
 module Main where
 
-import Modules.Config
-import Modules.Template
-import Modules.Utils.TempDir (withTempDir)
-import Modules.Utils.OrphanCheck (checkOrphans)
-import Modules.Post
 import Modules.BuildPlan
 import Modules.Builder
+import Modules.Config
+import Modules.Post
+import Modules.Template
+import Modules.Utils.OrphanCheck (checkOrphans)
+import Modules.Utils.TempDir (withTempDir)
 
-import System.IO (writeFile)
 import System.Directory (listDirectory)
 import System.FilePath
 
@@ -34,4 +33,3 @@ main = withTempDir tempPath $ do
 
   let indexBuildPlan = mkBuildIndexPlan posts
   executeBuildPlan indexBuildPlan 
-

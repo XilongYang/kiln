@@ -1,11 +1,10 @@
 module Modules.Post where
 
+import Data.List (isPrefixOf)
 import Modules.TypeAlias
 import Modules.Utils.String
 
 import System.FilePath
-import System.IO (readFile)
-import Data.List (isPrefixOf)
 
 -- Canonical post filename stem (without extension).
 type PostName = String

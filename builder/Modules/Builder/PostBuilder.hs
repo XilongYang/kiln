@@ -1,14 +1,13 @@
 module Modules.Builder.PostBuilder where
 
+import Data.List (isPrefixOf)
+import Data.Maybe (catMaybes)
 import Modules.Post
 import Modules.TypeAlias
 import Modules.Utils.String
-
-import Data.List (isPrefixOf)
-import Data.Maybe (catMaybes)
-import System.Process (callProcess)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath
+import System.Process (callProcess)
 
 -- Builds the preprocessed markdown payload used before HTML rendering.
 --
@@ -125,4 +124,3 @@ tocItems ((level, ident, title) : xs) = unlines
   ]
   where
     (subItems, restItems) = break (\(curLevel, _, _) -> level == curLevel) xs
-
