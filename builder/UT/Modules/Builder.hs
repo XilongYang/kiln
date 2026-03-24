@@ -1,13 +1,10 @@
 module UT.Modules.Builder (suiteName, testCases) where
 
 import Control.Monad (when)
-import Data.List (isPrefixOf)
 import Modules.BuildPlan
 import Modules.Builder
-import Modules.Builder.IndexBuilder
-import Modules.Builder.PostBuilder
 import Modules.IndexItem (IndexItem(..))
-import Modules.Post (Post(..), PostMeta(..), parsePost)
+import Modules.Post (parsePost)
 import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
@@ -32,71 +29,27 @@ mockIndexTemplatePath = mockTempDir </> "index.html"
 mockIndexOutputPath :: FilePath
 mockIndexOutputPath = mockPostDir </> "builder-ut-index.html"
 
--- Suite for markdown preprocessing and build-plan execution helpers.
+-- Suite for builder integration-level execution helpers.
 suiteName :: String
 suiteName = "Builder"
 
 testCases :: [TestCase]
 testCases =
-  [ mkTestCase "rewriteLanguageMarkLine rewrites fenced code with language marker" $ do
-    assertEq "language fence should be rewritten with classes"
-        "``` {.language-haskell .line-numbers .match-braces}"
-        (rewriteLanguageMarkLine "```haskell")
-  , mkTestCase "rewriteLanguageMarkLine keeps plain fence unchanged" $ do
-      assertEq "plain code fence should remain unchanged"
-        "```"
-        (rewriteLanguageMarkLine "```")
-  , mkTestCase "rewriteLanguageMarkLine keeps non-fence line unchanged" $ do
-      assertEq "non-fence content should pass through"
-        "hello"
-        (rewriteLanguageMarkLine "hello")
-  , mkTestCase "rewriteLanguageMarks rewrites only fence opener lines" $ do
-      let input = unlines ["before", "```python", "print('x')", "```", "after"]
-      let expected =
-            unlines
-              [ "before"
-              , "``` {.language-python .line-numbers .match-braces}"
-              , "print('x')"
-              , "```"
-              , "after"
-              ]
-      assertEq "multi-line rewrite should only transform language fence opener"
-        expected
-        (rewriteLanguageMarks input)
-  , mkTestCase "genPreprocessedPostText includes meta abstract toc and rewritten body" $ do
-      let post =
-            Post
-              { postName = "demo"
-              , postSourcePath = "builder/UT/.mock/src/demo.md"
-              , postContent = "```js\nconst x = 1;\n```"
-              , postAbstract = "short abstract"
-              , postMeta = PostMeta "T" "A" "2026-03-22"
-              }
-      let generated = genPreprocessedPostText post
-      assertContains "preprocessed text should contain serialized title" "title: T" generated
-      assertContains "preprocessed text should contain abstract wrapper start" "<div class=\"abstract\">" generated
-      assertContains "preprocessed text should contain toc marker" "[[toc]]" generated
-      assertContains "preprocessed text should rewrite language fence in body"
-        "``` {.language-js .line-numbers .match-braces}"
-        generated
-  , mkTestCase "mkPandocArgs builds deterministic pandoc arguments" $ do
-      assertEq "pandoc args should preserve input/template/output positions and flags"
-        [ "input.md"
-        , "-o", "output.html"
-        , "--template=template.html"
-        , "--no-highlight"
-        , "--mathjax"
-        , "--wrap=none"
-        ]
-        (mkPandocArgs "input.md" "template.html" "output.html")
-  , mkTestCase "buildPostWithPlan runs real pandoc and writes html under .mock/post" $
+  [ mkTestCase "buildPostWithPlan runs real pandoc and writes html under .mock/post" $
       withFreshMockFile outputPath $
+      withFreshMockFile builtHtmlPath $
       withFreshMockFile htmlPath $ do
         createDirectoryIfMissing True mockTempDir
         createDirectoryIfMissing True mockPostDir
         post <- parsePost "builder/UT/.mock/src/parse-post-fixture.md"
         let basePlan = expectPostPlan (mkBuildPostPlan post)
-        let plan = basePlan { planPreprocessedPath = outputPath, planTargetHtmlPath = htmlPath, planPostTemplatePath = mockPostTemplatePath}
+        let plan =
+              basePlan
+                { planPreprocessedPath = outputPath
+                , planBuiltHtmlPath = builtHtmlPath
+                , planTargetHtmlPath = htmlPath
+                , planPostTemplatePath = mockPostTemplatePath
+                }
         buildPostWithPlan plan
         exists <- doesFileExist outputPath
         assertTrue "buildPostWithPlan should create preprocess markdown file" exists
@@ -114,19 +67,6 @@ testCases =
         assertContains "rendered html should preserve rewritten code block classes"
           "<pre class=\"language-C line-numbers match-braces\">"
           html
-  , mkTestCase "genIndexHtml groups items by year and orders dates descending in a year" $ do
-      let items =
-            [ IndexItem "B-Old" "2025" "01" "02" "/post/b-old.html"
-            , IndexItem "A-New" "2026" "12" "25" "/post/a-new.html"
-            , IndexItem "A-Old" "2026" "02" "03" "/post/a-old.html"
-            ]
-      let rendered = genIndexHtml items "<main>$posts$</main>"
-      assertContains "index html should include 2026 year heading" "<h3>2026</h3>" rendered
-      assertContains "index html should include 2025 year heading" "<h3>2025</h3>" rendered
-      assertTrue "newer year group should appear before older year group"
-        (indexOf "<h3>2026</h3>" rendered < indexOf "<h3>2025</h3>" rendered)
-      assertTrue "items in same year should be ordered by date descending"
-        (indexOf "A-New" rendered < indexOf "A-Old" rendered)
   , mkTestCase "buildIndexWithPlan writes replaced index html to target file" $
       withFreshMockFile mockIndexTemplatePath $
       withFreshMockFile mockIndexOutputPath $ do
@@ -136,7 +76,7 @@ testCases =
         let plan =
               IndexBuildPlan
                 { planIndexItems =
-                    [ IndexItem "Index Title" "2026" "03" "22" "/post/index-title.html" ]
+                    [IndexItem "Index Title" "2026" "03" "22" "/post/index-title.html"]
                 , planIndexHtmlPath = mockIndexOutputPath
                 , planIndexTemplatePath = mockIndexTemplatePath
                 , planIndexUrl = "/index.html"
@@ -151,6 +91,7 @@ testCases =
   ]
   where
     outputPath = mockTempDir </> "builder-ut-preprocessed.md"
+    builtHtmlPath = mockTempDir </> "builder-ut-built.html"
     htmlPath = mockPostDir </> "builder-ut-output.html"
 
 withFreshMockFile :: FilePath -> IO a -> IO a
@@ -162,11 +103,3 @@ withFreshMockFile path action = do
 expectPostPlan :: BuildPlan -> PostBuildPlan
 expectPostPlan (BuildPostPlan plan) = plan
 expectPostPlan _ = error "expected BuildPostPlan"
-
-indexOf :: String -> String -> Int
-indexOf needle haystack = go 0 haystack
-  where
-    go n rest
-      | needle `isPrefixOf` rest = n
-      | null rest = maxBound
-      | otherwise = go (n + 1) (drop 1 rest)

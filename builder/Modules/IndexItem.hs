@@ -12,3 +12,4 @@ data IndexItem = IndexItem
   -- Absolute or site-root-relative URL to the generated post page.
   , itemUrl              :: Url
   } deriving (Show, Eq)
+
