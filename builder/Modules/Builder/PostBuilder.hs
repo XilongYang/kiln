@@ -84,17 +84,9 @@ genToc html = replace "[[toc]]" toc html
       , tocs html
       , "</nav>"
       ]
-
--- Extracts heading rows from `<main>` and renders nested ordered-list TOC.
-tocs :: Html -> Html
-tocs html = unlines 
-  [ "<ol>"
-  , tocItems headItems
-  , "</ol>"
-  ]
-  where 
     (_, main) = ((break (== "<main>")) . (map trim) . lines) html
     headItems = catMaybes $ map extractHeadItem main
+    tocs html = "<ol>" ++ tocItems headItems ++ "</ol>"
 
 -- Parses one heading line like `<h2 id="...">Title</h2>`.
 extractHeadItem :: Html -> Maybe (String, String, String)
