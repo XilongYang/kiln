@@ -1,5 +1,6 @@
 module Modules.Post where
 
+import Modules.TypeAlias
 import Modules.Utils.String
 
 import System.FilePath
@@ -8,10 +9,6 @@ import Data.List (isPrefixOf)
 
 -- Canonical post filename stem (without extension).
 type PostName = String
--- Raw markdown text of the post file.
-type Markdown = String
--- Public URL for the generated post page.
-type Url = String
 
 -- Structured metadata extracted from markdown front matter.
 data PostMeta = PostMeta

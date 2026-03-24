@@ -1,7 +1,9 @@
 module Modules.BuildPlan where
 
 import Modules.Post
+import Modules.IndexItem
 import Modules.Config
+import Modules.TypeAlias
 
 import System.FilePath
 import System.Directory
@@ -21,16 +23,9 @@ data BuildPlan
 data PostBuildPlan = PostBuildPlan 
   { planPost             :: Post
   , planPreprocessedPath :: FilePath
+  , planBuiltHtmlPath :: FilePath
   , planTargetHtmlPath   :: FilePath
   , planPostTemplatePath :: FilePath
-  } deriving (Show, Eq)
-
-data IndexItem = IndexItem
-  { itemTitle            :: String
-  , itemYear             :: String
-  , itemMonth            :: String
-  , itemDay              :: String
-  , itemUrl              :: Url
   } deriving (Show, Eq)
 
 -- Inputs required to build the index page.
@@ -46,6 +41,7 @@ mkBuildPostPlan :: Post -> BuildPlan
 mkBuildPostPlan post = BuildPostPlan PostBuildPlan
   { planPost = post
   , planPreprocessedPath = tempPath </> (postName post ++ ".md")
+  , planBuiltHtmlPath = tempPath </> (postName post ++ ".html")
   , planTargetHtmlPath = postPath </> (postName post ++ ".html")
   , planPostTemplatePath = renderedTemplatePostPath
   }

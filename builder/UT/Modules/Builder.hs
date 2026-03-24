@@ -2,6 +2,9 @@ module UT.Modules.Builder (suiteName, testCases) where
 
 import Modules.Builder
 import Modules.BuildPlan
+import Modules.IndexItem (IndexItem(..))
+import Modules.Builder.PostBuilder
+import Modules.Builder.IndexBuilder
 import Modules.Post (Post(..), PostMeta(..), parsePost)
 import UT.TestUtils.Asserts
 import UT.TestUtils.TestSuite
