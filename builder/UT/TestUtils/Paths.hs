@@ -15,6 +15,7 @@ module UT.TestUtils.Paths
   , navbarFixturePath
   ) where
 
+import Modules.Config (rootPath)
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
@@ -43,7 +44,7 @@ withCasePaths suiteName caseName requiredDirs action = do
   mapM_ (createDirectoryIfMissing True . (rootDir </>)) requiredDirs
   action paths
   where
-    rootDir = "builder/UT/.mock" </> suiteName </> caseName
+    rootDir = utMockRoot </> suiteName </> caseName
     paths =
       CasePaths
         { caseRootDir = rootDir
@@ -67,7 +68,7 @@ templateFile casePaths fileName = caseTemplateDir casePaths </> fileName
 
 -- Root directory for all static UT fixtures.
 fixtureRoot :: FilePath
-fixtureRoot = "builder/UT/.fixture"
+fixtureRoot = utRoot </> ".fixture"
 
 -- Source-markdown fixture file path under `.fixture/src`.
 srcFixtureFile :: FilePath -> FilePath
@@ -92,3 +93,9 @@ commonHeadFixturePath = componentFixtureFile "common_head.html"
 
 navbarFixturePath :: FilePath
 navbarFixturePath = componentFixtureFile "navbar.html"
+
+utRoot :: FilePath
+utRoot = rootPath </> "builder" </> "UT"
+
+utMockRoot :: FilePath
+utMockRoot = utRoot </> ".mock"
