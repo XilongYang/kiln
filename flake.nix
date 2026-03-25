@@ -13,10 +13,11 @@
     devShells.${system}.default = pkgs.mkShell {
       packages = with pkgs; [
         gnumake
-        python3
         pandoc
         haskell.packages.ghc9103.ghc
         haskell.packages.ghc9103.haskell-language-server
+        python314Packages.fonttools
+        python314Packages.brotli
       ];
     };
   };

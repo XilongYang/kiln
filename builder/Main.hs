@@ -3,6 +3,7 @@ module Main where
 import Modules.BuildPlan
 import Modules.Builder
 import Modules.Config
+import Modules.FontSubset (genFontSubset)
 import Modules.Post
 import Modules.SearchDB
 import Modules.Template
@@ -36,4 +37,6 @@ main = withTempDir tempPath $ do
   executeBuildPlan indexBuildPlan 
 
   genSearchDB searchDBPath posts 
+
+  genFontSubset 
 

@@ -72,5 +72,17 @@ webPostPath :: String
 webPostPath = webRoot ++ "post/"
 
 searchDBPath :: FilePath
-searchDBPath= rootPath </> "searchdb.json"
+searchDBPath = rootPath </> "searchdb.json"
+
+fontSetPath :: FilePath
+fontSetPath = tempPath </> "fontset.txt"
+
+fontPath :: FilePath
+fontPath = rootPath  </> "res" </> "fonts"
+
+originFontFilePath :: FilePath
+originFontFilePath =  fontPath </> "SourceHanSerifCN-Regular.otf"
+
+subsetFontFilePath :: FilePath
+subsetFontFilePath = fontPath </> "SourceHanSerifCN-Subset.woff2"
 
