@@ -4,6 +4,7 @@ import Data.List (isInfixOf, isPrefixOf)
 import Modules.Builder.PostBuilder
 import Modules.Post (Post(..), PostMeta(..))
 import UT.TestUtils.Asserts
+import UT.TestUtils.Paths
 import UT.TestUtils.TestSuite
 
 -- Suite for post-builder pure helpers and pandoc argument construction.
@@ -72,7 +73,7 @@ testGenPreprocessedPostTextIncludesExpectedSections =
     let post =
           Post
             { postName = "demo"
-            , postSourcePath = "builder/UT/.fixture/src/demo.md"
+            , postSourcePath = srcFixtureFile "demo.md"
             , postBody = "```js\nconst x = 1;\n```"
             , postAbstract = "short abstract"
             , postMeta = PostMeta "T" "A" "2026-03-22"

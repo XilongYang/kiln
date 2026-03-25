@@ -12,12 +12,6 @@ import UT.TestUtils.Asserts
 import UT.TestUtils.Paths
 import UT.TestUtils.TestSuite
 
-fixtureSourcePath :: FilePath
-fixtureSourcePath = "builder/UT/.fixture/src/parse-post-fixture.md"
-
-fixturePostTemplatePath :: FilePath
-fixturePostTemplatePath = "builder/UT/.fixture/template/post.html"
-
 -- Suite for builder integration-level execution helpers.
 suiteName :: String
 suiteName = "Builder"
@@ -38,8 +32,8 @@ testBuildPostWithPlan =
           outputPath = tempFile casePaths "builder-ut-preprocessed.md"
           builtHtmlPath = tempFile casePaths "builder-ut-built.html"
           htmlPath = postFile casePaths "builder-ut-output.html"
-      copyFile fixtureSourcePath sourcePath
-      copyFile fixturePostTemplatePath postTemplatePath
+      copyFile parsePostFixturePath sourcePath
+      copyFile postTemplateFixturePath postTemplatePath
       post <- parsePost sourcePath
       let basePlan = expectPostPlan (mkBuildPostPlan post)
       let plan =

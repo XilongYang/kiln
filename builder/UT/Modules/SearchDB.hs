@@ -21,9 +21,6 @@ import UT.TestUtils.TestSuite
 suiteName :: String
 suiteName = "SearchDB"
 
-fixtureSourcePath :: FilePath
-fixtureSourcePath = "builder/UT/.fixture/src/parse-post-fixture.md"
-
 testCases :: [TestCase]
 testCases =
   [ testMkSearchDBWrapsEntriesInPostsArray
@@ -57,7 +54,7 @@ testMkSearchItemMapsFromIndexPair =
   mkTestCase "mkSearchItem maps tuple values from IndexItem and content" $
     withCasePaths suiteName "mkSearchItemMapsFromIndexPair" ["src"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "parse-post-fixture.md"
-      copyFile fixtureSourcePath sourcePath
+      copyFile parsePostFixturePath sourcePath
       post <- parsePost sourcePath
       (item, _) <- postToIndexContentPair post
       let searchItem = mkSearchItem (item, "normalized content")
@@ -77,7 +74,7 @@ testPostToIndexContentPairNormalizesToSingleLine =
   mkTestCase "postToIndexContentPair returns single-line normalized content" $
     withCasePaths suiteName "postToIndexContentPairNormalizesToSingleLine" ["src"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "parse-post-fixture.md"
-      copyFile fixtureSourcePath sourcePath
+      copyFile parsePostFixturePath sourcePath
       post <- parsePost sourcePath
       (_, content) <- postToIndexContentPair post
       assertFalse "postToIndexContentPair should remove newline chars from content"
@@ -92,7 +89,7 @@ testGenSearchDBWritesExpectedJsonFile =
     withCasePaths suiteName "genSearchDBWritesExpectedJsonFile" ["src", "temp"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "parse-post-fixture.md"
           outputPath = tempFile casePaths "searchdb-ut-output.json"
-      copyFile fixtureSourcePath sourcePath
+      copyFile parsePostFixturePath sourcePath
       post <- parsePost sourcePath
       genSearchDB outputPath [post]
       exists <- doesFileExist outputPath

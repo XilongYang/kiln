@@ -12,23 +12,14 @@ import UT.TestUtils.Asserts
 import UT.TestUtils.Paths
 import UT.TestUtils.TestSuite
 
-fixtureRoot :: FilePath
-fixtureRoot = "builder/UT/.fixture/template"
-
-fixtureComponentDir :: FilePath
-fixtureComponentDir = fixtureRoot </> "component"
-
-fixtureTemplatePath :: FilePath
-fixtureTemplatePath = fixtureRoot </> "post.html"
-
 prepareTemplateFixtures :: CasePaths -> IO (FilePath, FilePath)
 prepareTemplateFixtures casePaths = do
   let componentDir = caseTemplateDir casePaths </> "component"
       templatePath = templateFile casePaths "post.html"
   createDirectoryIfMissing True componentDir
-  copyFile (fixtureComponentDir </> "common_head.html") (componentDir </> "common_head.html")
-  copyFile (fixtureComponentDir </> "navbar.html") (componentDir </> "navbar.html")
-  copyFile fixtureTemplatePath templatePath
+  copyFile commonHeadFixturePath (componentDir </> "common_head.html")
+  copyFile navbarFixturePath (componentDir </> "navbar.html")
+  copyFile postTemplateFixturePath templatePath
   pure (componentDir, templatePath)
 
 -- Suite for placeholder expansion and template/component loading.

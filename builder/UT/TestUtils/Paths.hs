@@ -5,6 +5,14 @@ module UT.TestUtils.Paths
   , postFile
   , tempFile
   , templateFile
+  , fixtureRoot
+  , srcFixtureFile
+  , templateFixtureFile
+  , componentFixtureFile
+  , parsePostFixturePath
+  , postTemplateFixturePath
+  , commonHeadFixturePath
+  , navbarFixturePath
   ) where
 
 import System.Directory
@@ -56,3 +64,31 @@ tempFile casePaths fileName = caseTempDir casePaths </> fileName
 
 templateFile :: CasePaths -> FilePath -> FilePath
 templateFile casePaths fileName = caseTemplateDir casePaths </> fileName
+
+-- Root directory for all static UT fixtures.
+fixtureRoot :: FilePath
+fixtureRoot = "builder/UT/.fixture"
+
+-- Source-markdown fixture file path under `.fixture/src`.
+srcFixtureFile :: FilePath -> FilePath
+srcFixtureFile fileName = fixtureRoot </> "src" </> fileName
+
+-- Template fixture file path under `.fixture/template`.
+templateFixtureFile :: FilePath -> FilePath
+templateFixtureFile fileName = fixtureRoot </> "template" </> fileName
+
+-- Component fixture file path under `.fixture/template/component`.
+componentFixtureFile :: FilePath -> FilePath
+componentFixtureFile fileName = fixtureRoot </> "template" </> "component" </> fileName
+
+parsePostFixturePath :: FilePath
+parsePostFixturePath = srcFixtureFile "parse-post-fixture.md"
+
+postTemplateFixturePath :: FilePath
+postTemplateFixturePath = templateFixtureFile "post.html"
+
+commonHeadFixturePath :: FilePath
+commonHeadFixturePath = componentFixtureFile "common_head.html"
+
+navbarFixturePath :: FilePath
+navbarFixturePath = componentFixtureFile "navbar.html"

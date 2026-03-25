@@ -22,9 +22,6 @@ import UT.TestUtils.TestSuite
 suiteName :: String
 suiteName = "Post"
 
-fixtureSourcePath :: FilePath
-fixtureSourcePath = "builder/UT/.fixture/src/parse-post-fixture.md"
-
 testCases :: [TestCase]
 testCases =
   [ testParseMetaLineEmptyInput
@@ -181,7 +178,7 @@ testParsePostLoadsAndResolvesFields =
   mkTestCase "parsePost loads content and resolves paths/url/meta" $
     withCasePaths suiteName "parsePostLoadsAndResolvesFields" ["src"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "parse-post-fixture.md"
-      copyFile fixtureSourcePath sourcePath
+      copyFile parsePostFixturePath sourcePath
       post <- parsePost sourcePath
       assertEq "parsePost should derive postName from filename" (takeBaseName sourcePath) (postName post)
       assertEq "parsePost should resolve source path" sourcePath (postSourcePath post)

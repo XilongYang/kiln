@@ -27,7 +27,7 @@ testCases =
 testMkBuildPostPlanPaths :: TestCase
 testMkBuildPostPlanPaths =
   mkTestCase "mkBuildPostPlan builds expected preprocess path, target path, and url" $ do
-    let post = mkPost "hello-world" "builder/UT/.fixture/src/hello-world.md"
+    let post = mkPost "hello-world" (srcFixtureFile "hello-world.md")
     let plan = expectPostPlan (mkBuildPostPlan post)
     assertEq "mkBuildPostPlan should keep original post payload" post (planPost plan)
     assertEq "mkBuildPostPlan should generate temp preprocess markdown path"
