@@ -4,6 +4,7 @@ import Modules.BuildPlan
 import Modules.Builder
 import Modules.Config
 import Modules.Post
+import Modules.SearchDB
 import Modules.Template
 import Modules.Utils.OrphanCheck (checkOrphans)
 import Modules.Utils.TempDir (withTempDir)
@@ -33,3 +34,6 @@ main = withTempDir tempPath $ do
 
   let indexBuildPlan = mkBuildIndexPlan posts
   executeBuildPlan indexBuildPlan 
+
+  genSearchDB searchDBPath posts 
+

@@ -71,3 +71,6 @@ webRoot = "/"
 webPostPath :: String
 webPostPath = webRoot ++ "post/"
 
+searchDBPath :: FilePath
+searchDBPath= rootPath </> "searchdb.json"
+
