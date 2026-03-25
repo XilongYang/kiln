@@ -82,9 +82,10 @@ genToc html = replace "[[toc]]" toc html
       , "</h2>"
       , "<div id=\"toc-items\">"
       , tocs html
+      , "</div>"
       , "</nav>"
       ]
-    (_, main) = ((break (== "<main>")) . (map trim) . lines) html
+    (_, main) = ((break ("<main" `isPrefixOf`)) . (map trim) . lines) html
     headItems = catMaybes $ map extractHeadItem main
     tocs html = "<ol>" ++ tocItems headItems ++ "</ol>"
 
@@ -115,4 +116,4 @@ tocItems ((level, ident, title) : xs) = unlines
   , tocItems restItems
   ]
   where
-    (subItems, restItems) = break (\(curLevel, _, _) -> level == curLevel) xs
+    (subItems, restItems) = break (\(curLevel, _, _) -> level >= curLevel) xs
