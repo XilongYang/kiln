@@ -1,5 +1,6 @@
 module Main where
 
+import System.Exit (exitFailure)
 import UT.TestUtils.Colors
 import UT.TestUtils.TestSuite (runSuite)
 
@@ -31,4 +32,6 @@ main = do
       ]
   if and results
     then putStrLn $ makeColor colorGreen "All UT passed."
-    else putStrLn $ makeColor colorRed "Some UT failed."
+    else do
+      putStrLn $ makeColor colorRed "Some UT failed."
+      exitFailure
