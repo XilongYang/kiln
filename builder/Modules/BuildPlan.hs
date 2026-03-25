@@ -55,17 +55,6 @@ mkBuildIndexPlan posts = BuildIndexPlan IndexBuildPlan
   , planIndexUrl = webRoot ++ "index.html"
   }
 
-mkIndexItem :: Post -> IndexItem
-mkIndexItem post = IndexItem 
-  { itemTitle = metaTitle (postMeta post)
-  , itemYear = (reverse . (drop 6) . reverse) date
-  , itemMonth = (reverse . (drop 3) . reverse . (drop 5)) date
-  , itemDay = drop 8 date
-  , itemUrl = webPostPath ++ (postName post) ++ ".html"
-  }
-  where
-    date = metaDate (postMeta post)
-
 -- Decides whether a given plan should be rebuilt in this run.
 --
 -- Current policy:

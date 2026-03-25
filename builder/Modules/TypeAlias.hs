@@ -6,3 +6,5 @@ type Markdown = String
 type Url = String
 -- Rendered HTML fragment or full document content.
 type Html = String
+
+type SearchJson = String

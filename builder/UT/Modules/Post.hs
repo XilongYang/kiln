@@ -112,7 +112,7 @@ testCases =
         (postAbstract post)
       assertEq "parsePost should keep remaining markdown body"
         "## Sub Title1\n\nbodys\nbodys\nbodys\n\n```C\nCode1\n```\n\n## Sub Title2\n\nbodys\nbodys\nbodys\n\n```Haskell\nCode2\n```\n"
-        (postContent post)
+        (postBody post)
       assertEq "parsePost should parse front matter into PostMeta"
         (PostMeta "Fixture Title" "Fixture Author" "2026-03-22")
         (postMeta post)

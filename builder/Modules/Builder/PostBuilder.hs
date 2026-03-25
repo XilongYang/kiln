@@ -21,7 +21,7 @@ genPreprocessedPostText post = unlines
   [ rawMeta
   , abstract
   , "[[toc]]\n"
-  , rewriteLanguageMarks $ postContent post
+  , rewriteLanguageMarks $ postBody post
   ]
   where
     rawMeta = revertMeta $ postMeta post

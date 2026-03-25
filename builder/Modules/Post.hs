@@ -21,7 +21,7 @@ data Post = Post
   { postName       :: PostName
   , postSourcePath :: FilePath
   -- Renderable markdown content after abstract extraction.
-  , postContent    :: Markdown
+  , postBody    :: Markdown
   -- Lead markdown snippet extracted before the main section marker.
   , postAbstract   :: Markdown
   , postMeta       :: PostMeta
@@ -34,13 +34,13 @@ parsePost pathToParse = do
   let name = takeBaseName pathToParse
   let sourcePath = pathToParse
   rawContent <- readFile sourcePath 
-  let (rawMeta, body) = splitFrontMatter sourcePath rawContent
-  let (abstract, content) = extractPostAbstract body 
+  let (rawMeta, rest) = splitFrontMatter sourcePath rawContent
+  let (abstract, body) = extractPostAbstract rest
 
   return Post 
     { postName = name
     , postSourcePath = sourcePath 
-    , postContent = content 
+    , postBody = body
     , postAbstract = abstract 
     , postMeta = parsePostMeta rawMeta}
 

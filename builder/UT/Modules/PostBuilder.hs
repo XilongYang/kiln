@@ -42,7 +42,7 @@ testCases =
             Post
               { postName = "demo"
               , postSourcePath = "builder/UT/.mock/src/demo.md"
-              , postContent = "```js\nconst x = 1;\n```"
+              , postBody = "```js\nconst x = 1;\n```"
               , postAbstract = "short abstract"
               , postMeta = PostMeta "T" "A" "2026-03-22"
               }

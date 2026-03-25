@@ -95,7 +95,7 @@ mkPost name sourcePath =
   Post
     { postName = name
     , postSourcePath = sourcePath
-    , postContent = ""
+    , postBody = ""
     , postAbstract = ""
     , postMeta = PostMeta "" "" ""
     }
