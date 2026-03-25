@@ -9,6 +9,7 @@ import qualified UT.Modules.IndexBuilder as UtIndexBuilder
 import qualified UT.Modules.OrphanCheck as UtOrphanCheck
 import qualified UT.Modules.Post as UtPost
 import qualified UT.Modules.PostBuilder as UtPostBuilder
+import qualified UT.Modules.SearchDB as UtSearchDB
 import qualified UT.Modules.String as UtString
 import qualified UT.Modules.Template as UtTemplate
 import qualified UT.Modules.TempDir as UtTempDir
@@ -25,6 +26,7 @@ main = do
       , runSuite UtBuildPlan.suiteName UtBuildPlan.testCases
       , runSuite UtPostBuilder.suiteName UtPostBuilder.testCases
       , runSuite UtIndexBuilder.suiteName UtIndexBuilder.testCases
+      , runSuite UtSearchDB.suiteName UtSearchDB.testCases
       , runSuite UtBuilder.suiteName UtBuilder.testCases
       ]
   if and results
