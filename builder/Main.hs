@@ -10,7 +10,7 @@ import Modules.Template
 import Modules.Utils.OrphanCheck (checkOrphans)
 import Modules.Utils.TempDir (withTempDir)
 
-import System.Directory (listDirectory)
+import System.Directory (listDirectory, createDirectoryIfMissing)
 import System.FilePath
 
 -- Build entrypoint:
@@ -25,6 +25,8 @@ main = withTempDir tempPath $ do
   writeFile renderedTemplatePostPath templatePost
   templateIndex <- genTemplate templateIndexPath 
   writeFile renderedTemplateIndexPath templateIndex
+
+  createDirectoryIfMissing True postPath
 
   postNames <- listDirectory srcPath
   let postPaths = map (\f -> srcPath </> f) postNames 
