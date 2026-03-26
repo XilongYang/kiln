@@ -15,6 +15,7 @@ import qualified UT.Modules.OrphanCheck as UtOrphanCheck
 import qualified UT.Modules.Post as UtPost
 import qualified UT.Modules.PostBuilder as UtPostBuilder
 import qualified UT.Modules.SearchDB as UtSearchDB
+import qualified UT.Modules.Sha256 as UtSha256
 import qualified UT.Modules.String as UtString
 import qualified UT.Modules.Template as UtTemplate
 import qualified UT.Modules.TempDir as UtTempDir
@@ -25,6 +26,7 @@ main = do
   results <-
     sequence
       [ runSuite UtString.suiteName UtString.testCases
+      , runSuite UtSha256.suiteName UtSha256.testCases
       , runSuite UtTypeAlias.suiteName UtTypeAlias.testCases
       , runSuite UtConfig.suiteName UtConfig.testCases
       , runSuite UtTemplate.suiteName UtTemplate.testCases
