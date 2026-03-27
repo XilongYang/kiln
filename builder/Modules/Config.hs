@@ -93,3 +93,22 @@ originFontFilePath =  fontPath </> "SourceHanSerifCN-Regular.otf"
 subsetFontFilePath :: FilePath
 subsetFontFilePath = fontPath </> "SourceHanSerifCN-Subset.woff2"
 
+-- Root directory for incremental build cache artifacts.
+cacheRoot :: FilePath
+cacheRoot = rootPath </> ".build-cache"
+
+-- Cache file storing source content fingerprints.
+srcCachePath :: FilePath
+srcCachePath = cacheRoot </> "src.cache"
+
+-- Cache file storing generated index-page metadata.
+indexCacheFilePath :: FilePath
+indexCacheFilePath = cacheRoot </> "index.cache"
+
+-- Directory containing per-post cache records.
+postCachePath :: FilePath
+postCachePath = cacheRoot </> "post"
+
+-- Directory containing template cache records.
+templateCachePath :: FilePath
+templateCachePath = cacheRoot </> "template"
