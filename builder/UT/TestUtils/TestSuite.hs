@@ -1,5 +1,6 @@
 module UT.TestUtils.TestSuite
   ( TestCase
+  , SuiteResult(..)
   , mkTestCase
   , runSuite
   ) where
@@ -21,6 +22,11 @@ ngTag = makeColor colorRed "[NG]"
 -- separate testing framework.
 type TestCase = (String, IO ())
 
+data SuiteResult = SuiteResult
+  { suitePassed :: Int
+  , suiteTotal :: Int
+  }
+
 -- Constructs a named test case for use in a suite.
 --
 -- The title is used in console output, and the action is expected to throw on
@@ -31,8 +37,9 @@ mkTestCase title action = (title, action)
 -- Runs a named suite and reports each case independently.
 --
 -- Failures are caught per test case so the remaining cases in the same suite
--- still execute. The returned `Bool` indicates whether the full suite passed.
-runSuite :: String -> [TestCase] -> IO Bool
+-- still execute. The returned result contains passed/total counts for this
+-- suite.
+runSuite :: String -> [TestCase] -> IO SuiteResult
 runSuite suiteName cases = do
   putStrLn ("Test Suite " ++ suiteName)
   passed <- mapM runIndexedCase (zip [1 :: Int ..] cases)
@@ -41,7 +48,7 @@ runSuite suiteName cases = do
   putStrLn ""
   putStrLn ("Summary: " ++ show okCount ++ "/" ++ show totalCount ++ " Tests Passed")
   putStrLn ""
-  pure (okCount == totalCount)
+  pure (SuiteResult okCount totalCount)
   where
     runIndexedCase :: (Int, TestCase) -> IO Bool
     runIndexedCase (idx, (title, action)) = do

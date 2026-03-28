@@ -2,7 +2,7 @@ module Main where
 
 import System.Exit (exitFailure)
 import UT.TestUtils.Colors
-import UT.TestUtils.TestSuite (runSuite)
+import UT.TestUtils.TestSuite (SuiteResult(..), runSuite)
 
 import qualified UT.Modules.Builder as UtBuilder
 import qualified UT.Modules.BuildJudger as UtBuildJudger
@@ -12,6 +12,7 @@ import qualified UT.Modules.FontSubset as UtFontSubset
 import qualified UT.Modules.Index.Render as UtIndexRender
 import qualified UT.Modules.Index.Item as UtIndexItem
 import qualified UT.Modules.Main as UtMain
+import qualified UT.Modules.Performance as UtPerformance
 import qualified UT.Modules.Post.Parse as UtPostParse
 import qualified UT.Modules.Post.Preprocess as UtPostPreprocess
 import qualified UT.Modules.SearchDB as UtSearchDB
@@ -45,10 +46,11 @@ main = do
       , runSuite UtFontSubset.suiteName UtFontSubset.testCases
       , runSuite UtBuilder.suiteName UtBuilder.testCases
       , runSuite UtMain.suiteName UtMain.testCases
+      , runSuite UtPerformance.suiteName UtPerformance.testCases
       ]
-  let successCount = length (filter id results)
-  let totalCount = length results
-  if and results
+  let successCount = sum (map suitePassed results)
+  let totalCount = sum (map suiteTotal results)
+  if successCount == totalCount
     then
       putStrLn $
         makeColor colorGreen ("All UT passed (" ++ show successCount ++ "/" ++ show totalCount ++ ").")
