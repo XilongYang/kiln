@@ -4,6 +4,7 @@ import Modules.BuildPlan
 import Modules.BuildJudger
 import Modules.Index.Render
 import Modules.Post.Preprocess
+import Modules.Post.Parse
 import Modules.Pandoc
 import Modules.Toc
 
@@ -52,11 +53,11 @@ buildIndexWithPlan plan = do
 -- - write final target page
 buildPostWithPlan :: PostBuildPlan -> IO()
 buildPostWithPlan plan = do
-  let post = planPost plan
   let preprocessedPath = planPreprocessedPath plan
   let builtHtmlPath = planBuiltHtmlPath plan
   let postTemplatePath = planPostTemplatePath plan
   let targetHtmlPath = planTargetHtmlPath plan
+  post <- parsePost $ planPostSourcePath plan
   writeFile preprocessedPath $ preprocessPost post
   runPandoc preprocessedPath postTemplatePath builtHtmlPath
   builtHtml <- readFile builtHtmlPath

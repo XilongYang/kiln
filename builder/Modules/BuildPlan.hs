@@ -26,9 +26,9 @@ data BuildPlan
 
 -- | Concrete plan payload for building one post page.
 data PostBuildPlan = PostBuildPlan 
-  { planPost             :: Post
+  { planPostSourcePath   :: FilePath
   , planPreprocessedPath :: FilePath
-  , planBuiltHtmlPath :: FilePath
+  , planBuiltHtmlPath    :: FilePath
   , planTargetHtmlPath   :: FilePath
   , planPostTemplatePath :: FilePath
   } deriving (Show, Eq)
@@ -42,19 +42,21 @@ data IndexBuildPlan = IndexBuildPlan
   } deriving (Show, Eq)
 
 -- | Creates a post build plan from one parsed post.
-mkBuildPostPlan :: Post -> BuildPlan
-mkBuildPostPlan post = BuildPostPlan PostBuildPlan
-  { planPost = post
-  , planPreprocessedPath = tempPath </> (postName post ++ ".md")
-  , planBuiltHtmlPath = tempPath </> (postName post ++ ".html")
-  , planTargetHtmlPath = postPath </> (postName post ++ ".html")
+mkBuildPostPlan :: FilePath -> BuildPlan
+mkBuildPostPlan path = BuildPostPlan PostBuildPlan
+  { planPostSourcePath = path
+  , planPreprocessedPath = tempPath </> (baseName ++ ".md")
+  , planBuiltHtmlPath = tempPath </> (baseName ++ ".html")
+  , planTargetHtmlPath = postPath </> (baseName ++ ".html")
   , planPostTemplatePath = renderedTemplatePostPath
   }
+  where
+    baseName = takeBaseName path
 
 -- | Creates an index build plan from all parsed posts.
-mkBuildIndexPlan :: [Post] -> BuildPlan
-mkBuildIndexPlan posts = BuildIndexPlan IndexBuildPlan
-  { planIndexItems = map mkIndexItem posts
+mkBuildIndexPlan :: [IndexItem] -> BuildPlan
+mkBuildIndexPlan items = BuildIndexPlan IndexBuildPlan
+  { planIndexItems = items
   , planIndexHtmlPath = indexPath
   , planIndexTemplatePath = renderedTemplateIndexPath 
   , planIndexUrl = webRoot ++ "index.html"

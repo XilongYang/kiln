@@ -31,7 +31,7 @@ shouldBuild (BuildPostPlan plan) = postShouldBuild plan
 -- - rebuild if source markdown is newer than target html
 postShouldBuild :: PostBuildPlan -> IO Bool
 postShouldBuild plan = do
-  let srcPath = postSourcePath $ planPost plan
+  let srcPath = planPostSourcePath plan
   let targetPath = planTargetHtmlPath plan
 
   targetExists <- doesFileExist $ planTargetHtmlPath plan

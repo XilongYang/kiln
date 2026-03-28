@@ -39,21 +39,18 @@ main = withTempDir tempPath $ do
   -- Ensure target directory exists before writing post pages.
   createDirectoryIfMissing True postPath
 
-  -- Parse all source posts into typed post structures.
-  postNames <- listDirectory srcPath
-  let postPaths = map (\f -> srcPath </> f) $ filter (\f -> takeExtension f == ".md") postNames 
-  posts <- mapM parsePost postPaths
-
   -- Build each post page.
-  let postBuildPlans = map mkBuildPostPlan posts
+  postFileNames <- listDirectory srcPath
+  let postPaths = map (\f -> srcPath </> f) $ filter (\f -> takeExtension f == ".md") postFileNames 
+  let postBuildPlans = map mkBuildPostPlan postPaths
   mapM_ executeBuildPlan postBuildPlans 
 
   -- Build index page from the full post list.
-  let indexBuildPlan = mkBuildIndexPlan posts
-  executeBuildPlan indexBuildPlan 
+  -- let indexBuildPlan = mkBuildIndexPlan posts
+  -- executeBuildPlan indexBuildPlan 
 
   -- Generate client-side search index.
-  genSearchDB searchDBPath posts 
+  -- genSearchDB searchDBPath posts 
 
   -- Subset fonts to reduce shipped asset size.
-  genFontSubset 
+  -- genFontSubset 
