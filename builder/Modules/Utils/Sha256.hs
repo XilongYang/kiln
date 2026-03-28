@@ -8,10 +8,20 @@ import qualified Data.Text as Text
 import qualified Data.Text.Encoding as TextEncoding
 import qualified Data.ByteString as ByteString
 
--- ==============================================================================
--- Interface
--- ==============================================================================
+-- ---[ Overview ]------------------------------------------------------------
+-- | Pure SHA-256 implementation used by the builder.
+--
+-- Design notes:
+-- - public API takes 'String', encodes as UTF-8, and returns lowercase hex
+-- - core implementation follows SHA-256 standard flow:
+--   padding -> 512-bit chunking -> word schedule expansion -> compression
+-- - this module is self-contained (no external crypto dependency)
 
+-- ---[ Public API ]------------------------------------------------------------
+
+-- | Computes SHA-256 digest as a lowercase hexadecimal string.
+--
+-- Input text is encoded as UTF-8 bytes before hashing.
 sha256Hex :: String -> String
 sha256Hex = (concatMap byteToHex) . sha256 . utf8Encode
   where
@@ -23,18 +33,18 @@ sha256Hex = (concatMap byteToHex) . sha256 . utf8Encode
     utf8Encode :: String -> [Word8]
     utf8Encode = ByteString.unpack . TextEncoding.encodeUtf8 . Text.pack
 
--- ==============================================================================
--- Constant
--- ==============================================================================
+-- ---[ Implementation Details ]-----------------------------------------------
 
--- SHA-256 operates on 512-bit (64-byte) chunks.
+-- 512-bit chunk size in bytes.
 chunkSize :: Int
 chunkSize = 64
 
+-- Initial hash state constants (H0..H7).
 h :: [Word32]
 h = [ 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a
     , 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]
 
+-- Round constants (K0..K63).
 k :: [Word32]
 k = [ 0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b
     , 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01
@@ -53,34 +63,39 @@ k = [ 0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b
 messageSizeFieldBytes :: Int
 messageSizeFieldBytes = 8
 
+-- Number of words directly parsed from one 512-bit chunk.
 initialWordsCount :: Int
 initialWordsCount = 16
 
+-- Number of scheduled words per chunk after expansion.
 wordsCount :: Int
 wordsCount = 64
 
+-- Small sigma 0 for message schedule.
 s0 :: Word32 -> Word32
 s0 x = rotateR x 7 `xor` rotateR x 18 `xor` shiftR x 3
 
+-- Small sigma 1 for message schedule.
 s1 :: Word32 -> Word32
 s1 x = rotateR x 17 `xor` rotateR x 19 `xor` shiftR x 10
 
+-- Big sigma 0 for compression rounds.
 ep0 :: Word32 -> Word32
 ep0 x = rotateR x 2 `xor` rotateR x 13 `xor` rotateR x 22
 
+-- Big sigma 1 for compression rounds.
 ep1 :: Word32 -> Word32
 ep1 x = rotateR x 6 `xor` rotateR x 11 `xor` rotateR x 25
 
+-- Choice function.
 ch :: Word32 -> Word32 -> Word32 -> Word32
 ch x y z = (x .&. y) `xor` (complement x .&. z) 
 
+-- Majority function.
 maj :: Word32 -> Word32 -> Word32 -> Word32
 maj x y z = (x .&. y) `xor` (x .&. z) `xor` (y .&. z)
 
--- ==============================================================================
--- Process
--- ==============================================================================
-
+-- Hashes raw bytes and returns digest bytes.
 sha256 :: [Word8] -> [Word8]
 sha256 msg = concatMap w32ToW8s finalH
   where
@@ -110,8 +125,8 @@ sha256 msg = concatMap w32ToW8s finalH
       , fromIntegral x
       ]
 
--- Pads a message to the SHA-256 block format:
--- original bytes + 0x80 + zeroes + 64-bit big-endian bit length.
+-- Applies SHA-256 message padding:
+-- append 0x80, then zero bytes, then original message bit length in BE64.
 padding :: [Word8] -> [Word8]
 padding msg = initBytes ++ replicate paddingSize continueByte ++ msgSizeBytes
   where
@@ -150,6 +165,7 @@ padding msg = initBytes ++ replicate paddingSize continueByte ++ msgSizeBytes
       , fromIntegral w
       ]
 
+-- Splits padded bytes into 512-bit chunks.
 splitToChunks :: [Word8] -> [[Word8]]
 splitToChunks msg 
   | length msg `mod` chunkSize /= 0 = error "Message length incorrect!"
@@ -161,6 +177,7 @@ splitToChunks msg
       let (chunk, rest) = splitAt chunkSize msg'
       in chunk : splitToChunks' rest
 
+-- Converts each 512-bit chunk into sixteen big-endian Word32 values.
 splitChunksToWords :: [[Word8]] -> [[Word32]]
 splitChunksToWords = map splitChunkToWords
   where
@@ -182,6 +199,7 @@ splitChunksToWords = map splitChunkToWords
       shiftL (fromIntegral w2)  8 .|. 
       fromIntegral w3 
 
+-- Expands 16 initial words into 64 scheduled words.
 expandWords :: [Word32] -> [Word32]
 expandWords initialWords
   | length initialWords /= initialWordsCount = error "Counts of initial words must be 16"
@@ -196,6 +214,7 @@ expandWords initialWords
     nextWord ws i = (ws !! (i - 16)) + s0(ws !! (i - 15)) + ws !! (i - 7) + s1(ws !! (i - 2))
 
 
+-- Executes one compression round and returns the next working state.
 refreshH :: [Word32] -> [Word32] -> Int -> [Word32]
 refreshH ws h' i
   | i < 0 || i >= wordsCount = error "Invalid number for refresh H."
@@ -206,4 +225,3 @@ refreshH ws h' i
             t2 = ep0 h0 + maj h0 h1 h2
         in [t1 + t2, h0, h1, h2, h3 + t1, h4, h5, h6]
       _ -> error "Wrong initial H for refresh H."
-

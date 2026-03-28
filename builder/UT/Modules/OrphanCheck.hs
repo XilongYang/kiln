@@ -1,46 +1,78 @@
 module UT.Modules.OrphanCheck (suiteName, testCases) where
 
-import Modules.Utils.OrphanCheck (findOrphanPosts)
+import Control.Exception (bracket_)
+import Modules.Config (postPath, srcPath)
+import System.Directory
+  ( createDirectoryIfMissing
+  , getCurrentDirectory
+  , getTemporaryDirectory
+  , setCurrentDirectory
+  )
+import System.FilePath ((</>))
+import System.Process (readProcess)
 import UT.TestUtils.Asserts
 import UT.TestUtils.TestSuite
+import Modules.Utils.TempDir (withTempDir)
 
--- Suite for orphaned generated-post detection.
 suiteName :: String
 suiteName = "OrphanCheck"
 
 testCases :: [TestCase]
 testCases =
-  [ testFindOrphanPostsNoOrphans
-  , testFindOrphanPostsReturnsMissingSourceOnes
-  , testFindOrphanPostsStrictlyMatchesExtensions
+  [ testCheckOrphansSkipsWhenPostDirMissing
+  , testCheckOrphansNoOutputWhenNoOrphans
+  , testCheckOrphansWarnsWhenOrphansExist
   ]
 
--- Confirms no orphan is reported when every generated html has a source markdown.
-testFindOrphanPostsNoOrphans :: TestCase
-testFindOrphanPostsNoOrphans =
-  mkTestCase "findOrphanPosts returns empty when all generated posts have sources" $ do
-    let postFiles = ["a.html", "b.html", "readme.txt"]
-    let srcFiles = ["a.md", "b.md", "draft.txt"]
-    assertEq "all html pages should be matched by same-name markdown files"
-      []
-      (findOrphanPosts "posts" postFiles srcFiles)
+testCheckOrphansSkipsWhenPostDirMissing :: TestCase
+testCheckOrphansSkipsWhenPostDirMissing =
+  mkTestCase "checkOrphans prints nothing when post directory is missing" $ do
+    output <- runCheckOrphansInIsolatedWorkspace "checkOrphansSkipsWhenPostDirMissing" $ pure ()
+    assertEq "missing post directory should be treated as nothing to check" "" output
 
--- Confirms only html files lacking same-name markdown source are marked orphan.
-testFindOrphanPostsReturnsMissingSourceOnes :: TestCase
-testFindOrphanPostsReturnsMissingSourceOnes =
-  mkTestCase "findOrphanPosts returns only html pages missing markdown source" $ do
-    let postFiles = ["a.html", "b.html", "c.html"]
-    let srcFiles = ["a.md", "c.md"]
-    assertEq "only b.html should be reported as orphan"
-      ["posts/b.html"]
-      (findOrphanPosts "posts" postFiles srcFiles)
+testCheckOrphansNoOutputWhenNoOrphans :: TestCase
+testCheckOrphansNoOutputWhenNoOrphans =
+  mkTestCase "checkOrphans prints nothing when every html has matching source" $ do
+    output <- runCheckOrphansInIsolatedWorkspace "checkOrphansNoOutputWhenNoOrphans" $ do
+      createDirectoryIfMissing True postPath
+      createDirectoryIfMissing True srcPath
+      writeFile (postPath </> "a.html") "<html></html>"
+      writeFile (srcPath </> "a.md") "# A"
+    assertEq "no orphan outputs should produce no warning lines" "" output
 
--- Confirms orphan matching only considers exact .html and .md extensions.
-testFindOrphanPostsStrictlyMatchesExtensions :: TestCase
-testFindOrphanPostsStrictlyMatchesExtensions =
-  mkTestCase "findOrphanPosts ignores non-target extensions" $ do
-    let postFiles = ["a.htm", "b.HTML", "c.html"]
-    let srcFiles = ["c.markdown", "d.md"]
-    assertEq "matching is strict: only .html and .md are considered"
-      ["posts/c.html"]
-      (findOrphanPosts "posts" postFiles srcFiles)
+testCheckOrphansWarnsWhenOrphansExist :: TestCase
+testCheckOrphansWarnsWhenOrphansExist =
+  mkTestCase "checkOrphans prints warning lines for orphan html outputs" $ do
+    output <- runCheckOrphansInIsolatedWorkspace "checkOrphansWarnsWhenOrphansExist" $ do
+      createDirectoryIfMissing True postPath
+      createDirectoryIfMissing True srcPath
+      writeFile (postPath </> "orphan.html") "<html>orphan</html>"
+      writeFile (postPath </> "matched.html") "<html>matched</html>"
+      writeFile (srcPath </> "matched.md") "# matched"
+    assertContains "should print warning header before listing orphans" "[WARNING] Source file missing:" output
+    assertContains "should include orphan html path in warning output" "orphan.html" output
+
+runCheckOrphansInIsolatedWorkspace :: String -> IO () -> IO String
+runCheckOrphansInIsolatedWorkspace caseName setupAction = do
+  repoRoot <- getCurrentDirectory
+  tempRoot <- getTemporaryDirectory
+  let workRoot = tempRoot </> ("xilong-site-ut-orphan-" ++ caseName)
+      builderIncludePath = repoRoot </> "builder"
+      runnerPath = workRoot </> "RunOrphanCheck.hs"
+  withTempDir workRoot $ do
+    withWorkDir workRoot setupAction
+    writeFile runnerPath runnerSource
+    withWorkDir workRoot $
+      readProcess "runghc" ["-i" ++ builderIncludePath, runnerPath] ""
+  where
+    runnerSource =
+      unlines
+        [ "import Modules.Utils.OrphanCheck (checkOrphans)"
+        , "main :: IO ()"
+        , "main = checkOrphans"
+        ]
+
+withWorkDir :: FilePath -> IO a -> IO a
+withWorkDir dir action = do
+  old <- getCurrentDirectory
+  bracket_ (setCurrentDirectory dir) (setCurrentDirectory old) action

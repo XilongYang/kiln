@@ -30,9 +30,9 @@ main = withTempDir tempPath $ do
   checkOrphans
 
   -- Render template files once so later build plans can consume them.
-  templatePost <- genTemplate templatePostPath 
+  templatePost <- expandTemplate templatePostPath templateComponentPath
   writeFile renderedTemplatePostPath templatePost
-  templateIndex <- genTemplate templateIndexPath 
+  templateIndex <- expandTemplate templateIndexPath templateComponentPath
   writeFile renderedTemplateIndexPath templateIndex
 
   -- Ensure target directory exists before writing post pages.
@@ -56,4 +56,3 @@ main = withTempDir tempPath $ do
 
   -- Subset fonts to reduce shipped asset size.
   genFontSubset 
-

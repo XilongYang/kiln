@@ -1,71 +1,70 @@
-module Modules.Template where
+module Modules.Template (expandTemplate) where
 
-import Data.List (sort)
+import Data.List (foldl', sort)
 import Modules.Config
 import Modules.Utils.String
+import Modules.TypeAlias
 
 import System.Directory (listDirectory)
 import System.FilePath
 
--- HTML content after all component placeholders have been expanded.
-type TemplateHtml = String
+-- ---[ Overview ]------------------------------------------------------------
 
--- Logical component identifier derived from the source filename stem.
-type ComponentName = String
-
--- Raw HTML fragment loaded from a component file.
-type ComponentHtml = String
-
--- Production entry point for template generation.
+-- | Template renderer for component-based HTML pages.
 --
--- This uses the repository's configured component directory and expands all
--- known placeholders in the target template file.
-genTemplate :: FilePath -> IO TemplateHtml
-genTemplate = genTemplateFrom templateComponentPath
-
--- Testable template generation entry point with injectable component directory.
+-- A template can contain component placeholders (for example @<!--<navbar>-->@).
+-- During rendering, each placeholder is replaced by the HTML loaded from the
+-- corresponding component file (for example @navbar.html@).
 --
--- Keeping the component path explicit allows UT to run against isolated mock
--- data without depending on the real template tree.
-genTemplateFrom :: FilePath -> FilePath -> IO TemplateHtml
-genTemplateFrom componentDir template = do
+-- Expansion behavior guarantees:
+-- - only lowercase @.html@ component files are loaded
+-- - component expansion order is deterministic (sorted by filename)
+-- - unknown placeholders are left unchanged
+
+-- ---[ Public API ]------------------------------------------------------------
+
+-- | Render a template file by expanding placeholders with HTML components.
+--
+-- Parameters:
+-- - template file path
+-- - component directory path
+--
+-- Throws I/O exceptions when template or component files/directories are missing.
+expandTemplate :: FilePath -> FilePath -> IO Html
+expandTemplate template componentPath = do
   templateHtml <- readFile template
-  components <- loadComponentsFrom componentDir
+  components <- loadComponentsFrom componentPath
   return (expandComponents templateHtml components)
 
--- Loads every HTML component from the configured production component
--- directory.
-loadComponents :: IO [(ComponentName, ComponentHtml)]
-loadComponents = loadComponentsFrom templateComponentPath
+-- ---[ Implementation Details ]-----------------------------------------------
 
--- Loads all `.html` component files from the given directory.
+type ComponentName = String
+
+-- | Load all eligible components from a directory.
 --
--- The file list is sorted to keep expansion order deterministic across runs.
-loadComponentsFrom :: FilePath -> IO [(ComponentName, ComponentHtml)]
+-- The loader keeps only files with extension @.html@, sorts filenames, and
+-- returns @(componentName, componentHtml)@ tuples.
+loadComponentsFrom :: FilePath -> IO [(ComponentName, Html)]
 loadComponentsFrom componentDir = do
   componentFiles <- listDirectory componentDir
   let htmlFiles = filter (\f -> takeExtension f == ".html") componentFiles
-  mapM (loadComponentFrom componentDir) (sort htmlFiles)
+  mapM (loadComponent componentDir) (sort htmlFiles)
+  where
+    loadComponent :: FilePath -> FilePath -> IO (String, Html)
+    loadComponent componentDir filename = do
+      let fullPath = componentDir </> filename
+      html <- readFile fullPath 
+      return (takeBaseName filename, html)
 
--- Loads a single component from the configured production component directory.
-loadComponent :: FilePath -> IO (ComponentName, ComponentHtml)
-loadComponent = loadComponentFrom templateComponentPath
-
--- Loads one component file and derives its logical component name from the
--- filename stem, e.g. `navbar.html -> navbar`.
-loadComponentFrom :: FilePath -> FilePath -> IO (ComponentName, ComponentHtml)
-loadComponentFrom componentDir filename = do
-  let fullPath = componentDir </> filename
-  html <- readFile fullPath 
-  return (takeBaseName filename, html)
-
--- Pure placeholder expansion used by both production code and UT.
+-- | Expand known component placeholders in template HTML.
 --
--- Each component replaces placeholders of the form `<!--<name>-->` in the
--- template HTML.
-expandComponents :: TemplateHtml -> [(ComponentName, ComponentHtml)] -> TemplateHtml
-expandComponents templateHtml componentList = foldl replaceComponents templateHtml componentList
+-- This function is pure and deterministic for a fixed input list.
+expandComponents :: Html -> [(ComponentName, Html)] -> Html
+expandComponents templateHtml componentList = foldl' replaceComponents templateHtml componentList
   where 
+    replaceComponents :: Html -> (ComponentName, Html) -> Html
     replaceComponents templateHtml' (componentName, componentHtml) = 
-      replace (placeholder componentName) componentHtml templateHtml'
-    placeholder componentName = replace componentPlaceholderToken componentName componentPlaceholderPattern
+      replace (mkPlaceholder componentName) componentHtml templateHtml'
+
+    mkPlaceholder :: ComponentName -> String
+    mkPlaceholder componentName = replace componentPlaceholderToken componentName componentPlaceholderPattern
