@@ -1,6 +1,6 @@
 module UT.Modules.SearchDB (suiteName, testCases) where
 
-import Modules.Post (parsePost)
+import Modules.Post.Parse (parsePost)
 import Modules.SearchDB
   ( SearchItem(..)
   , genSearchDB

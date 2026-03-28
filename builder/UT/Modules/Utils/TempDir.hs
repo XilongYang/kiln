@@ -1,4 +1,4 @@
-module UT.Modules.TempDir (suiteName, testCases) where
+module UT.Modules.Utils.TempDir (suiteName, testCases) where
 
 import Control.Exception (throwIO)
 import Modules.Utils.TempDir
@@ -14,7 +14,7 @@ import UT.TestUtils.TestSuite
 
 -- Suite for deterministic temp directory lifecycle management.
 suiteName :: String
-suiteName = "TempDir"
+suiteName = "Utils.TempDir"
 
 testCases :: [TestCase]
 testCases =

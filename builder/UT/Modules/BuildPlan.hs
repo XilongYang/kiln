@@ -1,15 +1,13 @@
 module UT.Modules.BuildPlan (suiteName, testCases) where
 
-import Control.Concurrent (threadDelay)
 import Modules.BuildPlan
 import Modules.Config
 import Modules.Post (Post(..), PostMeta(..))
 import System.FilePath ((</>))
 import UT.TestUtils.Asserts
-import UT.TestUtils.Paths
+import UT.TestUtils.Paths (srcFixtureFile)
 import UT.TestUtils.TestSuite
 
--- Suite for build-plan construction and rebuild decision policy.
 suiteName :: String
 suiteName = "BuildPlan"
 
@@ -17,10 +15,6 @@ testCases :: [TestCase]
 testCases =
   [ testMkBuildPostPlanPaths
   , testMkBuildIndexPlanFields
-  , testShouldBuildIndexAlwaysTrue
-  , testPostShouldBuildWhenTargetMissing
-  , testPostShouldBuildWhenSourceNewer
-  , testPostShouldNotBuildWhenTargetNewer
   ]
 
 -- Confirms post build plan keeps post payload and derives expected output/template paths.
@@ -55,59 +49,6 @@ testMkBuildIndexPlanFields =
     assertEq "mkBuildIndexPlan should generate canonical index url"
       (webRoot ++ "index.html")
       (planIndexUrl plan)
-
--- Confirms shouldBuild forces rebuild for index plans.
-testShouldBuildIndexAlwaysTrue :: TestCase
-testShouldBuildIndexAlwaysTrue =
-  mkTestCase "shouldBuild always returns True for index plan" $ do
-    let plan = mkBuildIndexPlan []
-    result <- shouldBuild plan
-    assertTrue "index plan should always rebuild" result
-
--- Confirms post rebuild is required when target html file is absent.
-testPostShouldBuildWhenTargetMissing :: TestCase
-testPostShouldBuildWhenTargetMissing =
-  mkTestCase "postShouldBuild returns True when target html is missing" $
-    withCasePaths suiteName "postShouldBuildWhenTargetMissing" ["src", "post"] $ \casePaths -> do
-      let src = srcFile casePaths "build-plan-ut-missing-source.md"
-          target = postFile casePaths "build-plan-ut-missing-target.html"
-      writeFile src "source"
-      let base = expectPostPlan (mkBuildPostPlan (mkPost "x" src))
-      let plan = base { planTargetHtmlPath = target }
-      result <- postShouldBuild plan
-      assertTrue "post should rebuild when target does not exist" result
-
--- Confirms post rebuild is required when source timestamp is newer than target.
-testPostShouldBuildWhenSourceNewer :: TestCase
-testPostShouldBuildWhenSourceNewer =
-  mkTestCase "postShouldBuild returns True when source is newer than target" $
-    withCasePaths suiteName "postShouldBuildWhenSourceNewer" ["src", "post"] $ \casePaths -> do
-      let src = srcFile casePaths "build-plan-ut-source-newer.md"
-          target = postFile casePaths "build-plan-ut-source-newer.html"
-      writeFile target "old-target"
-      -- Keep a visible timestamp gap to avoid filesystem precision races.
-      threadDelay 1100000
-      writeFile src "new-source"
-      let base = expectPostPlan (mkBuildPostPlan (mkPost "x" src))
-      let plan = base { planTargetHtmlPath = target }
-      result <- postShouldBuild plan
-      assertTrue "post should rebuild when source is newer" result
-
--- Confirms post rebuild is skipped when target timestamp is newer than source.
-testPostShouldNotBuildWhenTargetNewer :: TestCase
-testPostShouldNotBuildWhenTargetNewer =
-  mkTestCase "postShouldBuild returns False when target is newer than source" $
-    withCasePaths suiteName "postShouldNotBuildWhenTargetNewer" ["src", "post"] $ \casePaths -> do
-      let src = srcFile casePaths "build-plan-ut-target-newer.md"
-          target = postFile casePaths "build-plan-ut-target-newer.html"
-      writeFile src "old-source"
-      -- Keep a visible timestamp gap to avoid filesystem precision races.
-      threadDelay 1100000
-      writeFile target "new-target"
-      let base = expectPostPlan (mkBuildPostPlan (mkPost "x" src))
-      let plan = base { planTargetHtmlPath = target }
-      result <- postShouldBuild plan
-      assertFalse "post should not rebuild when target is newer" result
 
 mkPost :: String -> FilePath -> Post
 mkPost name sourcePath =

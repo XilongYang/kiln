@@ -1,6 +1,6 @@
-module UT.Modules.IndexItem (suiteName, testCases) where
+module UT.Modules.Index.Item (suiteName, testCases) where
 
-import Modules.IndexItem
+import Modules.Index.Item
 import Modules.Post (Post(..), PostMeta(..))
 import UT.TestUtils.Asserts
 import UT.TestUtils.TestSuite

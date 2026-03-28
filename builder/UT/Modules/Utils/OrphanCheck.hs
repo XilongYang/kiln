@@ -1,4 +1,4 @@
-module UT.Modules.OrphanCheck (suiteName, testCases) where
+module UT.Modules.Utils.OrphanCheck (suiteName, testCases) where
 
 import Control.Exception (bracket_)
 import Modules.Config (postPath, srcPath)
@@ -15,7 +15,7 @@ import UT.TestUtils.TestSuite
 import Modules.Utils.TempDir (withTempDir)
 
 suiteName :: String
-suiteName = "OrphanCheck"
+suiteName = "Utils.OrphanCheck"
 
 testCases :: [TestCase]
 testCases =

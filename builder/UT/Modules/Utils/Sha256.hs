@@ -1,4 +1,4 @@
-module UT.Modules.Sha256 (suiteName, testCases) where
+module UT.Modules.Utils.Sha256 (suiteName, testCases) where
 
 import Data.List (all)
 import Data.Word (Word8)
@@ -7,7 +7,7 @@ import UT.TestUtils.Asserts
 import UT.TestUtils.TestSuite
 
 suiteName :: String
-suiteName = "Sha256"
+suiteName = "Utils.Sha256"
 
 testCases :: [TestCase]
 testCases =
