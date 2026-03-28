@@ -5,6 +5,7 @@ import Modules.Builder
 import Modules.Config
 import Modules.FontSubset (genFontSubset)
 import Modules.Post
+import Modules.Post.Parse
 import Modules.SearchDB
 import Modules.Template
 import Modules.Utils.OrphanCheck (checkOrphans)

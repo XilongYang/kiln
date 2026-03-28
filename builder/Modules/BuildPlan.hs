@@ -1,25 +1,30 @@
-module Modules.BuildPlan where
+module Modules.BuildPlan 
+  ( BuildPlan (..)
+  , PostBuildPlan (..)
+  , IndexBuildPlan (..)
+  , mkBuildPostPlan
+  , mkBuildIndexPlan) where
 
 import Modules.Config
-import Modules.IndexItem
+import Modules.Index.Item
 import Modules.Post
 import Modules.TypeAlias
-
-import System.Directory
-  ( doesFileExist
-  , getModificationTime
-  )
 import System.FilePath
 
--- Build steps emitted by the planner.
+-- ---[ Overview ]------------------------------------------------------------
+-- | Typed build-plan definitions and rebuild decision rules.
 --
--- `BuildPostPlan` is for one post page, while `BuildIndexPlan` aggregates all
--- posts for rendering the index page.
+-- This module encodes post/index build intents as data and provides plan
+-- constructors plus incremental-build checks.
+
+-- ---[ Public API ]------------------------------------------------------------
+
+-- | Sum type for all supported build actions.
 data BuildPlan 
   = BuildPostPlan PostBuildPlan 
   | BuildIndexPlan IndexBuildPlan
 
--- Inputs and outputs required to build one post page.
+-- | Concrete plan payload for building one post page.
 data PostBuildPlan = PostBuildPlan 
   { planPost             :: Post
   , planPreprocessedPath :: FilePath
@@ -28,7 +33,7 @@ data PostBuildPlan = PostBuildPlan
   , planPostTemplatePath :: FilePath
   } deriving (Show, Eq)
 
--- Inputs required to build the index page.
+-- | Concrete plan payload for building the homepage index.
 data IndexBuildPlan = IndexBuildPlan 
   { planIndexItems        :: [IndexItem]
   , planIndexHtmlPath     :: FilePath
@@ -36,7 +41,7 @@ data IndexBuildPlan = IndexBuildPlan
   , planIndexUrl          :: Url
   } deriving (Show, Eq)
 
--- Constructs a post-page build plan from a parsed source post.
+-- | Creates a post build plan from one parsed post.
 mkBuildPostPlan :: Post -> BuildPlan
 mkBuildPostPlan post = BuildPostPlan PostBuildPlan
   { planPost = post
@@ -46,7 +51,7 @@ mkBuildPostPlan post = BuildPostPlan PostBuildPlan
   , planPostTemplatePath = renderedTemplatePostPath
   }
 
--- Constructs an index-page build plan from all parsed posts.
+-- | Creates an index build plan from all parsed posts.
 mkBuildIndexPlan :: [Post] -> BuildPlan
 mkBuildIndexPlan posts = BuildIndexPlan IndexBuildPlan
   { planIndexItems = map mkIndexItem posts
@@ -55,25 +60,3 @@ mkBuildIndexPlan posts = BuildIndexPlan IndexBuildPlan
   , planIndexUrl = webRoot ++ "index.html"
   }
 
--- Decides whether a given plan should be rebuilt in this run.
---
--- Current policy:
--- - index is always rebuilt
--- - post page is rebuilt when target does not exist or source is newer
-shouldBuild :: BuildPlan -> IO Bool
-shouldBuild (BuildIndexPlan _) = return True
-shouldBuild (BuildPostPlan plan) = postShouldBuild plan
-
--- Timestamp-based rebuild decision for one post page.
-postShouldBuild :: PostBuildPlan -> IO Bool
-postShouldBuild plan = do
-  let srcPath = postSourcePath $ planPost plan
-  let targetPath = planTargetHtmlPath plan
-
-  targetExists <- doesFileExist $ planTargetHtmlPath plan
-  if not targetExists 
-    then return True
-    else do
-      srcTime <- getModificationTime srcPath
-      targetTime <- getModificationTime targetPath
-      return (srcTime > targetTime)

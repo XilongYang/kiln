@@ -1,28 +1,55 @@
-module Modules.Builder where
+module Modules.Builder (executeBuildPlan) where
 
 import Modules.BuildPlan
-import Modules.Builder.IndexBuilder
-import Modules.Builder.PostBuilder
+import Modules.BuildJudger
+import Modules.Index.Render
+import Modules.Post.Preprocess
+import Modules.Pandoc
+import Modules.Toc
 
--- Executes one build plan with incremental guard.
+-- ---[ Overview ]------------------------------------------------------------
+-- | Build-plan executor for post and index generation.
 --
--- Plans that do not need rebuild are skipped.
+-- This module dispatches typed build plans and runs the corresponding
+-- filesystem/render pipeline.
+
+-- ---[ Public API ]------------------------------------------------------------
+
+-- | Executes a build plan when it is marked as needing rebuild.
+--
+-- Delegates to plan-specific executors for post and index targets.
 executeBuildPlan :: BuildPlan -> IO ()
 executeBuildPlan plan = do
   isShouldBuild <- shouldBuild plan
   if not isShouldBuild then return () else do
     realExecuteBuildPlan plan    
 
--- Dispatches to concrete build actions for each plan type.
+-- ---[ Implementation Details ]-----------------------------------------------
+
+-- | Dispatches the concrete build action by plan constructor.
 realExecuteBuildPlan :: BuildPlan -> IO ()
 realExecuteBuildPlan (BuildPostPlan plan) = do
   buildPostWithPlan plan
 realExecuteBuildPlan (BuildIndexPlan plan) = do
   buildIndexWithPlan plan
 
--- Writes preprocessed markdown for one post build plan.
+-- | Builds @index.html@ from prepared index items and template HTML.
+buildIndexWithPlan :: IndexBuildPlan -> IO ()
+buildIndexWithPlan plan = do
+  let indexItems = planIndexItems plan
+  let indexTemplatePath = planIndexTemplatePath plan
+  indexTemplateHtml <- readFile indexTemplatePath
+  let indexHtmlPath = planIndexHtmlPath plan
+  let indexHtml = renderIndex indexItems indexTemplateHtml 
+  writeFile indexHtmlPath indexHtml
+  
+-- | Builds one post HTML page from a post build plan.
 --
--- The generated markdown is consumed by the downstream renderer.
+-- Pipeline:
+-- - preprocess markdown content
+-- - render via pandoc and post template
+-- - inject TOC into generated HTML
+-- - write final target page
 buildPostWithPlan :: PostBuildPlan -> IO()
 buildPostWithPlan plan = do
   let post = planPost plan
@@ -30,21 +57,7 @@ buildPostWithPlan plan = do
   let builtHtmlPath = planBuiltHtmlPath plan
   let postTemplatePath = planPostTemplatePath plan
   let targetHtmlPath = planTargetHtmlPath plan
-  writeFile preprocessedPath $ genPreprocessedPostText post
+  writeFile preprocessedPath $ preprocessPost post
   runPandoc preprocessedPath postTemplatePath builtHtmlPath
   builtHtml <- readFile builtHtmlPath
-  writeFile targetHtmlPath $ genToc builtHtml
-
--- Renders the index page from prepared index items and a rendered template.
---
--- The template must contain the `$posts$` placeholder, which will be replaced
--- by grouped/sorted post links markup.
-buildIndexWithPlan :: IndexBuildPlan -> IO ()
-buildIndexWithPlan plan = do
-  let indexItems = planIndexItems plan
-  let indexTemplatePath = planIndexTemplatePath plan
-  indexTemplateHtml <- readFile indexTemplatePath
-  let indexHtmlPath = planIndexHtmlPath plan
-  let indexHtml = genIndexHtml indexItems indexTemplateHtml 
-  writeFile indexHtmlPath indexHtml
-  
+  writeFile targetHtmlPath $ injectToc builtHtml
