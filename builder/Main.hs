@@ -41,7 +41,7 @@ main = withTempDir tempPath $ do
 
   -- Parse all source posts into typed post structures.
   postNames <- listDirectory srcPath
-  let postPaths = map (\f -> srcPath </> f) postNames 
+  let postPaths = map (\f -> srcPath </> f) $ filter (\f -> takeExtension f == ".md") postNames 
   posts <- mapM parsePost postPaths
 
   -- Build each post page.

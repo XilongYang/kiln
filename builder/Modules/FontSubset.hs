@@ -36,7 +36,7 @@ genFontSubset :: IO ()
 genFontSubset = do
   indexHtml <- readFile indexPath 
   postNames <- listDirectory postPath
-  let postPaths = map (\f -> postPath </> f) postNames 
+  let postPaths = map (\f -> postPath </> f) $ filter (\f -> takeExtension f == ".html") postNames 
   postHtmls <- mapM readFile postPaths
 
   let fontSet = mkFontSet indexHtml postHtmls
