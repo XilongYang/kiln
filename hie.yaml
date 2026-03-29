@@ -1,4 +1,16 @@
 cradle:
-  direct:
-    arguments:
-      - -ibuilder
+  multi:
+    - path: "./builder/Src"
+      config:
+        cradle:
+          direct:
+            arguments:
+              - -ibuilder/Src
+    - path: "./builder/Test"
+      config:
+        cradle:
+          direct:
+            arguments:
+              - -ibuilder/Src
+              - -ibuilder
+              - -i.

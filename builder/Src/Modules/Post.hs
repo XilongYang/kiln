@@ -13,11 +13,9 @@ import System.FilePath
 
 -- | Canonical parsed post payload used by builders.
 data Post = Post
-  { postName       :: String    -- ^ Basename (without extension) of source file.
-  , postSourcePath :: FilePath  -- ^ Repository-relative source path.
-  , postBody       :: Markdown  -- ^ Full markdown body content.
+  { postMeta       :: PostMeta  -- ^ Parsed front-matter metadata.
   , postAbstract   :: Markdown  -- ^ Extracted abstract fragment.
-  , postMeta       :: PostMeta  -- ^ Parsed front-matter metadata.
+  , postBody       :: Markdown  -- ^ Full markdown body content.
   } deriving (Show, Eq)
 
 -- | Front-matter metadata extracted from a source post.

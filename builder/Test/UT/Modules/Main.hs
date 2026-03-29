@@ -30,8 +30,9 @@ testMainBuildsCoreOutputs =
     repoRoot <- getCurrentDirectory
     tempRoot <- getTemporaryDirectory
     let workRoot = tempRoot </> "xilong-site-ut-main"
-        builderMainPath = repoRoot </> "builder" </> "Main.hs"
-        builderIncludePath = repoRoot </> "builder"
+        builderMainPath = repoRoot </> "builder" </> "Src" </> "Main.hs"
+        builderSourceIncludePath = repoRoot </> "builder" </> "Src"
+        builderTestIncludePath = repoRoot </> "builder"
     withTempDir workRoot $ do
       let binDir = workRoot </> "bin"
       createDirectoryIfMissing True binDir
@@ -40,7 +41,8 @@ testMainBuildsCoreOutputs =
         setupFixtureTree
         withPrependedPath binDir $
           callProcess "runghc"
-            [ "-i" ++ builderIncludePath
+            [ "-i" ++ builderSourceIncludePath
+            , "-i" ++ builderTestIncludePath
             , builderMainPath
             ]
       postExists <- doesFileExist (workRoot </> postPath </> "fixture.html")

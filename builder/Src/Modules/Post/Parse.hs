@@ -24,16 +24,12 @@ import System.FilePath
 -- front-matter layout, malformed metadata lines, or missing required keys.
 parsePost :: FilePath -> IO Post
 parsePost pathToParse = do
-  let name = takeBaseName pathToParse
-  let sourcePath = pathToParse
-  rawContent <- readFile sourcePath 
-  let (rawMeta, rest) = splitFrontMatter sourcePath rawContent
+  rawContent <- readFile pathToParse
+  let (rawMeta, rest) = splitFrontMatter pathToParse rawContent
   let (abstract, body) = extractPostAbstract rest
 
   return Post 
-    { postName = name
-    , postSourcePath = sourcePath 
-    , postBody = body
+    { postBody = body
     , postAbstract = abstract 
     , postMeta = extractMetaFrom rawMeta}
 

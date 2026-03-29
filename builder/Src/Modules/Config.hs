@@ -14,6 +14,9 @@ import System.FilePath
 rootPath :: FilePath
 rootPath = "."
 
+builderPath :: FilePath
+builderPath = rootPath </> "builder"
+
 -- | Directory containing source markdown posts.
 srcPath :: FilePath
 srcPath = rootPath </> "src"
@@ -95,20 +98,17 @@ subsetFontFilePath = fontPath </> "SourceHanSerifCN-Subset.woff2"
 
 -- Root directory for incremental build cache artifacts.
 cacheRoot :: FilePath
-cacheRoot = rootPath </> ".build-cache"
+cacheRoot = rootPath </> ".cache"
 
--- Cache file storing source content fingerprints.
-srcCachePath :: FilePath
-srcCachePath = cacheRoot </> "src.cache"
+cacheStatePath :: FilePath
+cacheStatePath = cacheRoot </> "state"
 
--- Cache file storing generated index-page metadata.
-indexCacheFilePath :: FilePath
-indexCacheFilePath = cacheRoot </> "index.cache"
+cacheBuilderPath :: FilePath
+cacheBuilderPath = cacheStatePath </> "builder.cache"
 
--- Directory containing per-post cache records.
-postCachePath :: FilePath
-postCachePath = cacheRoot </> "post"
+cachePostTemplatePath :: FilePath
+cachePostTemplatePath  = cacheStatePath </> "post-template.cache"
 
--- Directory containing template cache records.
-templateCachePath :: FilePath
-templateCachePath = cacheRoot </> "template"
+cacheIndexTemplatePath :: FilePath
+cacheIndexTemplatePath  = cacheStatePath </> "index-template.cache"
+

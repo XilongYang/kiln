@@ -57,13 +57,13 @@ runCheckOrphansInIsolatedWorkspace caseName setupAction = do
   repoRoot <- getCurrentDirectory
   tempRoot <- getTemporaryDirectory
   let workRoot = tempRoot </> ("xilong-site-ut-orphan-" ++ caseName)
-      builderIncludePath = repoRoot </> "builder"
+      builderSourceIncludePath = repoRoot </> "builder" </> "Src"
       runnerPath = workRoot </> "RunOrphanCheck.hs"
   withTempDir workRoot $ do
     withWorkDir workRoot setupAction
     writeFile runnerPath runnerSource
     withWorkDir workRoot $
-      readProcess "runghc" ["-i" ++ builderIncludePath, runnerPath] ""
+      readProcess "runghc" ["-i" ++ builderSourceIncludePath, runnerPath] ""
   where
     runnerSource =
       unlines

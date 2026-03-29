@@ -6,7 +6,7 @@ This project uses a custom Haskell builder (under `builder/`) to transform markd
 
 ## Highlights
 
-- Custom static-site pipeline written in Haskell (`runghc -ibuilder builder/Main.hs`)
+- Custom static-site pipeline written in Haskell (`runghc -ibuilder/Src builder/Src/Main.hs`)
 - Incremental post rebuilds based on source/target modification time
 - Template component expansion (`template/component/*.html`)
 - Markdown to HTML rendering via `pandoc`
@@ -31,7 +31,7 @@ This project uses a custom Haskell builder (under `builder/`) to transform markd
 
 ## Build Pipeline (Builder Behavior)
 
-`builder/Main.hs` executes the following steps:
+`builder/Src/Main.hs` executes the following steps:
 
 1. Recreate temp workspace (`temp/`) with `withTempDir`.
 2. Warn about orphan generated pages in `post/` that no longer have matching `src/*.md`.
@@ -124,9 +124,9 @@ make clean
 Direct builder commands (without `make`):
 
 ```bash
-runghc -ibuilder builder/Main.hs
-runghc -ibuilder -i. builder/Test/UT/RunTest.hs
-UT_ENABLE_PERF=1 runghc -ibuilder -i. builder/Test/PT/RunPerf.hs
+runghc -ibuilder/Src builder/Src/Main.hs
+runghc -ibuilder/Src -ibuilder -i. builder/Test/UT/RunTest.hs
+UT_ENABLE_PERF=1 runghc -ibuilder/Src -ibuilder -i. builder/Test/PT/RunPerf.hs
 ```
 
 ## Incremental Build Rule
