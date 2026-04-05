@@ -12,12 +12,17 @@
   in {
     devShells.${system}.default = pkgs.mkShell {
       packages = with pkgs; [
+        # Core
         gnumake
-        pandoc
         haskell.packages.ghc9103.ghc
-        haskell.packages.ghc9103.haskell-language-server
+        pandoc
         python314Packages.fonttools
         python314Packages.brotli
+
+        # Dev
+        haskell.packages.ghc9103.haskell-language-server
+        vscode-langservers-extracted
+        typescript-language-server
       ];
     };
   };
