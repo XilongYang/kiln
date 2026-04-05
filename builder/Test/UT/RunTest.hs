@@ -19,6 +19,7 @@ import qualified Test.UT.Modules.Template as UtTemplate
 import qualified Test.UT.Modules.Toc as UtToc
 import qualified Test.UT.Modules.TypeAlias as UtTypeAlias
 import qualified Test.UT.Modules.Utils.OrphanCheck as UtOrphanCheck
+import qualified Test.UT.Modules.Utils.Klb as UtKlb
 import qualified Test.UT.Modules.Utils.Sha256 as UtSha256
 import qualified Test.UT.Modules.Utils.String as UtString
 import qualified Test.UT.Modules.Utils.TempDir as UtTempDir
@@ -29,6 +30,7 @@ main = do
     sequence
       [ runSuite UtString.suiteName UtString.testCases
       , runSuite UtSha256.suiteName UtSha256.testCases
+      , runSuite UtKlb.suiteName UtKlb.testCases
       , runSuite UtTypeAlias.suiteName UtTypeAlias.testCases
       , runSuite UtConfig.suiteName UtConfig.testCases
       , runSuite UtTemplate.suiteName UtTemplate.testCases

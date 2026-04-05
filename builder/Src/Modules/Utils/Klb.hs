@@ -12,7 +12,7 @@
 module Modules.Utils.Klb 
   ( KlbRenderError
   , KlbParseError
-  , Klb
+  , Klb(..)
   , KlbBlock
   , KlbPair
   , renderKlb
