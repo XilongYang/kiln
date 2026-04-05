@@ -3,6 +3,7 @@ module Modules.Index.Item (IndexItem (..), mkIndexItem) where
 import Modules.Config
 import Modules.Post
 import Modules.TypeAlias
+import Modules.Utils.Klb
 
 -- ---[ Overview ]------------------------------------------------------------
 -- | Index item model and constructor helpers.
@@ -21,15 +22,37 @@ data IndexItem = IndexItem
   , itemUrl              :: Url    -- ^ Post URL.
   } deriving (Show, Eq)
 
+instance Klb IndexItem where
+  toKlbBlock item = 
+    [ ("itemTitle", itemTitle item)
+    , ("itemYear", itemYear item)
+    , ("itemMonth", itemMonth item)
+    , ("itemDay", itemDay item)
+    , ("itemUrl", itemUrl item)
+    ]
+  fromKlbBlock block = IndexItem 
+    { itemTitle = getOrError "itemTitle"
+    , itemYear  = getOrError "itemYear"
+    , itemMonth = getOrError "itemMonth"
+    , itemDay   = getOrError "itemDay"
+    , itemUrl   = getOrError "itemUrl"
+    }
+    where
+      getOrError :: String -> String
+      getOrError key =
+        case lookup key block of
+          Just value -> value
+          Nothing    -> error ("Missing value of key: " ++ key)
+
 -- | Converts a parsed post into an index item.
-mkIndexItem :: Post -> IndexItem
-mkIndexItem post = IndexItem 
-  { itemTitle = metaTitle (postMeta post)
+mkIndexItem :: PostMeta -> Url -> IndexItem
+mkIndexItem meta url = IndexItem 
+  { itemTitle = metaTitle meta
   , itemYear = (reverse . (drop 6) . reverse) date
   , itemMonth = (reverse . (drop 3) . reverse . (drop 5)) date
   , itemDay = drop 8 date
-  , itemUrl = webPostPath ++ (postName post) ++ ".html"
+  , itemUrl = url
   }
   where
-    date = metaDate (postMeta post)
+    date = metaDate meta
 

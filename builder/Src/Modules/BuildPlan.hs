@@ -31,12 +31,12 @@ data PostBuildPlan = PostBuildPlan
   , planBuiltHtmlPath    :: FilePath
   , planTargetHtmlPath   :: FilePath
   , planPostTemplatePath :: FilePath
+  , planPostUrl          :: Url
   } deriving (Show, Eq)
 
 -- | Concrete plan payload for building the homepage index.
 data IndexBuildPlan = IndexBuildPlan 
-  { planIndexItems        :: [IndexItem]
-  , planIndexHtmlPath     :: FilePath
+  { planIndexHtmlPath     :: FilePath
   , planIndexTemplatePath :: FilePath
   , planIndexUrl          :: Url
   } deriving (Show, Eq)
@@ -49,15 +49,15 @@ mkBuildPostPlan path = BuildPostPlan PostBuildPlan
   , planBuiltHtmlPath = tempPath </> (baseName ++ ".html")
   , planTargetHtmlPath = postPath </> (baseName ++ ".html")
   , planPostTemplatePath = renderedTemplatePostPath
+  , planPostUrl = webPostPath ++ baseName ++ ".html"
   }
   where
     baseName = takeBaseName path
 
 -- | Creates an index build plan from all parsed posts.
-mkBuildIndexPlan :: [IndexItem] -> BuildPlan
-mkBuildIndexPlan items = BuildIndexPlan IndexBuildPlan
-  { planIndexItems = items
-  , planIndexHtmlPath = indexPath
+mkBuildIndexPlan :: BuildPlan
+mkBuildIndexPlan = BuildIndexPlan IndexBuildPlan
+  { planIndexHtmlPath = indexPath
   , planIndexTemplatePath = renderedTemplateIndexPath 
   , planIndexUrl = webRoot ++ "index.html"
   }

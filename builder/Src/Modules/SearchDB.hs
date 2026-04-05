@@ -66,10 +66,10 @@ mkSearchItem (item, content) = SearchItem
 postToIndexContentPair :: Post -> IO (IndexItem, String)
 postToIndexContentPair post = (item,) <$> content
   where
-  item = mkIndexItem post
+  item = mkIndexItem (postMeta post) "" -- TODO Impl pending
   clear = unwords . words . (replace "\"" "\\\"") . (replace "\\" "\\\\") . (replace "\n" "")
   content = clear <$> readProcess "pandoc"
-    [ postSourcePath post
+    [ postBody post -- TODO Impl pending
     , "-t", "plain"
     ]
     ""

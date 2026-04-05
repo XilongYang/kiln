@@ -7,6 +7,10 @@ import Modules.Post.Preprocess
 import Modules.Post.Parse
 import Modules.Pandoc
 import Modules.Toc
+import Modules.Index.Item (mkIndexItem)
+import Modules.Post (Post(postMeta))
+import Modules.Utils.Klb
+import Modules.Config (tempIndexItemsKlbPath)
 
 -- ---[ Overview ]------------------------------------------------------------
 -- | Build-plan executor for post and index generation.
@@ -37,12 +41,17 @@ realExecuteBuildPlan (BuildIndexPlan plan) = do
 -- | Builds @index.html@ from prepared index items and template HTML.
 buildIndexWithPlan :: IndexBuildPlan -> IO ()
 buildIndexWithPlan plan = do
-  let indexItems = planIndexItems plan
-  let indexTemplatePath = planIndexTemplatePath plan
-  indexTemplateHtml <- readFile indexTemplatePath
-  let indexHtmlPath = planIndexHtmlPath plan
-  let indexHtml = renderIndex indexItems indexTemplateHtml 
-  writeFile indexHtmlPath indexHtml
+  indexItemsKlbStr <- readFile tempIndexItemsKlbPath
+  let eitherIndexItems = parseKlb indexItemsKlbStr
+  case eitherIndexItems of
+    Left e -> do
+      putStrLn $ "[Error] parse KLB failed: " ++ show e
+    Right indexItems -> do
+      let indexTemplatePath = planIndexTemplatePath plan
+      indexTemplateHtml <- readFile indexTemplatePath
+      let indexHtmlPath = planIndexHtmlPath plan
+      let indexHtml = renderIndex indexItems indexTemplateHtml 
+      writeFile indexHtmlPath indexHtml
   
 -- | Builds one post HTML page from a post build plan.
 --
@@ -62,3 +71,12 @@ buildPostWithPlan plan = do
   runPandoc preprocessedPath postTemplatePath builtHtmlPath
   builtHtml <- readFile builtHtmlPath
   writeFile targetHtmlPath $ injectToc builtHtml
+
+  let indexItem = mkIndexItem (postMeta post) (planPostUrl plan)
+  let klb = renderKlb [indexItem]
+  case klb of
+    Left e -> do
+      putStrLn ("[Error] render KLB failed: " ++ show e)
+    Right klbStr -> do
+      appendFile tempIndexItemsKlbPath klbStr
+

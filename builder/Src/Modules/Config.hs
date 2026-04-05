@@ -112,3 +112,5 @@ cachePostTemplatePath  = cacheStatePath </> "post-template.cache"
 cacheIndexTemplatePath :: FilePath
 cacheIndexTemplatePath  = cacheStatePath </> "index-template.cache"
 
+tempIndexItemsKlbPath :: FilePath
+tempIndexItemsKlbPath = tempPath </> "indexitems.klb"

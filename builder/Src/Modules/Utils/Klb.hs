@@ -52,11 +52,14 @@ data KlbParseError
   deriving (Show, Eq)
 
 -- | Bidirectional conversion between a domain value and one KLB block.
+--
+-- 'fromKlbBlock' is intentionally total at the type level.
+-- Structural validation belongs to text parsing ('parseKlbLines' and helpers).
 class Klb a where
   -- | Encode one value into a single KLB block.
   toKlbBlock   :: a -> KlbBlock
   -- | Decode one KLB block back into a domain value.
-  fromKlbBlock :: KlbBlock -> Either KlbParseError a
+  fromKlbBlock :: KlbBlock -> a
 
 -- | One KLB block: an ordered list of fields.
 type KlbBlock = [KlbPair]
@@ -90,15 +93,15 @@ renderKlb objs = do
 -- then each block is decoded via 'fromKlbBlock'.
 --
 -- Returns:
--- - 'Left' when structure is invalid or block decoding fails
--- - 'Right' when all blocks are decoded successfully
+-- - 'Left' when block framing/header/line structure is invalid
+-- - 'Right' when all blocks are structurally decoded successfully
 --
 -- This parser expects each block to begin with its own @size:N@ header.
--- Extra blank lines are not ignored.
+-- Extra blank lines are treated as invalid lines.
 parseKlb :: Klb a => String -> Either KlbParseError [a]
 parseKlb str = do
   blocks <- parseKlbLines (lines str)
-  traverse fromKlbBlock blocks
+  pure $ map fromKlbBlock blocks
 
 -- ---[ Implementation Details ]-----------------------------------------------
 

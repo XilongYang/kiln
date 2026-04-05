@@ -9,7 +9,7 @@ newtype EchoBlock = EchoBlock {unEchoBlock :: KlbBlock}
 
 instance Klb EchoBlock where
   toKlbBlock = unEchoBlock
-  fromKlbBlock = Right . EchoBlock
+  fromKlbBlock = EchoBlock
 
 suiteName :: String
 suiteName = "Utils.Klb"
@@ -28,6 +28,7 @@ testCases =
   , testParseKlbRejectsInvalidSizeValue
   , testParseKlbRejectsNonPositiveSize
   , testParseKlbRejectsIncompleteBlock
+  , testParseKlbRejectsExtraBlankLine
   ]
 
 testRenderKlbEmptyInput :: TestCase
@@ -111,3 +112,10 @@ testParseKlbRejectsIncompleteBlock =
     assertEq "parseKlb should fail when payload lines are fewer than header size"
       "Left (IncompleteBlock 2 1)"
       (show (parseKlb "size:2\na:1\n" :: Either KlbParseError [EchoBlock]))
+
+testParseKlbRejectsExtraBlankLine :: TestCase
+testParseKlbRejectsExtraBlankLine =
+  mkTestCase "parseKlb rejects extra blank lines between blocks" $
+    assertEq "parseKlb should treat blank separator lines as invalid"
+      "Left (InvalidLine \"\")"
+      (show (parseKlb "size:1\na:1\n\nsize:1\nb:2\n" :: Either KlbParseError [EchoBlock]))

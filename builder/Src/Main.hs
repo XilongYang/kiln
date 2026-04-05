@@ -46,8 +46,8 @@ main = withTempDir tempPath $ do
   mapM_ executeBuildPlan postBuildPlans 
 
   -- Build index page from the full post list.
-  -- let indexBuildPlan = mkBuildIndexPlan posts
-  -- executeBuildPlan indexBuildPlan 
+  let indexBuildPlan = mkBuildIndexPlan
+  executeBuildPlan indexBuildPlan 
 
   -- Generate client-side search index.
   -- genSearchDB searchDBPath posts 
