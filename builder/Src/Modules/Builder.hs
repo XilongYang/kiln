@@ -8,21 +8,41 @@ import Modules.Post.Parse
 import Modules.Pandoc
 import Modules.Toc
 import Modules.Index.Item (mkIndexItem)
-import Modules.Post (Post(postMeta))
+import Modules.Post (Post(postMeta), PostMeta)
 import Modules.Utils.Klb
 import Modules.Config (tempIndexItemsKlbPath)
+import Modules.TypeAlias (Url)
 
 -- ---[ Overview ]------------------------------------------------------------
 -- | Build-plan executor for post and index generation.
 --
--- This module dispatches typed build plans and runs the corresponding
--- filesystem/render pipeline.
+-- This module is the orchestration layer of the build pipeline.
+-- It receives typed 'BuildPlan' values, checks whether a rebuild is needed,
+-- then runs concrete IO workflows for post pages or index page generation.
+--
+-- High-level responsibilities:
+-- - gate execution through 'shouldBuild'
+-- - dispatch to post/index specific executors
+-- - coordinate parsing, rendering, and output writes
+-- - print recoverable build errors to stdout
 
 -- ---[ Public API ]------------------------------------------------------------
 
+-- | Error type for post-build sub-steps.
+--
+-- This captures structured failures produced by parser and KLB rendering
+-- components. The current build runner logs errors directly and does not
+-- return this type to callers.
+data BuildPostError
+  = BuildPostParseError ParsePostError
+  | BuildPostRenderKlbError KlbRenderError
+  deriving (Show, Eq)
+
 -- | Executes a build plan when it is marked as needing rebuild.
 --
--- Delegates to plan-specific executors for post and index targets.
+-- Behavior:
+-- - if 'shouldBuild' is 'False', this is a no-op
+-- - if 'shouldBuild' is 'True', delegates to 'realExecuteBuildPlan'
 executeBuildPlan :: BuildPlan -> IO ()
 executeBuildPlan plan = do
   isShouldBuild <- shouldBuild plan
@@ -31,14 +51,22 @@ executeBuildPlan plan = do
 
 -- ---[ Implementation Details ]-----------------------------------------------
 
--- | Dispatches the concrete build action by plan constructor.
+-- | Dispatches concrete build action by 'BuildPlan' constructor.
 realExecuteBuildPlan :: BuildPlan -> IO ()
 realExecuteBuildPlan (BuildPostPlan plan) = do
   buildPostWithPlan plan
 realExecuteBuildPlan (BuildIndexPlan plan) = do
   buildIndexWithPlan plan
 
--- | Builds @index.html@ from prepared index items and template HTML.
+-- | Builds @index.html@ from serialized index items and template HTML.
+--
+-- Steps:
+-- - read temporary KLB index-items file
+-- - parse KLB into in-memory index items
+-- - read index template HTML
+-- - render final index HTML and write to target path
+--
+-- On KLB parse failure, logs an error and skips writing output.
 buildIndexWithPlan :: IndexBuildPlan -> IO ()
 buildIndexWithPlan plan = do
   indexItemsKlbStr <- readFile tempIndexItemsKlbPath
@@ -56,27 +84,40 @@ buildIndexWithPlan plan = do
 -- | Builds one post HTML page from a post build plan.
 --
 -- Pipeline:
--- - preprocess markdown content
--- - render via pandoc and post template
--- - inject TOC into generated HTML
--- - write final target page
-buildPostWithPlan :: PostBuildPlan -> IO()
+-- - parse source markdown into structured 'Post'
+-- - preprocess parsed post into intermediate markdown
+-- - render HTML via pandoc and post template
+-- - inject TOC into rendered HTML
+-- - write final HTML and append one index-item KLB record
+--
+-- On parse failure, logs an error and skips remaining steps for this post.
+buildPostWithPlan :: PostBuildPlan -> IO ()
 buildPostWithPlan plan = do
   let preprocessedPath = planPreprocessedPath plan
   let builtHtmlPath = planBuiltHtmlPath plan
   let postTemplatePath = planPostTemplatePath plan
   let targetHtmlPath = planTargetHtmlPath plan
-  post <- parsePost $ planPostSourcePath plan
-  writeFile preprocessedPath $ preprocessPost post
-  runPandoc preprocessedPath postTemplatePath builtHtmlPath
-  builtHtml <- readFile builtHtmlPath
-  writeFile targetHtmlPath $ injectToc builtHtml
+  let sourcePath = planPostSourcePath plan
+  post <- parsePost sourcePath
+  case post of
+    Left e -> do
+      putStrLn ("[Error] parse post failed: " ++ show e ++ " : " ++ sourcePath)
+    Right post -> do
+      writeFile preprocessedPath $ preprocessPost post
+      runPandoc preprocessedPath postTemplatePath builtHtmlPath
+      builtHtml <- readFile builtHtmlPath
+      writeFile targetHtmlPath $ injectToc builtHtml
+      writePostKlb (postMeta post) (planPostUrl plan)
 
-  let indexItem = mkIndexItem (postMeta post) (planPostUrl plan)
+-- | Appends one post's metadata as KLB index item into temp index file.
+--
+-- On KLB render failure, logs an error and does not append anything.
+writePostKlb :: PostMeta -> Url -> IO ()
+writePostKlb meta url = do
+  let indexItem = mkIndexItem meta url
   let klb = renderKlb [indexItem]
   case klb of
     Left e -> do
       putStrLn ("[Error] render KLB failed: " ++ show e)
     Right klbStr -> do
       appendFile tempIndexItemsKlbPath klbStr
-
