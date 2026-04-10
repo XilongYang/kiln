@@ -11,6 +11,7 @@ import System.Directory
   , doesFileExist
   )
 import Test.Framework.Asserts
+import Test.Framework.Expect
 import Test.Framework.Paths
 import Test.Framework.TestSuite
 
@@ -90,11 +91,3 @@ testExecuteBuildIndexPlan =
       assertContains "index output should include year heading from items" "<h3>2026</h3>" html
       assertContains "index output should include item link title" "Index Title" html
       assertContains "index output should include item link url" "/post/index-title.html" html
-
-expectPostPlan :: BuildPlan -> PostBuildPlan
-expectPostPlan (BuildPostPlan plan) = plan
-expectPostPlan _ = error "expected BuildPostPlan"
-
-expectIndexPlan :: BuildPlan -> IndexBuildPlan
-expectIndexPlan (BuildIndexPlan plan) = plan
-expectIndexPlan _ = error "expected BuildIndexPlan"

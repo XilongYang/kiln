@@ -1,6 +1,5 @@
 module Test.Framework.Paths
   ( CasePaths(..)
-  , withCasePaths
   , withCasePathsInSandbox
   , srcFile
   , postFile

@@ -4,6 +4,7 @@ import Control.Concurrent (threadDelay)
 import Modules.BuildJudger (shouldBuild)
 import Modules.BuildPlan
 import Test.Framework.Asserts
+import Test.Framework.Expect
 import Test.Framework.Paths
 import Test.Framework.TestSuite
 
@@ -64,7 +65,3 @@ testShouldNotBuildPostWhenTargetNewer =
       let plan = base { planTargetHtmlPath = target }
       result <- shouldBuild (BuildPostPlan plan)
       assertFalse "post should not rebuild when target is newer" result
-
-expectPostPlan :: BuildPlan -> PostBuildPlan
-expectPostPlan (BuildPostPlan plan) = plan
-expectPostPlan _ = error "expected BuildPostPlan"

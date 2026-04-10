@@ -17,6 +17,7 @@ import System.Directory
 import System.FilePath ((</>))
 import System.Process (callProcess)
 import Test.Framework.Asserts
+import Test.Framework.Expect (expectRight)
 import Test.Framework.Paths
 import Test.Framework.TestSuite
 
@@ -113,10 +114,6 @@ testGenSearchDBWritesExpectedJsonFile =
         assertContains "searchdb should include current empty-url placeholder emitted by SearchDB"
           "\"url\": \"\""
           rendered
-
-expectRight :: String -> Either a b -> IO b
-expectRight _ (Right value) = pure value
-expectRight message (Left _) = error ("Assertion failed: " ++ message)
 
 withFakePandoc :: CasePaths -> IO a -> IO a
 withFakePandoc casePaths action = do

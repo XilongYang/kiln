@@ -2,7 +2,6 @@ module Test.Framework.Asserts
   ( assertTrue
   , assertFalse
   , assertEq
-  , assertNotEq
   , assertContains
   , assertThrows
   ) where
@@ -33,13 +32,6 @@ assertEq message expected actual =
     else
       failTest
         (message ++ "\nexpected: " ++ show expected ++ "\nactual:   " ++ show actual)
-
--- Asserts that two values are observably different.
-assertNotEq :: (Eq a, Show a) => String -> a -> a -> IO ()
-assertNotEq message left right =
-  if left /= right
-    then pure ()
-    else failTest (message ++ "\nboth values: " ++ show left)
 
 -- Asserts that the given substring occurs within the target string.
 assertContains :: String -> String -> String -> IO ()

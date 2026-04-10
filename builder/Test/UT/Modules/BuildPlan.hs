@@ -4,6 +4,7 @@ import Modules.BuildPlan
 import Modules.Config
 import System.FilePath ((</>))
 import Test.Framework.Asserts
+import Test.Framework.Expect
 import Test.Framework.Paths (srcFixtureFile)
 import Test.Framework.TestSuite
 
@@ -53,11 +54,3 @@ testMkBuildIndexPlanFields =
     assertEq "mkBuildIndexPlan should generate canonical index url"
       (webRoot ++ "index.html")
       (planIndexUrl plan)
-
-expectPostPlan :: BuildPlan -> PostBuildPlan
-expectPostPlan (BuildPostPlan plan) = plan
-expectPostPlan _ = error "expected BuildPostPlan"
-
-expectIndexPlan :: BuildPlan -> IndexBuildPlan
-expectIndexPlan (BuildIndexPlan plan) = plan
-expectIndexPlan _ = error "expected BuildIndexPlan"

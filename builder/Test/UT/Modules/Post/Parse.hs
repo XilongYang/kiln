@@ -4,6 +4,7 @@ import Modules.Post (PostMeta(..), postMeta, postAbstract, postBody)
 import Modules.Post.Parse (parsePost)
 import System.Directory (copyFile)
 import Test.Framework.Asserts
+import Test.Framework.Expect (expectRight)
 import Test.Framework.Paths
 import Test.Framework.TestSuite
 
@@ -60,10 +61,6 @@ testParsePostReturnsLeftWhenRequiredMetaMissing =
       writeFile sourcePath (unlines ["---", "title: X", "date: 2026-03-22", "---", "", "Body"])
       result <- parsePost sourcePath
       assertTrue "parsePost should fail when required metadata keys are missing" (isLeft result)
-
-expectRight :: String -> Either a b -> IO b
-expectRight _ (Right value) = pure value
-expectRight message (Left _) = error ("Assertion failed: " ++ message)
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True

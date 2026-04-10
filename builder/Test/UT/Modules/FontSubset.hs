@@ -7,8 +7,11 @@ import System.Directory
   , doesFileExist
   )
 import System.FilePath ((</>))
-import System.Process (callProcess)
 import Test.Framework.Asserts
+import Test.Framework.Fixtures
+  ( setupFontSubsetFixtureTree
+  , writeFakePyftsubsetWithTrace
+  )
 import Test.Framework.Paths
 import Test.Framework.TestSuite
 
@@ -51,8 +54,8 @@ testGenFontSubsetWritesFontSetAndCallsPyftsubset =
           binDir = workRoot </> "bin"
           tracePath = workRoot </> "pyftsubset.trace"
       createDirectoryIfMissing True binDir
-      writeFakePyftsubset (binDir </> "pyftsubset")
-      setupFixtureTree
+      writeFakePyftsubsetWithTrace (binDir </> "pyftsubset")
+      setupFontSubsetFixtureTree
       withEnv "PYFTSUBSET_TRACE" tracePath $
         withPrependedPath binDir genFontSubset
       fontSetExists <- doesFileExist fontSetPath
@@ -66,28 +69,3 @@ testGenFontSubsetWritesFontSetAndCallsPyftsubset =
       assertContains "trace should contain output-file option"
         ("--output-file=" ++ subsetFontFilePath)
         trace
-
-setupFixtureTree :: IO ()
-setupFixtureTree = do
-  createDirectoryIfMissing True tempPath
-  createDirectoryIfMissing True postPath
-  createDirectoryIfMissing True fontPath
-  writeFile indexPath "<html><body>INDEX</body></html>"
-  writeFile (postPath </> "a.html") "<main>POST A</main>"
-  writeFile (postPath </> "b.html") "<main>POST B</main>"
-  writeFile originFontFilePath "fake-otf"
-
-writeFakePyftsubset :: FilePath -> IO ()
-writeFakePyftsubset scriptPath = do
-  writeFile scriptPath $
-    unlines
-      [ "#!/bin/sh"
-      , "printf '%s\\n' \"$@\" > \"$PYFTSUBSET_TRACE\""
-      , "for arg in \"$@\"; do"
-      , "  case \"$arg\" in"
-      , "    --output-file=*) out=\"${arg#--output-file=}\" ;;"
-      , "  esac"
-      , "done"
-      , "[ -n \"$out\" ] && : > \"$out\""
-      ]
-  callProcess "chmod" ["+x", scriptPath]

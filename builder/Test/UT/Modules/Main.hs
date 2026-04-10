@@ -8,6 +8,10 @@ import System.Directory
 import System.FilePath ((</>))
 import System.Process (callProcess)
 import Test.Framework.Asserts
+import Test.Framework.Fixtures
+  ( setupMainFixtureTree
+  , writeFakePyftsubsetSimple
+  )
 import Test.Framework.Paths
 import Test.Framework.TestSuite
 
@@ -30,8 +34,8 @@ testMainBuildsCoreOutputs =
           builderTestIncludePath = repoRoot </> "builder"
           binDir = workRoot </> "bin"
       createDirectoryIfMissing True binDir
-      writeFakePyftsubset (binDir </> "pyftsubset")
-      setupFixtureTree
+      writeFakePyftsubsetSimple (binDir </> "pyftsubset")
+      setupMainFixtureTree
       withPrependedPath binDir $
         callProcess "runghc"
           [ "-i" ++ builderSourceIncludePath
@@ -42,57 +46,3 @@ testMainBuildsCoreOutputs =
       indexExists <- doesFileExist indexPath
       assertTrue "main should render one post html output" postExists
       assertTrue "main should render index.html output" indexExists
-
-setupFixtureTree :: IO ()
-setupFixtureTree = do
-  createDirectoryIfMissing True srcPath
-  createDirectoryIfMissing True templateComponentPath
-  createDirectoryIfMissing True fontPath
-  writeFile (srcPath </> "fixture.md") fixturePostMarkdown
-  writeFile templatePostPath fixturePostTemplate
-  writeFile templateIndexPath fixtureIndexTemplate
-  writeFile originFontFilePath "fake-otf"
-
-fixturePostMarkdown :: String
-fixturePostMarkdown =
-  unlines
-    [ "---"
-    , "title: Fixture Title"
-    , "author: Fixture Author"
-    , "date: 2026-03-25"
-    , "---"
-    , ""
-    , "This is abstract."
-    , ""
-    , "## Section A"
-    , ""
-    , "Body line."
-    ]
-
-fixturePostTemplate :: String
-fixturePostTemplate =
-  unlines
-    [ "<!doctype html>"
-    , "<html><body><main>$body$</main></body></html>"
-    ]
-
-fixtureIndexTemplate :: String
-fixtureIndexTemplate =
-  unlines
-    [ "<!doctype html>"
-    , "<html><body>$posts$</body></html>"
-    ]
-
-writeFakePyftsubset :: FilePath -> IO ()
-writeFakePyftsubset scriptPath = do
-  writeFile scriptPath $
-    unlines
-      [ "#!/bin/sh"
-      , "for arg in \"$@\"; do"
-      , "  case \"$arg\" in"
-      , "    --output-file=*) out=\"${arg#--output-file=}\" ;;"
-      , "  esac"
-      , "done"
-      , "[ -n \"$out\" ] && : > \"$out\""
-      ]
-  callProcess "chmod" ["+x", scriptPath]
