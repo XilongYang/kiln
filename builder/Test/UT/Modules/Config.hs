@@ -14,6 +14,7 @@ testCases =
   , testTemplatePathConstants
   , testWebPathConstants
   , testFontPathConstants
+  , testCachePathConstants
   ]
 
 testProjectPathConstants :: TestCase
@@ -71,3 +72,37 @@ testFontPathConstants =
     assertEq "subset font path should point to SourceHanSerifCN-Subset.woff2"
       (fontPath </> "SourceHanSerifCN-Subset.woff2")
       subsetFontFilePath
+
+testCachePathConstants :: TestCase
+testCachePathConstants =
+  mkTestCase "cache path constants point to expected state/artifact directories" $ do
+    assertEq "cacheRoot should resolve under root/.cache"
+      (rootPath </> ".cache")
+      cacheRoot
+    assertEq "cacheStatePath should resolve under .cache/state"
+      (cacheRoot </> "state")
+      cacheStatePath
+    assertEq "builderStatePath should point to builder.state"
+      (cacheStatePath </> "builder.state")
+      builderStatePath
+    assertEq "postTemplateStatePath should point to post-template.state"
+      (cacheStatePath </> "post-template.state")
+      postTemplateStatePath
+    assertEq "indexTemplateStatePath should point to index-template.state"
+      (cacheStatePath </> "index-template.state")
+      indexTemplateStatePath
+    assertEq "postStatePath should point to cache/state/post"
+      (cacheStatePath </> "post")
+      postStatePath
+    assertEq "cacheArtifactsPath should resolve under .cache/artifacts"
+      (cacheRoot </> "artifacts")
+      cacheArtifactsPath
+    assertEq "metaArtifactsPath should point to cache/artifacts/meta"
+      (cacheArtifactsPath </> "meta")
+      metaArtifactsPath
+    assertEq "searchItemArtifactsPath should point to cache/artifacts/search-item"
+      (cacheArtifactsPath </> "search-item")
+      searchItemArtifactsPath
+    assertEq "charsetArtifactsPath should point to cache/artifacts/charset"
+      (cacheArtifactsPath </> "charset")
+      charsetArtifactsPath

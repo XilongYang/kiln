@@ -25,7 +25,7 @@ testCases =
 
 testMainBuildsCoreOutputs :: TestCase
 testMainBuildsCoreOutputs =
-  mkTestCase "main builds post and index outputs in isolated workspace" $ do
+  mkTestCase "main builds post/index/search/font outputs in isolated workspace" $ do
     withCasePathsInSandbox suiteName "mainBuildsCoreOutputs" [] $ \casePaths -> do
       let workRoot = caseRootDir casePaths
           repoRoot = repoRootPath
@@ -44,5 +44,19 @@ testMainBuildsCoreOutputs =
           ]
       postExists <- doesFileExist (postPath </> "fixture.html")
       indexExists <- doesFileExist indexPath
+      searchDbExists <- doesFileExist searchDBPath
+      subsetFontExists <- doesFileExist subsetFontFilePath
+      metaExists <- doesFileExist (metaArtifactsPath </> "fixture.klb")
+      searchItemExists <- doesFileExist (searchItemArtifactsPath </> "fixture.klb")
+      charsetExists <- doesFileExist (charsetArtifactsPath </> "fixture.txt")
       assertTrue "main should render one post html output" postExists
       assertTrue "main should render index.html output" indexExists
+      assertTrue "main should create searchdb output from search-item artifacts" searchDbExists
+      assertTrue "main should generate subset font file" subsetFontExists
+      assertTrue "main should cache per-post metadata artifact" metaExists
+      assertTrue "main should cache per-post search-item artifact" searchItemExists
+      assertTrue "main should cache per-post charset artifact" charsetExists
+      searchDb <- readFile searchDBPath
+      assertContains "searchdb should include serialized fixture title in KLB payload"
+        "searchItemTitle:Fixture Title"
+        searchDb

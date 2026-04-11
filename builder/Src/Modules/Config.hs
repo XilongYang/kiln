@@ -6,7 +6,7 @@ import System.FilePath
 -- | Centralized path and naming configuration for the build pipeline.
 --
 -- Keeping these constants in one module avoids scattering path construction
--- and placeholder conventions across builders, template logic, and UT.
+-- and placeholder conventions across build logic, runtime entrypoint, and UT.
 
 -- ---[ Configuration ]------------------------------------------------------------
 
@@ -80,7 +80,7 @@ webPostPath = webRoot ++ "post/"
 searchDBPath :: FilePath
 searchDBPath = rootPath </> "searchdb.json"
 
--- | Temporary file containing deduplicated charset used for font subsetting.
+-- | Temporary file containing merged charset consumed by @pyftsubset@.
 fontSetPath :: FilePath
 fontSetPath = tempPath </> "fontset.txt"
 
@@ -96,36 +96,49 @@ originFontFilePath =  fontPath </> "SourceHanSerifCN-Regular.otf"
 subsetFontFilePath :: FilePath
 subsetFontFilePath = fontPath </> "SourceHanSerifCN-Subset.woff2"
 
--- Root directory for incremental build cache artifacts.
+-- | Root directory for incremental build cache data.
 cacheRoot :: FilePath
 cacheRoot = rootPath </> ".cache"
 
+-- | Cache directory for timestamp/state records.
 cacheStatePath :: FilePath
 cacheStatePath = cacheRoot </> "state"
 
+-- | Build-run state file for global builder-level checks.
 builderStatePath :: FilePath
 builderStatePath = cacheStatePath </> "builder.state"
 
+-- | State file for expanded post template invalidation.
 postTemplateStatePath :: FilePath
 postTemplateStatePath = cacheStatePath </> "post-template.state"
 
+-- | State file for expanded index template invalidation.
 indexTemplateStatePath :: FilePath
 indexTemplateStatePath = cacheStatePath </> "index-template.state"
 
+-- | Directory containing per-post incremental state files.
 postStatePath :: FilePath
 postStatePath = cacheStatePath </> "post"
 
+-- | Root directory for reusable build artifacts generated per page/post.
 cacheArtifactsPath :: FilePath
 cacheArtifactsPath = cacheRoot </> "artifacts"
 
+-- | Per-post index metadata artifacts (@IndexItem@ KLB files).
 metaArtifactsPath :: FilePath
 metaArtifactsPath = cacheArtifactsPath </> "meta"
 
+-- | Per-post search record artifacts (@SearchItem@ KLB files).
 searchItemArtifactsPath :: FilePath
 searchItemArtifactsPath = cacheArtifactsPath </> "search-item"
 
+-- | Per-page charset artifacts used by font subsetting.
 charsetArtifactsPath :: FilePath
 charsetArtifactsPath = cacheArtifactsPath </> "charset"
 
+-- | Legacy temporary index-item KLB file path.
+--
+-- Kept for compatibility with older tooling/tests; current pipeline uses
+-- per-post metadata artifacts under 'metaArtifactsPath'.
 tempIndexItemsKlbPath :: FilePath
 tempIndexItemsKlbPath = tempPath </> "indexitems.klb"

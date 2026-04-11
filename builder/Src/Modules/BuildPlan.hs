@@ -12,10 +12,10 @@ import Modules.TypeAlias
 import System.FilePath
 
 -- ---[ Overview ]------------------------------------------------------------
--- | Typed build-plan definitions and rebuild decision rules.
+-- | Typed build-plan definitions for the static-site build pipeline.
 --
--- This module encodes post/index build intents as data and provides plan
--- constructors plus incremental-build checks.
+-- This module only models "what to build" and "where each output lives".
+-- Rebuild decisions are handled separately in 'Modules.BuildJudger'.
 
 -- ---[ Public API ]------------------------------------------------------------
 
@@ -24,28 +24,41 @@ data BuildPlan
   = BuildPostPlan PostBuildPlan 
   | BuildIndexPlan IndexBuildPlan
 
--- | Concrete plan payload for building one post page.
+-- | Concrete plan payload for building one post page and its cache artifacts.
 data PostBuildPlan = PostBuildPlan 
-  { planPostSourcePath   :: FilePath
+  { planPostSourcePath :: FilePath
+    -- ^ Source markdown path under @src/@.
   , planPreprocessedPath :: FilePath
-  , planBuiltHtmlPath    :: FilePath
-  , planTargetHtmlPath   :: FilePath
+    -- ^ Intermediate markdown (after custom preprocessing).
+  , planBuiltHtmlPath :: FilePath
+    -- ^ Temporary HTML produced directly by pandoc.
+  , planTargetHtmlPath :: FilePath
+    -- ^ Final shipped post HTML path under @post/@.
   , planPostTemplatePath :: FilePath
+    -- ^ Expanded post template file used by pandoc.
   , planPostStatePath :: FilePath
+    -- ^ Incremental state record path for this post.
   , planPostMetaPath :: FilePath
+    -- ^ Per-post index metadata artifact (@IndexItem@ KLB).
   , planPostSearchItemPath :: FilePath
+    -- ^ Per-post search artifact (@SearchItem@ KLB).
   , planPostCharsetPath :: FilePath
-  , planPostUrl          :: Url
+    -- ^ Per-post charset artifact for font subsetting.
+  , planPostUrl :: Url
+    -- ^ Canonical public URL of the generated post.
   } deriving (Show, Eq)
 
 -- | Concrete plan payload for building the homepage index.
 data IndexBuildPlan = IndexBuildPlan 
-  { planIndexHtmlPath     :: FilePath
+  { planIndexHtmlPath :: FilePath
+    -- ^ Final output path for @index.html@.
   , planIndexTemplatePath :: FilePath
-  , planIndexUrl          :: Url
+    -- ^ Expanded index template file path.
+  , planIndexUrl :: Url
+    -- ^ Canonical public URL of the generated index page.
   } deriving (Show, Eq)
 
--- | Creates a post build plan from one parsed post.
+-- | Builds a deterministic post plan from one source markdown path.
 mkBuildPostPlan :: FilePath -> BuildPlan
 mkBuildPostPlan path = BuildPostPlan PostBuildPlan
   { planPostSourcePath = path
@@ -62,11 +75,10 @@ mkBuildPostPlan path = BuildPostPlan PostBuildPlan
   where
     baseName = takeBaseName path
 
--- | Creates an index build plan from all parsed posts.
+-- | Builds the canonical index plan.
 mkBuildIndexPlan :: BuildPlan
 mkBuildIndexPlan = BuildIndexPlan IndexBuildPlan
   { planIndexHtmlPath = indexPath
   , planIndexTemplatePath = renderedTemplateIndexPath 
   , planIndexUrl = webRoot ++ "index.html"
   }
-

@@ -16,15 +16,16 @@ import Modules.TypeAlias (Markdown)
 -- | Converts markdown input to HTML via pandoc using the provided template.
 --
 -- The output directory is created before invoking pandoc.
+-- HTML output uses the same argument profile as production builds.
 runPandoc :: FilePath -> FilePath -> FilePath -> IO ()
 runPandoc inputPath templatePath outputPath = do
   createDirectoryIfMissing True (takeDirectory outputPath)
   callProcess "pandoc" (mkPandocArgs inputPath templatePath outputPath)
 
--- | Converts one post into index metadata + searchable plaintext content.
+-- | Converts one markdown file into plaintext through pandoc.
 --
--- The markdown source file is rendered to plain text by @pandoc@, then escaped
--- for JSON embedding and collapsed into a single whitespace-normalized line.
+-- This function only delegates conversion. Whitespace normalization and
+-- escaping are handled downstream (KLB rendering / frontend consumer).
 renderMarkdownToPlaintext :: Markdown -> IO String
 renderMarkdownToPlaintext src = readProcess "pandoc"
     [ src
@@ -34,6 +35,11 @@ renderMarkdownToPlaintext src = readProcess "pandoc"
 -- ---[ Implementation Details ]-----------------------------------------------
 
 -- | Builds deterministic pandoc arguments for production output.
+--
+-- Choices:
+-- - no syntax highlight injection
+-- - MathJax enabled
+-- - wrap disabled for stable downstream processing
 mkPandocArgs :: FilePath -> FilePath -> FilePath -> [String]
 mkPandocArgs inputPath templatePath outputPath =
   [ inputPath

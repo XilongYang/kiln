@@ -20,6 +20,7 @@ import System.Directory
   , listDirectory
   )
 import System.FilePath ((</>))
+import System.IO (hPutStrLn, stderr)
 
 data PerfMemoryLimitExceeded = PerfMemoryLimitExceeded
   { memLimitExceededActualKb :: Integer
@@ -97,12 +98,16 @@ measurePerformance workspace action = do
 
 printPerformanceReport :: String -> PerfMetrics -> IO ()
 printPerformanceReport label metrics = do
-  putStrLn ("[PERF] " ++ label)
-  putStrLn ("  Time : wall=" ++ showFixed1 (perfWallMs metrics) ++ " ms, cpu=" ++ showFixed1 (perfCpuMs metrics) ++ " ms")
-  putStrLn ("  IO   : read-char=" ++ show (perfIoReadChars metrics) ++ " B, write-char=" ++ show (perfIoWriteChars metrics) ++ " B")
-  putStrLn ("  CPU  : process-cpu=" ++ showFixed1 (perfCpuMs metrics) ++ " ms")
-  putStrLn ("  Mem  : peak-rss=" ++ show (perfMemRssPeakKb metrics) ++ " KiB, delta-rss=" ++ show (perfMemRssDeltaKb metrics) ++ " KiB")
-  putStrLn ("  Disk : read=" ++ show (perfDiskReadBytes metrics) ++ " B, write=" ++ show (perfDiskWriteBytes metrics) ++ " B, workspace-delta=" ++ show (perfWorkspaceDeltaBytes metrics) ++ " B")
+  hPutStrLn stderr ("[PERF] " ++ label)
+  hPutStrLn stderr
+    ("  Time : wall=" ++ showMsWithHuman (perfWallMs metrics) ++ ", cpu=" ++ showMsWithHuman (perfCpuMs metrics))
+  hPutStrLn stderr
+    ("  IO   : read-char=" ++ showBytesWithHuman (perfIoReadChars metrics) ++ ", write-char=" ++ showBytesWithHuman (perfIoWriteChars metrics))
+  hPutStrLn stderr ("  CPU  : process-cpu=" ++ showMsWithHuman (perfCpuMs metrics))
+  hPutStrLn stderr
+    ("  Mem  : peak-rss=" ++ showKiBWithHuman (perfMemRssPeakKb metrics) ++ ", delta-rss=" ++ showKiBWithHuman (perfMemRssDeltaKb metrics))
+  hPutStrLn stderr
+    ("  Disk : read=" ++ showBytesWithHuman (perfDiskReadBytes metrics) ++ ", write=" ++ showBytesWithHuman (perfDiskWriteBytes metrics) ++ ", workspace-delta=" ++ showBytesWithHuman (perfWorkspaceDeltaBytes metrics))
 
 showFixed1 :: Double -> String
 showFixed1 value =
@@ -111,6 +116,48 @@ showFixed1 value =
       integerPart = scaled `div` 10
       decimalPart = abs (scaled `mod` 10)
    in show integerPart ++ "." ++ show decimalPart
+
+showMsWithHuman :: Double -> String
+showMsWithHuman ms =
+  showFixed1 ms ++ " ms (" ++ showFixed1 (ms / 1000.0) ++ " s)"
+
+showBytesWithHuman :: Integer -> String
+showBytesWithHuman bytes =
+  show bytes ++ " B (" ++ showIecBytes bytes ++ ")"
+
+showKiBWithHuman :: Integer -> String
+showKiBWithHuman kib =
+  show kib ++ " KiB (" ++ showIecFromKiB kib ++ ")"
+
+showIecBytes :: Integer -> String
+showIecBytes bytes =
+  let sign = if bytes < 0 then "-" else ""
+      absBytes = abs bytes
+      kib = fromIntegral absBytes / 1024.0 :: Double
+      mib = kib / 1024.0
+      gib = mib / 1024.0
+   in if absBytes < 1024
+        then sign ++ show absBytes ++ " B"
+        else
+          if absBytes < 1024 * 1024
+            then sign ++ showFixed1 kib ++ " KiB"
+            else
+              if absBytes < 1024 * 1024 * 1024
+                then sign ++ showFixed1 mib ++ " MiB"
+                else sign ++ showFixed1 gib ++ " GiB"
+
+showIecFromKiB :: Integer -> String
+showIecFromKiB kib =
+  let sign = if kib < 0 then "-" else ""
+      absKiB = abs kib
+      mib = fromIntegral absKiB / 1024.0 :: Double
+      gib = mib / 1024.0
+   in if absKiB < 1024
+        then sign ++ show absKiB ++ " KiB"
+        else
+          if absKiB < 1024 * 1024
+            then sign ++ showFixed1 mib ++ " MiB"
+            else sign ++ showFixed1 gib ++ " GiB"
 
 samplePeakRssWithLimit :: ThreadId -> IORef Integer -> Integer -> IO ()
 samplePeakRssWithLimit mainTid peakRef limitKb = do

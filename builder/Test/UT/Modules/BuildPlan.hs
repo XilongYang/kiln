@@ -17,10 +17,10 @@ testCases =
   , testMkBuildIndexPlanFields
   ]
 
--- Confirms post build plan derives expected output/template paths from source file.
+-- Confirms post build plan derives expected output/template/artifact paths from source file.
 testMkBuildPostPlanPaths :: TestCase
 testMkBuildPostPlanPaths =
-  mkTestCase "mkBuildPostPlan builds expected preprocess path, target path, and url" $ do
+  mkTestCase "mkBuildPostPlan builds expected preprocess/target/artifact paths and url" $ do
     let sourcePath = srcFixtureFile "hello-world.md"
     let plan = expectPostPlan (mkBuildPostPlan sourcePath)
     assertEq "mkBuildPostPlan should keep original source path" sourcePath (planPostSourcePath plan)
@@ -36,6 +36,18 @@ testMkBuildPostPlanPaths =
     assertEq "mkBuildPostPlan should bind the rendered post template path"
       renderedTemplatePostPath
       (planPostTemplatePath plan)
+    assertEq "mkBuildPostPlan should persist per-post state under cache/state/post"
+      (postStatePath </> "hello-world.state")
+      (planPostStatePath plan)
+    assertEq "mkBuildPostPlan should persist per-post index metadata artifact"
+      (metaArtifactsPath </> "hello-world.klb")
+      (planPostMetaPath plan)
+    assertEq "mkBuildPostPlan should persist per-post search item artifact"
+      (searchItemArtifactsPath </> "hello-world.klb")
+      (planPostSearchItemPath plan)
+    assertEq "mkBuildPostPlan should persist per-post charset artifact"
+      (charsetArtifactsPath </> "hello-world.txt")
+      (planPostCharsetPath plan)
     assertEq "mkBuildPostPlan should generate canonical post url"
       (webPostPath ++ "hello-world.html")
       (planPostUrl plan)

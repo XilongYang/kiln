@@ -11,7 +11,7 @@ import Modules.Template
 import Modules.Utils.OrphanCheck (checkOrphans)
 import Modules.Utils.TempDir (withTempDir)
 
-import System.Directory (listDirectory, createDirectoryIfMissing)
+import System.Directory (listDirectory)
 import System.FilePath
 
 -- | Site build entrypoint.
@@ -19,12 +19,13 @@ import System.FilePath
 -- Build flow:
 -- 1) Prepare isolated temp directory and run orphan checks.
 -- 2) Render templates to intermediate files.
--- 3) Ensure post output directory exists.
--- 4) Load and parse all source posts.
--- 5) Build every post page.
--- 6) Build index page from parsed posts.
--- 7) Generate search database.
--- 8) Generate font subset assets.
+-- 3) Build every post from source files and emit per-post artifacts.
+-- 4) Build index page from metadata artifacts.
+-- 5) Concatenate search-item artifacts into search database payload.
+-- 6) Build font subset from charset artifacts.
+--
+-- Directory creation for post/html/cache artifacts is handled in
+-- 'Modules.Builder' when files are materialized.
 main :: IO ()
 main = withTempDir tempPath $ do
   -- Warning when references point to missing posts/resources.
@@ -36,24 +37,17 @@ main = withTempDir tempPath $ do
   templateIndex <- expandTemplate templateIndexPath templateComponentPath
   writeFile renderedTemplateIndexPath templateIndex
 
-  -- Ensure target directory exists before writing post pages.
-  createDirectoryIfMissing True postPath
-  createDirectoryIfMissing True cacheStatePath
-  createDirectoryIfMissing True metaArtifactsPath
-  createDirectoryIfMissing True searchItemArtifactsPath
-  createDirectoryIfMissing True charsetArtifactsPath
-
   -- Build each post page.
   postFileNames <- listDirectory srcPath
   let postPaths = map (\f -> srcPath </> f) $ filter (\f -> takeExtension f == ".md") postFileNames 
   let postBuildPlans = map mkBuildPostPlan postPaths
   mapM_ executeBuildPlan postBuildPlans 
 
-  -- Build index page from the full post list.
+  -- Build index page from metadata artifacts emitted by post builds.
   let indexBuildPlan = mkBuildIndexPlan
   executeBuildPlan indexBuildPlan 
 
-  -- Generate client-side search index.
+  -- Concatenate per-post search items into client-side search index payload.
   searchItemFileNames <- listDirectory searchItemArtifactsPath
   let searchItemPaths = map (\f -> searchItemArtifactsPath </> f) $ filter (\f -> takeExtension f == ".klb") searchItemFileNames 
   mapM_ appendSearchItem searchItemPaths
@@ -61,6 +55,9 @@ main = withTempDir tempPath $ do
   -- Subset fonts to reduce shipped asset size.
   genFontSubset 
 
+-- | Appends one serialized search-item KLB block into @searchdb.json@.
+--
+-- The current search payload is a plain concatenation of per-post KLB files.
 appendSearchItem :: FilePath -> IO ()
 appendSearchItem path = do
   item <- readFile path

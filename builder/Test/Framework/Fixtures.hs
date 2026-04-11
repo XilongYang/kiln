@@ -52,11 +52,11 @@ setupMainFixtureTree = do
 setupFontSubsetFixtureTree :: IO ()
 setupFontSubsetFixtureTree = do
   createDirectoryIfMissing True tempPath
-  createDirectoryIfMissing True postPath
+  createDirectoryIfMissing True charsetArtifactsPath
   createDirectoryIfMissing True fontPath
-  writeFile indexPath "<html><body>INDEX</body></html>"
-  writeFile (postPath </> "a.html") "<main>POST A</main>"
-  writeFile (postPath </> "b.html") "<main>POST B</main>"
+  writeFile (charsetArtifactsPath </> "a.txt") "AAB"
+  writeFile (charsetArtifactsPath </> "b.txt") "BCC"
+  writeFile (charsetArtifactsPath </> "index.txt") "ZZA"
   writeFile originFontFilePath "fake-otf"
 
 fixturePostMarkdown :: String

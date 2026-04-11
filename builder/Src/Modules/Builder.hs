@@ -10,34 +10,37 @@ import Modules.Toc
 import Modules.Index.Item (mkIndexItem)
 import Modules.Post (Post(..), PostMeta (metaTitle))
 import Modules.Utils.Klb
-import Modules.Config (tempIndexItemsKlbPath, metaArtifactsPath, charsetArtifactsPath)
+import Modules.Config (metaArtifactsPath, charsetArtifactsPath)
 import Modules.TypeAlias (Url)
 import Modules.SearchDB
 import Modules.FontSubset
 
-import System.Directory (listDirectory)
+import System.Directory (createDirectoryIfMissing, listDirectory)
 import System.FilePath
 
 -- ---[ Overview ]------------------------------------------------------------
--- | Build-plan executor for post and index generation.
+-- | Build-plan executor for post pages and homepage index generation.
 --
--- This module is the orchestration layer of the build pipeline.
--- It receives typed 'BuildPlan' values, checks whether a rebuild is needed,
--- then runs concrete IO workflows for post pages or index page generation.
+-- This module is the runtime orchestrator of the site builder:
+-- - receives typed plans from 'Modules.BuildPlan'
+-- - asks 'Modules.BuildJudger' whether each plan should run
+-- - executes post/index build workflows
+-- - writes per-post cache artifacts consumed by later aggregation steps
 --
 -- High-level responsibilities:
 -- - gate execution through 'shouldBuild'
 -- - dispatch to post/index specific executors
--- - coordinate parsing, rendering, and output writes
+-- - coordinate parse/preprocess/render/write stages
+-- - create target/artifact directories on demand before writes
+-- - materialize metadata/search/charset artifacts
 -- - print recoverable build errors to stdout
 
 -- ---[ Public API ]------------------------------------------------------------
 
 -- | Error type for post-build sub-steps.
 --
--- This captures structured failures produced by parser and KLB rendering
--- components. The current build runner logs errors directly and does not
--- return this type to callers.
+-- Currently kept as module-local documentation of failure classes.
+-- The runtime still reports errors by logging instead of returning this type.
 data BuildPostError
   = BuildPostParseError ParsePostError
   | BuildPostRenderKlbError KlbRenderError
@@ -63,13 +66,14 @@ realExecuteBuildPlan (BuildPostPlan plan) = do
 realExecuteBuildPlan (BuildIndexPlan plan) = do
   buildIndexWithPlan plan
 
--- | Builds @index.html@ from serialized index items and template HTML.
+-- | Builds @index.html@ from cached per-post metadata artifacts.
 --
 -- Steps:
--- - read temporary KLB index-items file
+-- - read per-post metadata KLB artifacts from cache
 -- - parse KLB into in-memory index items
 -- - read index template HTML
 -- - render final index HTML and write to target path
+-- - emit index charset artifact used by font subsetting
 --
 -- On KLB parse failure, logs an error and skips writing output.
 buildIndexWithPlan :: IndexBuildPlan -> IO ()
@@ -90,14 +94,14 @@ buildIndexWithPlan plan = do
       writeFile indexHtmlPath indexHtml
       writeCharset (charsetArtifactsPath </> "index.txt") indexHtmlPath
 
--- | Builds one post HTML page from a post build plan.
+-- | Builds one post page and all per-post artifacts from a post plan.
 --
 -- Pipeline:
 -- - parse source markdown into structured 'Post'
 -- - preprocess parsed post into intermediate markdown
 -- - render HTML via pandoc and post template
 -- - inject TOC into rendered HTML
--- - write final HTML and append one index-item KLB record
+-- - write per-post metadata/search-item/charset artifacts for downstream steps
 --
 -- On parse failure, logs an error and skips remaining steps for this post.
 buildPostWithPlan :: PostBuildPlan -> IO ()
@@ -116,36 +120,49 @@ buildPostWithPlan plan = do
       writeFile preprocessedPath $ preprocessPost post
       runPandoc preprocessedPath postTemplatePath builtHtmlPath
       builtHtml <- readFile builtHtmlPath
+      createDirectoryIfMissing True (takeDirectory targetHtmlPath)
       writeFile targetHtmlPath $ injectToc builtHtml
       writePostMetaKlb (planPostMetaPath plan) (postMeta post) (planPostUrl plan)
       writePostSearchItemKlb (planPostSearchItemPath plan) (postMeta post) (planPostUrl plan) preprocessedPath
       writeCharset (planPostCharsetPath plan) targetHtmlPath
 
--- | Appends one post's metadata as KLB index item into temp index file.
+-- | Writes one post's index metadata artifact (@IndexItem@ in KLB format).
 --
--- On KLB render failure, logs an error and does not append anything.
+-- On KLB render failure, logs an error and does not write output.
 writePostMetaKlb :: FilePath -> PostMeta -> Url -> IO ()
 writePostMetaKlb path meta url = do
   let indexItem = mkIndexItem meta url
   writeKlbOrError path indexItem
 
+-- | Writes one post's search artifact as a 'SearchItem' KLB block.
+--
+-- Content is obtained by converting preprocessed markdown to plaintext with
+-- pandoc, then normalized by KLB rendering.
 writePostSearchItemKlb :: FilePath -> PostMeta -> Url -> FilePath -> IO ()
 writePostSearchItemKlb path meta url preprocessedPath = do
   let title = metaTitle meta
   plaintext <- renderMarkdownToPlaintext preprocessedPath
   writeKlbOrError path (SearchItem title url plaintext)
 
+-- | Writes charset artifact for one generated HTML file.
+--
+-- The artifact contains unique characters only and is consumed by
+-- 'Modules.FontSubset.genFontSubset'.
 writeCharset :: FilePath -> FilePath -> IO ()
 writeCharset path htmlPath = do
   html <- readFile htmlPath
+  createDirectoryIfMissing True (takeDirectory path)
   writeFile path (mkFontSet html)
 
+-- | Generic helper that renders one KLB record and writes it to a file.
+--
+-- Rendering failures are logged and do not throw.
 writeKlbOrError :: Klb a => FilePath -> a -> IO ()
-writeKlbOrError path elem = do
-  let klb = renderKlb [elem]
+writeKlbOrError path item = do
+  let klb = renderKlb [item]
   case klb of
     Left e -> do
       putStrLn ("[Error] render KLB failed: " ++ show e ++ " : " ++ path)
     Right klbStr -> do
+      createDirectoryIfMissing True (takeDirectory path)
       writeFile path klbStr
-

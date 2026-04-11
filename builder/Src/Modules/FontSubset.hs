@@ -10,14 +10,15 @@ import Control.Monad (foldM)
 -- ---[ Overview ]------------------------------------------------------------
 -- | Font subsetting pipeline helpers.
 --
--- This module collects used characters from generated HTML files and invokes
--- @pyftsubset@ to produce the shipped subset font asset.
+-- This module merges per-page charset artifacts and invokes @pyftsubset@ to
+-- produce the shipped subset font asset.
 
 -- ---[ Public API ]------------------------------------------------------------
 
 -- | Builds the unique character set used by font subsetting.
 --
--- Input is index HTML plus all post HTML contents.
+-- Input is one page content string (HTML or cached charset text).
+-- Output order is not semantically important; only set membership matters.
 mkFontSet :: String -> String
 mkFontSet html = (Set.toList . Set.fromList) html
 
@@ -30,9 +31,14 @@ mkPyftsubsetArgs =
   , "--output-file=" ++ subsetFontFilePath
   ]
 
+-- | Internal character-set accumulator type.
 type CharSet = Set.Set Char
 
--- | Generates subset font output from current site HTML files.
+-- | Generates subset font output from cached charset artifacts.
+--
+-- Reads all @.txt@ files under 'charsetArtifactsPath', unions their
+-- characters, writes merged charset to 'fontSetPath', then invokes
+-- @pyftsubset@ with stable production arguments.
 genFontSubset :: IO ()
 genFontSubset = do
   charsetNames <- listDirectory charsetArtifactsPath
@@ -43,6 +49,7 @@ genFontSubset = do
 
   callProcess "pyftsubset" mkPyftsubsetArgs
 
+-- | Merges one charset artifact into the running set.
 updateCharset :: CharSet -> FilePath -> IO CharSet
 updateCharset currentSet path = do
   str <- readFile path

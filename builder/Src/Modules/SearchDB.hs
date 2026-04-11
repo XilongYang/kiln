@@ -1,21 +1,19 @@
 module Modules.SearchDB where
 
-import Data.List (intercalate)
-import Modules.Index.Item
-import Modules.Post
 import Modules.TypeAlias
-import Modules.Utils.String
 import Modules.Utils.Klb
 
 -- ---[ Overview ]------------------------------------------------------------
--- | Search database generator for client-side post search.
+-- | Search-item artifact model shared by build and indexing steps.
 --
--- This module converts posts into normalized plain-text records and serializes
--- them into the @searchdb.json@ payload consumed by the frontend.
+-- The builder writes one KLB block per post and main concatenates those blocks
+-- into @searchdb.json@ consumed by the frontend search script.
 
 -- ---[ Public API ]------------------------------------------------------------
 
--- | Search-document record serialized into @searchdb.json@.
+-- | Search-document record serialized as KLB and concatenated into @searchdb.json@.
+--
+-- Each post contributes exactly one record.
 data SearchItem = SearchItem
   { searchItemTitle   :: String
   , searchItemUrl     :: Url
@@ -23,11 +21,16 @@ data SearchItem = SearchItem
   } deriving (Show, Eq)
 
 instance Klb SearchItem where
+  -- | Encodes one search item into a KLB block with stable key names.
   toKlbBlock item = 
     [ ("searchItemTitle", searchItemTitle item)
     , ("searchItemUrl", searchItemUrl item)
     , ("searchItemContent", searchItemContent item)
     ]
+  -- | Decodes one KLB block back to a search item.
+  --
+  -- Missing required keys raise an error because this is used internally on
+  -- builder-generated artifacts where shape is expected to be stable.
   fromKlbBlock block = SearchItem
     { searchItemTitle = getOrError "searchItemTitle"
     , searchItemUrl = getOrError "searchItemUrl"
@@ -39,5 +42,3 @@ instance Klb SearchItem where
         case lookup key block of
           Just value -> value
           Nothing    -> error ("Missing value of key: " ++ key)
-
-
