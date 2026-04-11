@@ -6,7 +6,9 @@ module Test.Framework.TestSuite
   ) where
 
 import Control.Exception (SomeException, displayException, try)
+import System.Environment (lookupEnv)
 import Test.Framework.Colors
+import Test.Framework.Paths (withRedirectedStdoutToTempLog)
 
 -- Pre-colored status tags for per-test output lines.
 okTag :: String
@@ -52,7 +54,12 @@ runSuite suiteName cases = do
   where
     runIndexedCase :: (Int, TestCase) -> IO Bool
     runIndexedCase (idx, (title, action)) = do
-      result <- try action :: IO (Either SomeException ())
+      stdoutLogFile <- lookupEnv "TEST_ACTION_STDOUT_LOG"
+      let runAction =
+            case stdoutLogFile of
+              Just logFile -> withRedirectedStdoutToTempLog logFile action
+              Nothing -> action
+      result <- try runAction :: IO (Either SomeException ())
       case result of
         -- Pass path: print the green marker and continue.
         Right _ -> do

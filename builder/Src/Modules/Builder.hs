@@ -69,6 +69,8 @@ realExecuteBuildPlan (BuildIndexPlan plan) = do
 -- On KLB parse failure, logs an error and skips writing output.
 buildIndexWithPlan :: IndexBuildPlan -> IO ()
 buildIndexWithPlan plan = do
+  let indexHtmlPath = planIndexHtmlPath plan
+  putStrLn ("[Building] index: " ++ indexHtmlPath)
   indexItemsKlbStr <- readFile tempIndexItemsKlbPath
   let eitherIndexItems = parseKlb indexItemsKlbStr
   case eitherIndexItems of
@@ -77,7 +79,6 @@ buildIndexWithPlan plan = do
     Right indexItems -> do
       let indexTemplatePath = planIndexTemplatePath plan
       indexTemplateHtml <- readFile indexTemplatePath
-      let indexHtmlPath = planIndexHtmlPath plan
       let indexHtml = renderIndex indexItems indexTemplateHtml 
       writeFile indexHtmlPath indexHtml
   
@@ -99,6 +100,7 @@ buildPostWithPlan plan = do
   let targetHtmlPath = planTargetHtmlPath plan
   let sourcePath = planPostSourcePath plan
   post <- parsePost sourcePath
+  putStrLn ("[Building] post: " ++ sourcePath)
   case post of
     Left e -> do
       putStrLn ("[Error] parse post failed: " ++ show e ++ " : " ++ sourcePath)

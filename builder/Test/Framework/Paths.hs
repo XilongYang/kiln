@@ -17,21 +17,25 @@ module Test.Framework.Paths
   , withWorkDir
   , withPrependedPath
   , withEnv
+  , withRedirectedStdoutToTempLog
   ) where
 
 import Modules.Config (rootPath)
-import Control.Exception (bracket_)
+import Control.Exception (bracket, bracket_)
 import System.Directory
   ( createDirectoryIfMissing
   , makeAbsolute
   , doesDirectoryExist
   , getCurrentDirectory
+  , getTemporaryDirectory
   , removePathForcibly
   , setCurrentDirectory
   )
 import System.FilePath ((</>))
 import System.IO.Unsafe (unsafePerformIO)
 import System.Environment (lookupEnv, setEnv, unsetEnv)
+import GHC.IO.Handle (hDuplicate, hDuplicateTo)
+import System.IO (IOMode(AppendMode), hClose, hFlush, stdout, withFile)
 
 -- Structured path bundle for one UT case filesystem sandbox.
 data CasePaths = CasePaths
@@ -147,3 +151,13 @@ withEnv key value action = do
   where
     restore (Just oldValue) = setEnv key oldValue
     restore Nothing = unsetEnv key
+
+withRedirectedStdoutToTempLog :: FilePath -> IO a -> IO a
+withRedirectedStdoutToTempLog logFileName action = do
+  tempDir <- getTemporaryDirectory
+  let logDir = tempDir </> "log"
+  createDirectoryIfMissing True logDir
+  withFile (logDir </> logFileName) AppendMode $ \logHandle ->
+    bracket (hDuplicate stdout) hClose $ \originalStdout -> do
+      hFlush stdout
+      bracket_ (hDuplicateTo logHandle stdout) (hDuplicateTo originalStdout stdout) action

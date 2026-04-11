@@ -2,6 +2,7 @@ module Main where
 
 import System.Exit (exitFailure)
 import Test.Framework.Colors
+import Test.Framework.Paths (withEnv)
 import Test.Framework.TestSuite (SuiteResult(..), runSuite)
 
 import qualified Test.UT.Modules.Builder as UtBuilder
@@ -26,35 +27,36 @@ import qualified Test.UT.Modules.FontSubset as UtFontSubset
 
 main :: IO ()
 main = do
-  results <-
-    sequence
-      [ runSuite UtString.suiteName UtString.testCases
-      , runSuite UtSha256.suiteName UtSha256.testCases
-      , runSuite UtKlb.suiteName UtKlb.testCases
-      , runSuite UtTypeAlias.suiteName UtTypeAlias.testCases
-      , runSuite UtConfig.suiteName UtConfig.testCases
-      , runSuite UtTemplate.suiteName UtTemplate.testCases
-      , runSuite UtTempDir.suiteName UtTempDir.testCases
-      , runSuite UtPostParse.suiteName UtPostParse.testCases
-      , runSuite UtIndexItem.suiteName UtIndexItem.testCases
-      , runSuite UtOrphanCheck.suiteName UtOrphanCheck.testCases
-      , runSuite UtBuildPlan.suiteName UtBuildPlan.testCases
-      , runSuite UtBuildJudger.suiteName UtBuildJudger.testCases
-      , runSuite UtPostPreprocess.suiteName UtPostPreprocess.testCases
-      , runSuite UtToc.suiteName UtToc.testCases
-      , runSuite UtIndexRender.suiteName UtIndexRender.testCases
-      , runSuite UtSearchDB.suiteName UtSearchDB.testCases
-      , runSuite UtFontSubset.suiteName UtFontSubset.testCases
-      , runSuite UtBuilder.suiteName UtBuilder.testCases
-      , runSuite UtMain.suiteName UtMain.testCases
-      ]
-  let successCount = sum (map suitePassed results)
-  let totalCount = sum (map suiteTotal results)
-  if successCount == totalCount
-    then
-      putStrLn $
-        makeColor colorGreen ("All UT passed (" ++ show successCount ++ "/" ++ show totalCount ++ ").")
-    else do
-      putStrLn $
-        makeColor colorRed ("Some UT failed (" ++ show successCount ++ "/" ++ show totalCount ++ " passed).")
-      exitFailure
+  withEnv "TEST_ACTION_STDOUT_LOG" "ut.log" $ do
+    results <-
+      sequence
+        [ runSuite UtString.suiteName UtString.testCases
+        , runSuite UtSha256.suiteName UtSha256.testCases
+        , runSuite UtKlb.suiteName UtKlb.testCases
+        , runSuite UtTypeAlias.suiteName UtTypeAlias.testCases
+        , runSuite UtConfig.suiteName UtConfig.testCases
+        , runSuite UtTemplate.suiteName UtTemplate.testCases
+        , runSuite UtTempDir.suiteName UtTempDir.testCases
+        , runSuite UtPostParse.suiteName UtPostParse.testCases
+        , runSuite UtIndexItem.suiteName UtIndexItem.testCases
+        , runSuite UtOrphanCheck.suiteName UtOrphanCheck.testCases
+        , runSuite UtBuildPlan.suiteName UtBuildPlan.testCases
+        , runSuite UtBuildJudger.suiteName UtBuildJudger.testCases
+        , runSuite UtPostPreprocess.suiteName UtPostPreprocess.testCases
+        , runSuite UtToc.suiteName UtToc.testCases
+        , runSuite UtIndexRender.suiteName UtIndexRender.testCases
+        , runSuite UtSearchDB.suiteName UtSearchDB.testCases
+        , runSuite UtFontSubset.suiteName UtFontSubset.testCases
+        , runSuite UtBuilder.suiteName UtBuilder.testCases
+        , runSuite UtMain.suiteName UtMain.testCases
+        ]
+    let successCount = sum (map suitePassed results)
+    let totalCount = sum (map suiteTotal results)
+    if successCount == totalCount
+      then
+        putStrLn $
+          makeColor colorGreen ("All UT passed (" ++ show successCount ++ "/" ++ show totalCount ++ ").")
+      else do
+        putStrLn $
+          makeColor colorRed ("Some UT failed (" ++ show successCount ++ "/" ++ show totalCount ++ " passed).")
+        exitFailure
