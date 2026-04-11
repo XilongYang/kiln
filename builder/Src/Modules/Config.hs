@@ -5,17 +5,17 @@ import System.FilePath
 -- ---[ Overview ]------------------------------------------------------------
 -- | Centralized path and naming configuration for the build pipeline.
 --
--- Keeping these constants in one module avoids scattering path construction
--- and placeholder conventions across build logic, runtime entrypoint, and UT.
+-- Keeping these constants in one module avoids scattering path construction,
+-- cache layout, and template placeholder conventions across the codebase.
 
--- ---[ Configuration ]------------------------------------------------------------
+-- ---[ Public API ]------------------------------------------------------------
 
 -- | Repository root for all relative build paths.
 rootPath :: FilePath
 rootPath = "."
 
 builderPath :: FilePath
-builderPath = rootPath </> "builder"
+builderPath = rootPath </> "builder" </> "Src"
 
 -- | Directory containing source markdown posts.
 srcPath :: FilePath
@@ -120,6 +120,10 @@ indexTemplateStatePath = cacheStatePath </> "index-template.state"
 postStatePath :: FilePath
 postStatePath = cacheStatePath </> "post"
 
+-- | Aggregate state file representing metadata-artifact collection.
+metaStatePath :: FilePath
+metaStatePath = cacheStatePath </> "meta.state"
+
 -- | Root directory for reusable build artifacts generated per page/post.
 cacheArtifactsPath :: FilePath
 cacheArtifactsPath = cacheRoot </> "artifacts"
@@ -136,9 +140,6 @@ searchItemArtifactsPath = cacheArtifactsPath </> "search-item"
 charsetArtifactsPath :: FilePath
 charsetArtifactsPath = cacheArtifactsPath </> "charset"
 
--- | Legacy temporary index-item KLB file path.
---
--- Kept for compatibility with older tooling/tests; current pipeline uses
--- per-post metadata artifacts under 'metaArtifactsPath'.
-tempIndexItemsKlbPath :: FilePath
-tempIndexItemsKlbPath = tempPath </> "indexitems.klb"
+-- ---[ Implementation Details ]-----------------------------------------------
+-- This module intentionally exposes constants only and keeps no private
+-- implementation helpers.

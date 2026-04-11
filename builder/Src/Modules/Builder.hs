@@ -10,7 +10,8 @@ import Modules.Toc
 import Modules.Index.Item (mkIndexItem)
 import Modules.Post (Post(..), PostMeta (metaTitle))
 import Modules.Utils.Klb
-import Modules.Config (metaArtifactsPath, charsetArtifactsPath)
+import Modules.Utils.Files
+import Modules.Config (metaArtifactsPath, charsetArtifactsPath, metaStatePath)
 import Modules.TypeAlias (Url)
 import Modules.SearchDB
 import Modules.FontSubset
@@ -21,11 +22,11 @@ import System.FilePath
 -- ---[ Overview ]------------------------------------------------------------
 -- | Build-plan executor for post pages and homepage index generation.
 --
--- This module is the runtime orchestrator of the site builder:
+-- This module is the runtime orchestration layer:
 -- - receives typed plans from 'Modules.BuildPlan'
 -- - asks 'Modules.BuildJudger' whether each plan should run
--- - executes post/index build workflows
--- - writes per-post cache artifacts consumed by later aggregation steps
+-- - executes post/index workflows when needed
+-- - writes artifacts consumed by downstream aggregation
 --
 -- High-level responsibilities:
 -- - gate execution through 'shouldBuild'
@@ -39,14 +40,14 @@ import System.FilePath
 
 -- | Error type for post-build sub-steps.
 --
--- Currently kept as module-local documentation of failure classes.
--- The runtime still reports errors by logging instead of returning this type.
+-- Kept as local documentation for failure classes. Runtime currently reports
+-- failures via logging and does not surface this type to callers.
 data BuildPostError
   = BuildPostParseError ParsePostError
   | BuildPostRenderKlbError KlbRenderError
   deriving (Show, Eq)
 
--- | Executes a build plan when it is marked as needing rebuild.
+-- | Executes a build plan only when rebuild is required.
 --
 -- Behavior:
 -- - if 'shouldBuild' is 'False', this is a no-op
@@ -59,11 +60,13 @@ executeBuildPlan plan = do
 
 -- ---[ Implementation Details ]-----------------------------------------------
 
--- | Dispatches concrete build action by 'BuildPlan' constructor.
+-- | Dispatches concrete execution by 'BuildPlan' constructor.
 realExecuteBuildPlan :: BuildPlan -> IO ()
 realExecuteBuildPlan (BuildPostPlan plan) = do
   buildPostWithPlan plan
+  hashUpdate (planPostSourcePath plan) (planPostStatePath plan)
 realExecuteBuildPlan (BuildIndexPlan plan) = do
+  hashUpdate metaArtifactsPath metaStatePath
   buildIndexWithPlan plan
 
 -- | Builds @index.html@ from cached per-post metadata artifacts.
@@ -126,7 +129,7 @@ buildPostWithPlan plan = do
       writePostSearchItemKlb (planPostSearchItemPath plan) (postMeta post) (planPostUrl plan) preprocessedPath
       writeCharset (planPostCharsetPath plan) targetHtmlPath
 
--- | Writes one post's index metadata artifact (@IndexItem@ in KLB format).
+-- | Writes one post index metadata artifact (@IndexItem@ in KLB format).
 --
 -- On KLB render failure, logs an error and does not write output.
 writePostMetaKlb :: FilePath -> PostMeta -> Url -> IO ()
@@ -134,7 +137,7 @@ writePostMetaKlb path meta url = do
   let indexItem = mkIndexItem meta url
   writeKlbOrError path indexItem
 
--- | Writes one post's search artifact as a 'SearchItem' KLB block.
+-- | Writes one post search artifact as a 'SearchItem' KLB block.
 --
 -- Content is obtained by converting preprocessed markdown to plaintext with
 -- pandoc, then normalized by KLB rendering.
@@ -154,7 +157,7 @@ writeCharset path htmlPath = do
   createDirectoryIfMissing True (takeDirectory path)
   writeFile path (mkFontSet html)
 
--- | Generic helper that renders one KLB record and writes it to a file.
+-- | Renders one KLB record and writes it to a file.
 --
 -- Rendering failures are logged and do not throw.
 writeKlbOrError :: Klb a => FilePath -> a -> IO ()

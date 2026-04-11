@@ -8,36 +8,50 @@ import System.Directory
   , getModificationTime
   )
 import System.FilePath
+import Modules.Utils.Files (hashCheck)
 
 -- ---[ Overview ]------------------------------------------------------------
--- | Build-decision rules for typed build plans.
+-- | Rebuild decision rules for typed build plans.
 --
--- This module evaluates whether a build plan should run, based on plan kind
--- and source/target file timestamps.
+-- This module centralizes incremental-build policy:
+-- - post plans are gated by source hash state and output existence
+-- - index plan is gated by metadata-artifact hash state
+-- - both plans are additionally gated by builder-source hash state
 
 -- ---[ Public API ]------------------------------------------------------------
 
 -- | Decides whether the given plan should execute.
 --
--- Index plan currently always rebuilds; post plan is timestamp-based.
+-- Returns 'True' when cache/state checks indicate stale or missing outputs.
 shouldBuild :: BuildPlan -> IO Bool
-shouldBuild (BuildIndexPlan _) = return True
+shouldBuild (BuildIndexPlan plan) = indexShouldBuild plan
 shouldBuild (BuildPostPlan plan) = postShouldBuild plan
 
 -- ---[ Implementation Details ]-----------------------------------------------
+-- | Index rebuild rule.
+--
+-- Rebuild only when either:
+-- - builder sources changed, or
+-- - metadata artifact aggregate changed.
+indexShouldBuild :: IndexBuildPlan -> IO Bool
+indexShouldBuild plan = do
+  builderNotChange <- hashCheck builderPath builderStatePath
+  hashCheckPassed <- hashCheck metaArtifactsPath metaStatePath
+  return $ not (builderNotChange && hashCheckPassed)
 
--- | Rebuild check for post plan:
--- - rebuild if target html is missing
--- - rebuild if source markdown is newer than target html
+-- | Post rebuild rule.
+--
+-- Rebuild only when any prerequisite is invalid:
+-- - builder sources changed
+-- - target html missing
+-- - source hash differs from stored post state
 postShouldBuild :: PostBuildPlan -> IO Bool
 postShouldBuild plan = do
   let srcPath = planPostSourcePath plan
   let targetPath = planTargetHtmlPath plan
+  let statePath = planPostStatePath plan
 
+  builderNotChange <- hashCheck builderPath builderStatePath
   targetExists <- doesFileExist $ planTargetHtmlPath plan
-  if not targetExists 
-    then return True
-    else do
-      srcTime <- getModificationTime srcPath
-      targetTime <- getModificationTime targetPath
-      return (srcTime > targetTime)
+  hashCheckPassed <- hashCheck srcPath statePath
+  return $ not (builderNotChange && targetExists && hashCheckPassed)

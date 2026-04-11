@@ -10,22 +10,36 @@ import Modules.SearchDB
 import Modules.Template
 import Modules.Utils.OrphanCheck (checkOrphans)
 import Modules.Utils.TempDir (withTempDir)
+import Modules.Utils.Files
 
-import System.Directory (listDirectory)
+import System.Directory (listDirectory, createDirectoryIfMissing)
 import System.FilePath
 
+-- ---[ Overview ]------------------------------------------------------------
 -- | Site build entrypoint.
 --
--- Build flow:
--- 1) Prepare isolated temp directory and run orphan checks.
--- 2) Render templates to intermediate files.
--- 3) Build every post from source files and emit per-post artifacts.
--- 4) Build index page from metadata artifacts.
--- 5) Concatenate search-item artifacts into search database payload.
--- 6) Build font subset from charset artifacts.
+-- This module wires together the top-level build pipeline:
+-- - prepare isolated temp workspace
+-- - render templates once per run
+-- - execute post and index build plans
+-- - aggregate search payload
+-- - generate font subset assets
 --
--- Directory creation for post/html/cache artifacts is handled in
--- 'Modules.Builder' when files are materialized.
+-- Directory creation for target and cache outputs is delegated to lower-level
+-- writers in 'Modules.Builder' and utility helpers.
+
+-- ---[ Public API ]------------------------------------------------------------
+
+-- | Executes one complete site build in the current workspace.
+--
+-- Build flow:
+-- 1) Run orphan checks.
+-- 2) Expand templates into temp files.
+-- 3) Build posts and emit per-post artifacts.
+-- 4) Build index from metadata artifacts.
+-- 5) Concatenate search-item artifacts into @searchdb.json@.
+-- 6) Generate subset font from charset artifacts.
+-- 7) Update builder source hash state.
 main :: IO ()
 main = withTempDir tempPath $ do
   -- Warning when references point to missing posts/resources.
@@ -54,6 +68,10 @@ main = withTempDir tempPath $ do
 
   -- Subset fonts to reduce shipped asset size.
   genFontSubset 
+
+  hashUpdate builderPath builderStatePath
+
+-- ---[ Implementation Details ]-----------------------------------------------
 
 -- | Appends one serialized search-item KLB block into @searchdb.json@.
 --
