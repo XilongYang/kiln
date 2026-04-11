@@ -126,7 +126,7 @@ Direct builder commands (without `make`):
 ```bash
 runghc -ibuilder/Src builder/Src/Main.hs
 runghc -ibuilder/Src -ibuilder -i. builder/Test/UT/RunTest.hs
-UT_ENABLE_PERF=1 runghc -ibuilder/Src -ibuilder -i. builder/Test/PT/RunPerf.hs
+runghc -ibuilder/Src -ibuilder -i. builder/Test/PT/RunPerf.hs
 ```
 
 ## Incremental Build Rule

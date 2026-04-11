@@ -14,7 +14,6 @@ import System.Directory
   , getModificationTime
   , listDirectory
   )
-import System.Environment (lookupEnv)
 import System.FilePath ((</>), takeExtension)
 import System.IO (IOMode(AppendMode), hPutStr, withFile)
 import System.Process (callProcess)
@@ -36,67 +35,55 @@ testCases =
 testBuild10000NormalPosts :: TestCase
 testBuild10000NormalPosts =
   mkTestCase "complete build: 10000 normal posts (10 KiB each)" $ do
-    enabled <- ensurePerfEnabled "complete build: 10000 normal posts (10 KiB each)"
-    if not enabled
-      then pure ()
-      else do
-        repoRoot <- getCurrentDirectory
-        let workRoot = workspacePath repoRoot "10000-normal"
-        prepareWorkspace repoRoot "10000-normal" datasetNormalRelPath HardlinkMode
-        withPerfEnv workRoot $ do
-          (_, metrics) <- measurePerformance workRoot runFullBuild
-          printPerformanceReport "10000 normal posts (10 KiB each)" metrics
-          firstPostExists <- doesFileExist (postPath </> "post-00001.html")
-          lastPostExists <- doesFileExist (postPath </> "post-10000.html")
-          assertTrue "build should generate first post html in performance case #1" firstPostExists
-          assertTrue "build should generate last post html in performance case #1" lastPostExists
+    repoRoot <- getCurrentDirectory
+    let workRoot = workspacePath repoRoot "10000-normal"
+    prepareWorkspace repoRoot "10000-normal" datasetNormalRelPath HardlinkMode
+    withPerfEnv workRoot $ do
+      (_, metrics) <- measurePerformance workRoot runFullBuild
+      printPerformanceReport "10000 normal posts (10 KiB each)" metrics
+      firstPostExists <- doesFileExist (postPath </> "post-00001.html")
+      lastPostExists <- doesFileExist (postPath </> "post-10000.html")
+      assertTrue "build should generate first post html in performance case #1" firstPostExists
+      assertTrue "build should generate last post html in performance case #1" lastPostExists
 
 testBuild10HugePosts :: TestCase
 testBuild10HugePosts =
   mkTestCase "complete build: 5 huge posts (25 MiB each)" $ do
-    enabled <- ensurePerfEnabled "complete build: 5 huge posts (25 MiB each)"
-    if not enabled
-      then pure ()
-      else do
-        repoRoot <- getCurrentDirectory
-        let workRoot = workspacePath repoRoot "10-huge"
-        prepareWorkspace repoRoot "10-huge" datasetHugeRelPath HardlinkMode
-        withPerfEnv workRoot $ do
-          (_, metrics) <- measurePerformance workRoot runFullBuild
-          printPerformanceReport "5 huge posts (25 MiB each)" metrics
-          firstPostExists <- doesFileExist (postPath </> "post-00001.html")
-          lastPostExists <- doesFileExist (postPath </> "post-00005.html")
-          assertTrue "build should generate first huge post html in performance case #2" firstPostExists
-          assertTrue "build should generate last huge post html in performance case #2" lastPostExists
+    repoRoot <- getCurrentDirectory
+    let workRoot = workspacePath repoRoot "10-huge"
+    prepareWorkspace repoRoot "10-huge" datasetHugeRelPath HardlinkMode
+    withPerfEnv workRoot $ do
+      (_, metrics) <- measurePerformance workRoot runFullBuild
+      printPerformanceReport "5 huge posts (25 MiB each)" metrics
+      firstPostExists <- doesFileExist (postPath </> "post-00001.html")
+      lastPostExists <- doesFileExist (postPath </> "post-00005.html")
+      assertTrue "build should generate first huge post html in performance case #2" firstPostExists
+      assertTrue "build should generate last huge post html in performance case #2" lastPostExists
 
 testBuild10000PostsOneChanged :: TestCase
 testBuild10000PostsOneChanged =
   mkTestCase "complete build with one changed source: 10000 normal posts (10 KiB each)" $ do
-    enabled <- ensurePerfEnabled "complete build with one changed source: 10000 normal posts (10 KiB each)"
-    if not enabled
-      then pure ()
-      else do
-        repoRoot <- getCurrentDirectory
-        let workRoot = workspacePath repoRoot "10000-one-changed"
-        prepareWorkspace repoRoot "10000-one-changed" datasetNormalRelPath DeepCopyMode
-        withPerfEnv workRoot $ do
-          runFullBuild
-          let changedSrc = srcPath </> "post-00001.md"
-          let changedHtml = postPath </> "post-00001.html"
-          let stableHtml = postPath </> "post-10000.html"
+    repoRoot <- getCurrentDirectory
+    let workRoot = workspacePath repoRoot "10000-one-changed"
+    prepareWorkspace repoRoot "10000-one-changed" datasetNormalRelPath DeepCopyMode
+    withPerfEnv workRoot $ do
+      runFullBuild
+      let changedSrc = srcPath </> "post-00001.md"
+      let changedHtml = postPath </> "post-00001.html"
+      let stableHtml = postPath </> "post-10000.html"
 
-          beforeChanged <- getModificationTime changedHtml
-          beforeStable <- getModificationTime stableHtml
-          threadDelay 1200000
-          appendTinyChange changedSrc
+      beforeChanged <- getModificationTime changedHtml
+      beforeStable <- getModificationTime stableHtml
+      threadDelay 1200000
+      appendTinyChange changedSrc
 
-          (_, metrics) <- measurePerformance workRoot runFullBuild
-          printPerformanceReport "10000 normal posts, one tiny source changed" metrics
+      (_, metrics) <- measurePerformance workRoot runFullBuild
+      printPerformanceReport "10000 normal posts, one tiny source changed" metrics
 
-          afterChanged <- getModificationTime changedHtml
-          afterStable <- getModificationTime stableHtml
-          assertTrue "changed post html should be rebuilt in performance case #3" (afterChanged > beforeChanged)
-          assertEq "unchanged post html should not be rebuilt in performance case #3" beforeStable afterStable
+      afterChanged <- getModificationTime changedHtml
+      afterStable <- getModificationTime stableHtml
+      assertTrue "changed post html should be rebuilt in performance case #3" (afterChanged > beforeChanged)
+      assertEq "unchanged post html should not be rebuilt in performance case #3" beforeStable afterStable
 
 runFullBuild :: IO ()
 runFullBuild = do
@@ -148,12 +135,3 @@ withPerfEnv :: FilePath -> IO a -> IO a
 withPerfEnv workRoot action =
   withWorkDir workRoot $
     withPrependedPath (workRoot </> "bin") action
-
-ensurePerfEnabled :: String -> IO Bool
-ensurePerfEnabled title = do
-  enabled <- lookupEnv "UT_ENABLE_PERF"
-  case enabled of
-    Just "1" -> pure True
-    _ -> do
-      putStrLn ("[PERF][SKIP] " ++ title ++ " (set UT_ENABLE_PERF=1 to run)")
-      pure False
