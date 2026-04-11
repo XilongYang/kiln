@@ -31,6 +31,10 @@ data PostBuildPlan = PostBuildPlan
   , planBuiltHtmlPath    :: FilePath
   , planTargetHtmlPath   :: FilePath
   , planPostTemplatePath :: FilePath
+  , planPostStatePath :: FilePath
+  , planPostMetaPath :: FilePath
+  , planPostSearchItemPath :: FilePath
+  , planPostCharsetPath :: FilePath
   , planPostUrl          :: Url
   } deriving (Show, Eq)
 
@@ -49,6 +53,10 @@ mkBuildPostPlan path = BuildPostPlan PostBuildPlan
   , planBuiltHtmlPath = tempPath </> (baseName ++ ".html")
   , planTargetHtmlPath = postPath </> (baseName ++ ".html")
   , planPostTemplatePath = renderedTemplatePostPath
+  , planPostStatePath = postStatePath </> (baseName ++ ".state")
+  , planPostMetaPath = metaArtifactsPath </> (baseName ++ ".klb")
+  , planPostSearchItemPath = searchItemArtifactsPath </> (baseName ++ ".klb")
+  , planPostCharsetPath = charsetArtifactsPath </> (baseName ++ ".txt")
   , planPostUrl = webPostPath ++ baseName ++ ".html"
   }
   where

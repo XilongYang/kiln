@@ -1,10 +1,11 @@
 module Modules.FontSubset where
 
-import Data.Set (fromList, toList)
+import qualified Data.Set as Set (Set, fromList, toList, union, empty) 
 import Modules.Config
 import System.Directory (listDirectory)
 import System.FilePath
 import System.Process (callProcess)
+import Control.Monad (foldM)
 
 -- ---[ Overview ]------------------------------------------------------------
 -- | Font subsetting pipeline helpers.
@@ -17,10 +18,8 @@ import System.Process (callProcess)
 -- | Builds the unique character set used by font subsetting.
 --
 -- Input is index HTML plus all post HTML contents.
-mkFontSet :: String -> [String] -> String
-mkFontSet indexHtml postHtmls = (toList . fromList) (indexHtml ++ concat postHtmls)
-
--- ---[ Implementation Details ]-----------------------------------------------
+mkFontSet :: String -> String
+mkFontSet html = (Set.toList . Set.fromList) html
 
 -- | Builds @pyftsubset@ arguments for the production subset pipeline.
 mkPyftsubsetArgs :: [String]
@@ -31,16 +30,20 @@ mkPyftsubsetArgs =
   , "--output-file=" ++ subsetFontFilePath
   ]
 
+type CharSet = Set.Set Char
+
 -- | Generates subset font output from current site HTML files.
 genFontSubset :: IO ()
 genFontSubset = do
-  indexHtml <- readFile indexPath 
-  postNames <- listDirectory postPath
-  let postPaths = map (\f -> postPath </> f) $ filter (\f -> takeExtension f == ".html") postNames 
-  postHtmls <- mapM readFile postPaths
+  charsetNames <- listDirectory charsetArtifactsPath
+  let charsetPaths = map (\f -> charsetArtifactsPath </> f) $ filter (\f -> takeExtension f == ".txt") charsetNames
+  charset <- foldM updateCharset (Set.empty) charsetPaths 
 
-  let fontSet = mkFontSet indexHtml postHtmls
-
-  writeFile fontSetPath fontSet 
+  writeFile fontSetPath (Set.toList charset)
 
   callProcess "pyftsubset" mkPyftsubsetArgs
+
+updateCharset :: CharSet -> FilePath -> IO CharSet
+updateCharset currentSet path = do
+  str <- readFile path
+  pure $ Set.union currentSet (Set.fromList str)

@@ -103,14 +103,29 @@ cacheRoot = rootPath </> ".cache"
 cacheStatePath :: FilePath
 cacheStatePath = cacheRoot </> "state"
 
-cacheBuilderPath :: FilePath
-cacheBuilderPath = cacheStatePath </> "builder.cache"
+builderStatePath :: FilePath
+builderStatePath = cacheStatePath </> "builder.state"
 
-cachePostTemplatePath :: FilePath
-cachePostTemplatePath  = cacheStatePath </> "post-template.cache"
+postTemplateStatePath :: FilePath
+postTemplateStatePath = cacheStatePath </> "post-template.state"
 
-cacheIndexTemplatePath :: FilePath
-cacheIndexTemplatePath  = cacheStatePath </> "index-template.cache"
+indexTemplateStatePath :: FilePath
+indexTemplateStatePath = cacheStatePath </> "index-template.state"
+
+postStatePath :: FilePath
+postStatePath = cacheStatePath </> "post"
+
+cacheArtifactsPath :: FilePath
+cacheArtifactsPath = cacheRoot </> "artifacts"
+
+metaArtifactsPath :: FilePath
+metaArtifactsPath = cacheArtifactsPath </> "meta"
+
+searchItemArtifactsPath :: FilePath
+searchItemArtifactsPath = cacheArtifactsPath </> "search-item"
+
+charsetArtifactsPath :: FilePath
+charsetArtifactsPath = cacheArtifactsPath </> "charset"
 
 tempIndexItemsKlbPath :: FilePath
 tempIndexItemsKlbPath = tempPath </> "indexitems.klb"

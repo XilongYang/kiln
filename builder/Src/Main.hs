@@ -38,6 +38,10 @@ main = withTempDir tempPath $ do
 
   -- Ensure target directory exists before writing post pages.
   createDirectoryIfMissing True postPath
+  createDirectoryIfMissing True cacheStatePath
+  createDirectoryIfMissing True metaArtifactsPath
+  createDirectoryIfMissing True searchItemArtifactsPath
+  createDirectoryIfMissing True charsetArtifactsPath
 
   -- Build each post page.
   postFileNames <- listDirectory srcPath
@@ -50,7 +54,14 @@ main = withTempDir tempPath $ do
   executeBuildPlan indexBuildPlan 
 
   -- Generate client-side search index.
-  -- genSearchDB searchDBPath posts 
+  searchItemFileNames <- listDirectory searchItemArtifactsPath
+  let searchItemPaths = map (\f -> searchItemArtifactsPath </> f) $ filter (\f -> takeExtension f == ".klb") searchItemFileNames 
+  mapM_ appendSearchItem searchItemPaths
 
   -- Subset fonts to reduce shipped asset size.
-  -- genFontSubset 
+  genFontSubset 
+
+appendSearchItem :: FilePath -> IO ()
+appendSearchItem path = do
+  item <- readFile path
+  appendFile searchDBPath item

@@ -8,10 +8,15 @@ import Modules.Post.Parse
 import Modules.Pandoc
 import Modules.Toc
 import Modules.Index.Item (mkIndexItem)
-import Modules.Post (Post(postMeta), PostMeta)
+import Modules.Post (Post(..), PostMeta (metaTitle))
 import Modules.Utils.Klb
-import Modules.Config (tempIndexItemsKlbPath)
+import Modules.Config (tempIndexItemsKlbPath, metaArtifactsPath, charsetArtifactsPath)
 import Modules.TypeAlias (Url)
+import Modules.SearchDB
+import Modules.FontSubset
+
+import System.Directory (listDirectory)
+import System.FilePath
 
 -- ---[ Overview ]------------------------------------------------------------
 -- | Build-plan executor for post and index generation.
@@ -71,8 +76,10 @@ buildIndexWithPlan :: IndexBuildPlan -> IO ()
 buildIndexWithPlan plan = do
   let indexHtmlPath = planIndexHtmlPath plan
   putStrLn ("[Building] index: " ++ indexHtmlPath)
-  indexItemsKlbStr <- readFile tempIndexItemsKlbPath
-  let eitherIndexItems = parseKlb indexItemsKlbStr
+  metaFileNames <- listDirectory metaArtifactsPath 
+  let metaPaths = map (\f -> metaArtifactsPath  </> f) $ filter (\f -> takeExtension f == ".klb") metaFileNames
+  indexItemsKlbs <- traverse readFile metaPaths
+  let eitherIndexItems = parseKlb (concat indexItemsKlbs)
   case eitherIndexItems of
     Left e -> do
       putStrLn $ "[Error] parse KLB failed: " ++ show e
@@ -81,7 +88,8 @@ buildIndexWithPlan plan = do
       indexTemplateHtml <- readFile indexTemplatePath
       let indexHtml = renderIndex indexItems indexTemplateHtml 
       writeFile indexHtmlPath indexHtml
-  
+      writeCharset (charsetArtifactsPath </> "index.txt") indexHtmlPath
+
 -- | Builds one post HTML page from a post build plan.
 --
 -- Pipeline:
@@ -109,17 +117,35 @@ buildPostWithPlan plan = do
       runPandoc preprocessedPath postTemplatePath builtHtmlPath
       builtHtml <- readFile builtHtmlPath
       writeFile targetHtmlPath $ injectToc builtHtml
-      writePostKlb (postMeta post) (planPostUrl plan)
+      writePostMetaKlb (planPostMetaPath plan) (postMeta post) (planPostUrl plan)
+      writePostSearchItemKlb (planPostSearchItemPath plan) (postMeta post) (planPostUrl plan) preprocessedPath
+      writeCharset (planPostCharsetPath plan) targetHtmlPath
 
 -- | Appends one post's metadata as KLB index item into temp index file.
 --
 -- On KLB render failure, logs an error and does not append anything.
-writePostKlb :: PostMeta -> Url -> IO ()
-writePostKlb meta url = do
+writePostMetaKlb :: FilePath -> PostMeta -> Url -> IO ()
+writePostMetaKlb path meta url = do
   let indexItem = mkIndexItem meta url
-  let klb = renderKlb [indexItem]
+  writeKlbOrError path indexItem
+
+writePostSearchItemKlb :: FilePath -> PostMeta -> Url -> FilePath -> IO ()
+writePostSearchItemKlb path meta url preprocessedPath = do
+  let title = metaTitle meta
+  plaintext <- renderMarkdownToPlaintext preprocessedPath
+  writeKlbOrError path (SearchItem title url plaintext)
+
+writeCharset :: FilePath -> FilePath -> IO ()
+writeCharset path htmlPath = do
+  html <- readFile htmlPath
+  writeFile path (mkFontSet html)
+
+writeKlbOrError :: Klb a => FilePath -> a -> IO ()
+writeKlbOrError path elem = do
+  let klb = renderKlb [elem]
   case klb of
     Left e -> do
-      putStrLn ("[Error] render KLB failed: " ++ show e)
+      putStrLn ("[Error] render KLB failed: " ++ show e ++ " : " ++ path)
     Right klbStr -> do
-      appendFile tempIndexItemsKlbPath klbStr
+      writeFile path klbStr
+
