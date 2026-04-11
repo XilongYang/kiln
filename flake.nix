@@ -23,6 +23,9 @@
         haskell.packages.ghc9103.haskell-language-server
         vscode-langservers-extracted
         typescript-language-server
+
+        # CodeX Dependencies
+        bubblewrap
       ];
     };
   };
