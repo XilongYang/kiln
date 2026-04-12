@@ -4,12 +4,11 @@ module Test.Framework.Performance
   , printPerformanceReport
   ) where
 
-import Control.Concurrent (ThreadId, forkIO, killThread, myThreadId, threadDelay)
-import Control.Exception (Exception, finally, throwIO, throwTo)
+import Control.Concurrent (forkIO, killThread, threadDelay)
+import Control.Exception (finally)
 import qualified Data.ByteString.Char8 as BS
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.List (isPrefixOf)
-import Data.Typeable (Typeable)
 import GHC.Clock (getMonotonicTimeNSec)
 import System.Mem (performMajorGC)
 import System.CPUTime (getCPUTime)
@@ -21,17 +20,6 @@ import System.Directory
   )
 import System.FilePath ((</>))
 import System.IO (hPutStrLn, stderr)
-
-data PerfMemoryLimitExceeded = PerfMemoryLimitExceeded
-  { memLimitExceededActualKb :: Integer
-  , memLimitExceededLimitKb :: Integer
-  }
-  deriving (Show, Typeable)
-
-instance Exception PerfMemoryLimitExceeded
-
-perfMemoryLimitKb :: Integer
-perfMemoryLimitKb = 5 * 1024 * 1024
 
 data PerfMetrics = PerfMetrics
   { perfWallMs :: Double
@@ -63,13 +51,8 @@ measurePerformance workspace action = do
   ioBefore <- readProcIo
   rssBefore <- readVmRssKb
 
-  if rssBefore > perfMemoryLimitKb
-    then throwIO (PerfMemoryLimitExceeded rssBefore perfMemoryLimitKb)
-    else pure ()
-
   peakRef <- newIORef rssBefore
-  mainTid <- myThreadId
-  samplerTid <- forkIO (samplePeakRssWithLimit mainTid peakRef perfMemoryLimitKb)
+  samplerTid <- forkIO (samplePeakRss peakRef)
 
   wallStartNs <- getMonotonicTimeNSec
   cpuStartPs <- getCPUTime
@@ -159,15 +142,12 @@ showIecFromKiB kib =
             then sign ++ showFixed1 mib ++ " MiB"
             else sign ++ showFixed1 gib ++ " GiB"
 
-samplePeakRssWithLimit :: ThreadId -> IORef Integer -> Integer -> IO ()
-samplePeakRssWithLimit mainTid peakRef limitKb = do
+samplePeakRss :: IORef Integer -> IO ()
+samplePeakRss peakRef = do
   rss <- readVmRssKb
   atomicModifyIORef' peakRef (\old -> (max old rss, ()))
-  if rss > limitKb
-    then throwTo mainTid (PerfMemoryLimitExceeded rss limitKb)
-    else pure ()
   threadDelay 50000
-  samplePeakRssWithLimit mainTid peakRef limitKb
+  samplePeakRss peakRef
 
 readProcIo :: IO ProcIo
 readProcIo = do

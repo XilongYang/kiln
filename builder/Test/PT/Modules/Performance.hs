@@ -87,6 +87,7 @@ testBuild10000PostsOneChanged =
 
 runFullBuild :: IO ()
 runFullBuild = do
+  createDirectoryIfMissing True builderPath
   createDirectoryIfMissing True tempPath
   checkOrphans
   templatePost <- expandTemplate templatePostPath templateComponentPath

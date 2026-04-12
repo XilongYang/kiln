@@ -44,10 +44,12 @@ setupMainFixtureTree = do
   createDirectoryIfMissing True srcPath
   createDirectoryIfMissing True templateComponentPath
   createDirectoryIfMissing True fontPath
+  createDirectoryIfMissing True builderPath
   writeFile (srcPath </> "fixture.md") fixturePostMarkdown
   writeFile templatePostPath fixturePostTemplate
   writeFile templateIndexPath fixtureIndexTemplate
   writeFile originFontFilePath "fake-otf"
+  writeFile (builderPath </> "main-ut-builder-stub.hs") "stub"
 
 setupFontSubsetFixtureTree :: IO ()
 setupFontSubsetFixtureTree = do

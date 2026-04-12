@@ -31,7 +31,7 @@ testCases =
 testExecuteBuildPostPlan :: TestCase
 testExecuteBuildPostPlan =
   mkTestCase "executeBuildPlan runs post plan and writes html under .mock/post" $
-    withCasePathsInSandbox suiteName "executeBuildPostPlan" ["src", "post", "temp", "template"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "executeBuildPostPlan" ["src", "post", "temp", "template", "builder/Src"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "parse-post-fixture.md"
           postTemplatePath = templateFile casePaths "post.html"
           outputPath = tempFile casePaths "builder-ut-preprocessed.md"
@@ -40,6 +40,7 @@ testExecuteBuildPostPlan =
           metaKlbPath = tempFile casePaths "builder-ut-meta.klb"
           searchItemPath = tempFile casePaths "builder-ut-search-item.klb"
           charsetPath = tempFile casePaths "builder-ut-charset.txt"
+      writeFile (builderPath </> "builder-ut-stub.hs") "stub"
       copyFile parsePostFixturePath sourcePath
       copyFile postTemplateFixturePath postTemplatePath
       let basePlan = expectPostPlan (mkBuildPostPlan sourcePath)
@@ -104,11 +105,12 @@ testExecuteBuildPostPlan =
 testExecuteBuildIndexPlan :: TestCase
 testExecuteBuildIndexPlan =
   mkTestCase "executeBuildPlan renders index html from metadata artifacts and writes charset artifact" $
-    withCasePathsInSandbox suiteName "executeBuildIndexPlan" ["post", "temp", "template", ".cache/artifacts/meta", ".cache/artifacts/charset"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "executeBuildIndexPlan" ["post", "temp", "template", ".cache/artifacts/meta", ".cache/artifacts/charset", "builder/Src"] $ \casePaths -> do
       let indexTemplatePath = templateFile casePaths "index.html"
           indexOutputPath = postFile casePaths "builder-ut-index.html"
           metaPath = metaArtifactsPath </> "index-source.klb"
           indexCharsetPath = charsetArtifactsPath </> "index.txt"
+      writeFile (builderPath </> "builder-ut-stub.hs") "stub"
       writeFile indexTemplatePath "<html><body>$posts$</body></html>"
       klb <-
         case renderKlb [IndexItem "Index Title" "2026" "03" "22" "/post/index-title.html"] of

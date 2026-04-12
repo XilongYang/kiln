@@ -1,7 +1,6 @@
 module Modules.Utils.Files (writeFileWithDirectory, hashCheck, hashUpdate, hashPath) where
 
 import Data.List (sort)
-import Modules.Utils.Sha256
 import System.Directory
 import System.FilePath
 import System.IO
@@ -9,6 +8,7 @@ import Control.Exception (evaluate)
 import Control.DeepSeq (force)
 import Control.Monad (forM)
 import Modules.Config (tempPath)
+import System.Process (readProcess)
 
 -- ---[ Overview ]------------------------------------------------------------
 -- | File IO and hash-state helpers for incremental build decisions.
@@ -98,12 +98,6 @@ readFileStrict path =
     evaluate (force s)
     pure s
 
--- | Hashes one file by its full content.
-hashFile :: FilePath -> IO String
-hashFile path = do
-  fileContent <- readFile path
-  return (sha256Hex fileContent)
-
 -- | Hashes a directory deterministically.
 --
 -- Recursively collects all file paths, sorts them for stable ordering, hashes
@@ -112,9 +106,7 @@ hashDir :: FilePath -> IO String
 hashDir path = do
   srcCodePaths <- sort <$> listFilesRecursive path
   srcHashs <- mapM hashFile srcCodePaths 
-  return (finalHash srcHashs)
-  where
-    finalHash = (sha256Hex . concat)
+  (hashStr . concat) srcHashs
 
 -- | Lists all files under directory recursively.
 listFilesRecursive :: FilePath -> IO [FilePath]
@@ -127,3 +119,15 @@ listFilesRecursive path = do
             then listFilesRecursive fullPath
             else return [fullPath]
     return (concat paths)
+
+hashFile :: FilePath -> IO String
+hashFile path = do
+  rawOutput <- readProcess "sha256sum" [path] ""
+  let (hash, _) = break (== ' ') rawOutput
+  return hash
+
+hashStr :: String -> IO String
+hashStr str = do
+  rawOutput <- readProcess "sha256sum" [] str
+  let (hash, _) = break (== ' ') rawOutput
+  return hash

@@ -109,6 +109,13 @@ Run performance tests:
 make test-perf
 ```
 
+`test-perf` now runs under a shell `ulimit` virtual-memory cap (default `5242880` KiB, about `5 GiB`) to avoid PT runs exhausting host memory.
+You can override it per run:
+
+```bash
+make test-perf PT_ULIMIT_VMEM_KB=3145728
+```
+
 Prepare/rebuild performance test datasets manually:
 
 ```bash
@@ -126,7 +133,7 @@ Direct builder commands (without `make`):
 ```bash
 runghc -ibuilder/Src builder/Src/Main.hs
 runghc -ibuilder/Src -ibuilder -i. builder/Test/UT/RunTest.hs
-runghc -ibuilder/Src -ibuilder -i. builder/Test/PT/RunPerf.hs
+ulimit -Sv 5242880; runghc -ibuilder/Src -ibuilder -i. builder/Test/PT/RunPerf.hs
 ```
 
 ## Incremental Build Rule

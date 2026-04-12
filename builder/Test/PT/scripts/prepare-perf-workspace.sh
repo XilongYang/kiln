@@ -24,6 +24,7 @@ mkdir -p "$WORK_ROOT/src"
 mkdir -p "$WORK_ROOT/template/component"
 mkdir -p "$WORK_ROOT/res/fonts"
 mkdir -p "$WORK_ROOT/bin"
+mkdir -p "$WORK_ROOT/builder/Src"
 
 case "$COPY_MODE" in
   hardlink)
@@ -86,3 +87,4 @@ done
 EOF
 
 chmod +x "$WORK_ROOT/bin/pandoc" "$WORK_ROOT/bin/pyftsubset"
+echo "stub" > "$WORK_ROOT/builder/Src/perf-builder-stub.hs"
