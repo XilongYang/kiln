@@ -55,10 +55,7 @@ hashCheck path statePath = do
     checkHash fileExist hash
       | fileExist = do
         lastHash <- readFileStrict statePath 
-        if (lastHash /= hash) then do 
-          return False
-        else do
-          return True
+        return (lastHash == hash)
       | otherwise = do
         writeFileWithDirectory statePath hash
         return False

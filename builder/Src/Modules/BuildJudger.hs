@@ -36,8 +36,9 @@ shouldBuild (BuildPostPlan plan) = postShouldBuild plan
 indexShouldBuild :: IndexBuildPlan -> IO Bool
 indexShouldBuild plan = do
   builderNotChange <- hashCheck builderPath builderStatePath
+  targetExists <- doesFileExist $ planIndexHtmlPath plan
   hashCheckPassed <- hashCheck metaArtifactsPath metaStatePath
-  return $ not (builderNotChange && hashCheckPassed)
+  return $ not (builderNotChange && targetExists && hashCheckPassed)
 
 -- | Post rebuild rule.
 --

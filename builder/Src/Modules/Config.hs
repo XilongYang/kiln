@@ -78,7 +78,7 @@ webPostPath = webRoot ++ "post/"
 
 -- | Output path for generated search index JSON.
 searchDBPath :: FilePath
-searchDBPath = rootPath </> "searchdb.json"
+searchDBPath = rootPath </> "searchdb.klb"
 
 -- | Temporary file containing merged charset consumed by @pyftsubset@.
 fontSetPath :: FilePath
