@@ -48,8 +48,10 @@ hashCheck path statePath = do
       tempHashExist <- doesFileExist tempStatePath
       if tempHashExist then 
         readFileStrict tempStatePath 
-      else 
-        hashPath path
+      else do
+        hash <- hashPath path
+        writeFileWithDirectory tempStatePath hash
+        return hash
 
     checkHash :: Bool -> String -> IO Bool
     checkHash fileExist hash
