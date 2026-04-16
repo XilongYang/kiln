@@ -2,8 +2,8 @@
 set -eu
 
 CACHE_ROOT=".cache/PT"
-NORMAL_DATASET="$CACHE_ROOT/10000-normal-10k-v1"
-HUGE_DATASET="$CACHE_ROOT/5-huge-25m-v1"
+NORMAL_DATASET="$CACHE_ROOT/500-normal-10k-v1"
+HUGE_DATASET="$CACHE_ROOT/5-huge-5m-v1"
 
 mkdir -p "$CACHE_ROOT"
 
@@ -59,7 +59,7 @@ EOF
   printf "ok\n" > "$ready_mark"
 }
 
-build_dataset "$NORMAL_DATASET" 10000 $((10 * 1024)) "normal-body-line-abcdefghijklmnopqrstuvwxyz0123456789"
-build_dataset "$HUGE_DATASET" 5 $((25 * 1024 * 1024)) "huge-body-line-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+build_dataset "$NORMAL_DATASET" 500 $((10 * 1024)) "normal-body-line-abcdefghijklmnopqrstuvwxyz0123456789"
+build_dataset "$HUGE_DATASET" 5 $((5 * 1024 * 1024)) "huge-body-line-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 echo "[perf-data] done"

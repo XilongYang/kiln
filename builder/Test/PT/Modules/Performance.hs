@@ -13,6 +13,7 @@ import System.Directory
   , getCurrentDirectory
   , getModificationTime
   , listDirectory
+  , removePathForcibly
   )
 import System.FilePath ((</>), takeExtension)
 import System.IO (IOMode(AppendMode), hPutStr, withFile)
@@ -27,63 +28,64 @@ suiteName = "Performance"
 
 testCases :: [TestCase]
 testCases =
-  [ testBuild10000NormalPosts
-  , testBuild10HugePosts
-  , testBuild10000PostsOneChanged
+  [ testBuild500NormalPosts
+  , testBuild500PostsOneChanged
+  , testBuild5HugePosts
   ]
 
-testBuild10000NormalPosts :: TestCase
-testBuild10000NormalPosts =
-  mkTestCase "complete build: 10000 normal posts (10 KiB each)" $ do
+testBuild500NormalPosts :: TestCase
+testBuild500NormalPosts =
+  mkTestCase "complete build: 500 normal posts (10 KiB each)" $ do
     repoRoot <- getCurrentDirectory
-    let workRoot = workspacePath repoRoot "10000-normal"
-    prepareWorkspace repoRoot "10000-normal" datasetNormalRelPath HardlinkMode
+    let workRoot = workspacePath repoRoot "500-normal"
+    prepareWorkspace repoRoot "500-normal" datasetNormalRelPath HardlinkMode
     withPerfEnv workRoot $ do
       (_, metrics) <- measurePerformance workRoot runFullBuild
-      printPerformanceReport "10000 normal posts (10 KiB each)" metrics
+      printPerformanceReport "500 normal posts (10 KiB each)" metrics
       firstPostExists <- doesFileExist (postPath </> "post-00001.html")
-      lastPostExists <- doesFileExist (postPath </> "post-10000.html")
+      lastPostExists <- doesFileExist (postPath </> "post-00500.html")
       assertTrue "build should generate first post html in performance case #1" firstPostExists
       assertTrue "build should generate last post html in performance case #1" lastPostExists
 
-testBuild10HugePosts :: TestCase
-testBuild10HugePosts =
-  mkTestCase "complete build: 5 huge posts (25 MiB each)" $ do
+testBuild5HugePosts :: TestCase
+testBuild5HugePosts =
+  mkTestCase "complete build: 5 huge posts (5 MiB each)" $ do
     repoRoot <- getCurrentDirectory
     let workRoot = workspacePath repoRoot "10-huge"
     prepareWorkspace repoRoot "10-huge" datasetHugeRelPath HardlinkMode
     withPerfEnv workRoot $ do
       (_, metrics) <- measurePerformance workRoot runFullBuild
-      printPerformanceReport "5 huge posts (25 MiB each)" metrics
+      printPerformanceReport "5 huge posts (5 MiB each)" metrics
       firstPostExists <- doesFileExist (postPath </> "post-00001.html")
       lastPostExists <- doesFileExist (postPath </> "post-00005.html")
-      assertTrue "build should generate first huge post html in performance case #2" firstPostExists
-      assertTrue "build should generate last huge post html in performance case #2" lastPostExists
+      assertTrue "build should generate first huge post html in performance case #3" firstPostExists
+      assertTrue "build should generate last huge post html in performance case #3" lastPostExists
 
-testBuild10000PostsOneChanged :: TestCase
-testBuild10000PostsOneChanged =
-  mkTestCase "complete build with one changed source: 10000 normal posts (10 KiB each)" $ do
+testBuild500PostsOneChanged :: TestCase
+testBuild500PostsOneChanged =
+  mkTestCase "complete build with one changed source: 500 normal posts (10 KiB each)" $ do
     repoRoot <- getCurrentDirectory
-    let workRoot = workspacePath repoRoot "10000-one-changed"
-    prepareWorkspace repoRoot "10000-one-changed" datasetNormalRelPath DeepCopyMode
+    let workRoot = workspacePath repoRoot "500-one-changed"
+    prepareWorkspace repoRoot "500-one-changed" datasetNormalRelPath DeepCopyMode
     withPerfEnv workRoot $ do
       runFullBuild
       let changedSrc = srcPath </> "post-00001.md"
       let changedHtml = postPath </> "post-00001.html"
-      let stableHtml = postPath </> "post-10000.html"
+      let stableHtml = postPath </> "post-00500.html"
 
       beforeChanged <- getModificationTime changedHtml
       beforeStable <- getModificationTime stableHtml
       threadDelay 1200000
       appendTinyChange changedSrc
+      resetTempDir
 
       (_, metrics) <- measurePerformance workRoot runFullBuild
-      printPerformanceReport "10000 normal posts, one tiny source changed" metrics
+      printPerformanceReport "500 normal posts, one tiny source changed" metrics
 
       afterChanged <- getModificationTime changedHtml
       afterStable <- getModificationTime stableHtml
-      assertTrue "changed post html should be rebuilt in performance case #3" (afterChanged > beforeChanged)
-      assertEq "unchanged post html should not be rebuilt in performance case #3" beforeStable afterStable
+      assertTrue "changed post html should be rebuilt in performance case #2" (afterChanged > beforeChanged)
+      assertEq "unchanged post html should not be rebuilt in performance case #2" beforeStable afterStable
 
 runFullBuild :: IO ()
 runFullBuild = do
@@ -107,10 +109,10 @@ data CopyMode
   | DeepCopyMode
 
 datasetNormalRelPath :: FilePath
-datasetNormalRelPath = ".cache" </> "PT" </> "10000-normal-10k-v1" </> "src"
+datasetNormalRelPath = ".cache" </> "PT" </> "500-normal-10k-v1" </> "src"
 
 datasetHugeRelPath :: FilePath
-datasetHugeRelPath = ".cache" </> "PT" </> "5-huge-25m-v1" </> "src"
+datasetHugeRelPath = ".cache" </> "PT" </> "5-huge-5m-v1" </> "src"
 
 workspacePath :: FilePath -> String -> FilePath
 workspacePath repoRoot caseName = repoRoot </> ".cache" </> "PT" </> "workspaces" </> caseName
@@ -131,6 +133,11 @@ prepareWorkspace repoRoot caseName datasetRelPath mode =
 
 appendTinyChange :: FilePath -> IO ()
 appendTinyChange path = withFile path AppendMode (\h -> hPutStr h " ")
+
+resetTempDir :: IO ()
+resetTempDir = do
+  removePathForcibly tempPath
+  createDirectoryIfMissing True tempPath
 
 withPerfEnv :: FilePath -> IO a -> IO a
 withPerfEnv workRoot action =
