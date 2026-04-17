@@ -12,7 +12,7 @@ import Modules.Utils.OrphanCheck (checkOrphans)
 import Modules.Utils.TempDir (withTempDir)
 import Modules.Utils.Files
 
-import System.Directory (listDirectory, createDirectoryIfMissing)
+import System.Directory (listDirectory, createDirectoryIfMissing, removeFile)
 import System.FilePath
 
 -- ---[ Overview ]------------------------------------------------------------
@@ -62,6 +62,7 @@ main = withTempDir tempPath $ do
   executeBuildPlan indexBuildPlan 
 
   -- Concatenate per-post search items into client-side search index payload.
+  writeFile searchDBPath ""
   searchItemFileNames <- listDirectory searchItemArtifactsPath
   let searchItemPaths = map (\f -> searchItemArtifactsPath </> f) $ filter (\f -> takeExtension f == ".klb") searchItemFileNames 
   mapM_ appendSearchItem searchItemPaths

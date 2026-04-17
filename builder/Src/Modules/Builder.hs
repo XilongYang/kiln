@@ -126,7 +126,7 @@ buildPostWithPlan plan = do
       createDirectoryIfMissing True (takeDirectory targetHtmlPath)
       writeFile targetHtmlPath $ injectToc builtHtml
       writePostMetaKlb (planPostMetaPath plan) (postMeta post) (planPostUrl plan)
-      writePostSearchItemKlb (planPostSearchItemPath plan) (postMeta post) (planPostUrl plan) preprocessedPath
+      writePostSearchItemKlb (planPostSearchItemPath plan) (postMeta post) (planPostUrl plan) sourcePath
       writeCharset (planPostCharsetPath plan) targetHtmlPath
 
 -- | Writes one post index metadata artifact (@IndexItem@ in KLB format).
