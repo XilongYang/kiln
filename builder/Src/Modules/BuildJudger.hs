@@ -35,10 +35,17 @@ shouldBuild (BuildPostPlan plan) = postShouldBuild plan
 -- - metadata artifact aggregate changed.
 indexShouldBuild :: IndexBuildPlan -> IO Bool
 indexShouldBuild plan = do
-  builderNotChange <- hashCheck builderPath builderStatePath
-  targetExists <- doesFileExist $ planIndexHtmlPath plan
-  hashCheckPassed <- hashCheck metaArtifactsPath metaStatePath
-  return $ not (builderNotChange && targetExists && hashCheckPassed)
+  allCheckPassed <- andM 
+    [ builderNotChange
+    , targetExists
+    , hashCheckPassed
+    ]
+  return (not allCheckPassed)
+  where
+    builderNotChange = hashCheck builderPath builderStatePath
+    targetExists = doesFileExist $ planIndexHtmlPath plan
+    hashCheckPassed = hashCheck metaArtifactsPath metaStatePath
+    
 
 -- | Post rebuild rule.
 --
@@ -48,11 +55,30 @@ indexShouldBuild plan = do
 -- - source hash differs from stored post state
 postShouldBuild :: PostBuildPlan -> IO Bool
 postShouldBuild plan = do
-  let srcPath = planPostSourcePath plan
-  let targetPath = planTargetHtmlPath plan
-  let statePath = planPostStatePath plan
+  allCheckPassed <- andM 
+    [ builderNotChange
+    , targetExists
+    , srcNotNewerThanTarget
+    , hashCheckPassed
+    ]
+  return (not allCheckPassed)
+  where
+    srcPath = planPostSourcePath plan
+    targetPath = planTargetHtmlPath plan
+    statePath = planPostStatePath plan
 
-  builderNotChange <- hashCheck builderPath builderStatePath
-  targetExists <- doesFileExist $ planTargetHtmlPath plan
-  hashCheckPassed <- hashCheck srcPath statePath
-  return $ not (builderNotChange && targetExists && hashCheckPassed)
+    builderNotChange = hashCheck builderPath builderStatePath
+    targetExists = doesFileExist $ planTargetHtmlPath plan
+
+    srcNotNewerThanTarget = do
+      srcTime <- getModificationTime srcPath
+      targetTime <- getModificationTime targetPath
+      return (srcTime <= targetTime)
+    
+    hashCheckPassed = hashCheck srcPath statePath
+    
+andM :: [IO Bool] -> IO Bool
+andM [] = return True
+andM (x:xs) = do
+  cur <- x
+  if cur then andM xs else return False
