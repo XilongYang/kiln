@@ -1,3 +1,4 @@
 .direnv*
 .cache*
+.codex
 builder/Test/UT/.mock/

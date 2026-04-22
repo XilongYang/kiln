@@ -2,10 +2,12 @@ module Test.PT.Modules.Performance (suiteName, testCases) where
 
 import Control.Concurrent (threadDelay)
 import Control.Monad (mapM_)
-import Modules.BuildPlan (mkBuildPostPlan)
+import Modules.BuildPlan (mkBuildIndexPlan, mkBuildPostPlan)
 import Modules.Builder (executeBuildPlan)
 import Modules.Config
+import Modules.FontSubset (genFontSubset)
 import Modules.Template (expandTemplate)
+import Modules.Utils.Files (hashUpdate)
 import Modules.Utils.OrphanCheck (checkOrphans)
 import System.Directory
   ( createDirectoryIfMissing
@@ -94,10 +96,19 @@ runFullBuild = do
   checkOrphans
   templatePost <- expandTemplate templatePostPath templateComponentPath
   writeFile renderedTemplatePostPath templatePost
+  templateIndex <- expandTemplate templateIndexPath templateComponentPath
+  writeFile renderedTemplateIndexPath templateIndex
   createDirectoryIfMissing True postPath
   postPaths <- listMarkdownSources
   let postBuildPlans = map mkBuildPostPlan postPaths
   mapM_ executeBuildPlan postBuildPlans
+  executeBuildPlan mkBuildIndexPlan
+  writeFile searchDBPath ""
+  searchItemNames <- listDirectory searchItemArtifactsPath
+  let searchItemPaths = map (\f -> searchItemArtifactsPath </> f) $ filter (\f -> takeExtension f == ".klb") searchItemNames
+  mapM_ appendSearchItem searchItemPaths
+  genFontSubset
+  hashUpdate builderPath builderStatePath
 
 listMarkdownSources :: IO [FilePath]
 listMarkdownSources = do
@@ -143,3 +154,8 @@ withPerfEnv :: FilePath -> IO a -> IO a
 withPerfEnv workRoot action =
   withWorkDir workRoot $
     withPrependedPath (workRoot </> "bin") action
+
+appendSearchItem :: FilePath -> IO ()
+appendSearchItem path = do
+  item <- readFile path
+  appendFile searchDBPath item

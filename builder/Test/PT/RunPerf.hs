@@ -1,16 +1,24 @@
 module Main where
 
+import Control.Exception (SomeException, displayException, try)
 import System.Exit (exitFailure)
 import Test.Framework.Colors
 import Test.Framework.Paths (withEnv)
 import Test.Framework.TestSuite (SuiteResult(..), runSuite)
 
 import qualified Test.PT.Modules.Performance as UtPerformance
+import qualified Test.PT.ProfilingReport as PtProfilingReport
 
 main :: IO ()
 main = do
   withEnv "TEST_ACTION_STDOUT_LOG" "pt.log" $ do
     result <- runSuite UtPerformance.suiteName UtPerformance.testCases
+    profileResult <- try PtProfilingReport.generateProfilingHtmlReport :: IO (Either SomeException FilePath)
+    case profileResult of
+      Right htmlPath ->
+        putStrLn ("[PT-PROF] HTML report generated: " ++ htmlPath)
+      Left e ->
+        putStrLn (makeColor colorRed ("[PT-PROF] report generation failed: " ++ displayException e))
     let successCount = suitePassed result
     let totalCount = suiteTotal result
     if successCount == totalCount
