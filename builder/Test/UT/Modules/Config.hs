@@ -25,7 +25,7 @@ testProjectPathConstants =
     assertEq "postPath should resolve under root" (rootPath </> "post") postPath
     assertEq "tempPath should resolve under root" (rootPath </> "temp") tempPath
     assertEq "indexPath should resolve under root" (rootPath </> "index.html") indexPath
-    assertEq "searchDBPath should resolve under root" (rootPath </> "searchdb.json") searchDBPath
+    assertEq "searchDBPath should resolve under root" (rootPath </> "searchdb.klb") searchDBPath
 
 testTemplatePathConstants :: TestCase
 testTemplatePathConstants =
