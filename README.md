@@ -2,7 +2,7 @@
 
 Source repository for [xilong.site](https://xilong.site), a statically generated personal blog.
 
-This project uses a custom Haskell builder (under `builder/`) to transform markdown posts in `src/` into HTML pages in `post/`, generate `index.html`, build `searchdb.json`, and create a subset Chinese font for production.
+This project uses a custom Haskell builder (under `builder/`) to transform markdown posts in `src/` into HTML pages in `post/`, generate `index.html`, build `searchdb.klb`, and create a subset Chinese font for production.
 
 ## Highlights
 
@@ -11,7 +11,7 @@ This project uses a custom Haskell builder (under `builder/`) to transform markd
 - Template component expansion (`template/component/*.html`)
 - Markdown to HTML rendering via `pandoc`
 - Auto-generated TOC for post pages
-- Search index generation (`searchdb.json`) from plain-text post content
+- Search index generation (`searchdb.klb`) from plain-text post content
 - Font subsetting via `pyftsubset` to reduce shipped CJK font size
 
 ## Repository Layout
@@ -26,7 +26,7 @@ This project uses a custom Haskell builder (under `builder/`) to transform markd
 ├─ res/                 # Static resources (fonts, images, third-party libs)
 ├─ builder/             # Haskell build system + unit tests
 ├─ index.html           # Generated homepage
-└─ searchdb.json        # Generated search database
+└─ searchdb.klb         # Generated search database (KLB)
 ```
 
 ## Build Pipeline (Builder Behavior)
@@ -41,12 +41,20 @@ This project uses a custom Haskell builder (under `builder/`) to transform markd
    - Reads `title`, `author`, `date`
    - Splits abstract from body at the first `## ` heading
 5. Build post pages (incremental):
-   - Skip when target `post/*.html` exists and is newer than source `src/*.md`
+   - Rebuild when any of these is true:
+     - builder source hash changed
+     - target `post/*.html` missing
+     - source `src/*.md` mtime is newer than target html
+     - source hash differs from stored post state
    - Preprocess markdown (inject abstract block + `[[toc]]` + code fence class rewrite)
    - Render with `pandoc`
    - Inject generated TOC HTML into `[[toc]]`
-6. Build `index.html` from all posts, grouped by year and sorted by date.
-7. Generate `searchdb.json` from pandoc plain-text output.
+6. Build `index.html` from all posts, grouped by year and sorted by date (incremental):
+   - Rebuild when any of these is true:
+     - builder source hash changed
+     - `index.html` missing
+     - metadata artifacts hash changed
+7. Generate `searchdb.klb` by concatenating per-post search-item KLB artifacts.
 8. Build `res/fonts/SourceHanSerifCN-Subset.woff2` from characters used in generated pages.
 
 ## Post Source Format
@@ -143,7 +151,8 @@ For each post page, rebuild happens when:
 - target HTML does not exist, or
 - source markdown modification time is newer than target HTML.
 
-`index.html`, `searchdb.json`, and font subset generation run on every build.
+`index.html` is incremental (same rule as Step 6 above).
+`searchdb.klb` aggregation and font subset generation run on every build.
 
 ## Third-Party Libraries / Acknowledgements
 
