@@ -37,7 +37,7 @@ import System.FilePath
 -- 2) Expand templates into temp files.
 -- 3) Build posts and emit per-post artifacts.
 -- 4) Build index from metadata artifacts.
--- 5) Concatenate search-item artifacts into @searchdb.json@.
+-- 5) Concatenate search-item artifacts into @searchdb.klb@.
 -- 6) Generate subset font from charset artifacts.
 -- 7) Update builder source hash state.
 main :: IO ()
@@ -74,7 +74,7 @@ main = withTempDir tempPath $ do
 
 -- ---[ Implementation Details ]-----------------------------------------------
 
--- | Appends one serialized search-item KLB block into @searchdb.json@.
+-- | Appends one serialized search-item KLB block into @searchdb.klb@.
 --
 -- The current search payload is a plain concatenation of per-post KLB files.
 appendSearchItem :: FilePath -> IO ()

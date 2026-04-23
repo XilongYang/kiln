@@ -14,6 +14,5 @@ type Markdown = String
 type Url = String
 -- | Rendered HTML fragment or full document content.
 type Html = String
--- | JSON text used in generated @searchdb@ file.
+-- | Search index payload text used in generated @searchdb.klb@ file.
 type SearchJson = String
-

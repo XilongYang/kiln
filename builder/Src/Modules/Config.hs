@@ -76,7 +76,7 @@ webRoot = "/"
 webPostPath :: String
 webPostPath = webRoot ++ "post/"
 
--- | Output path for generated search index JSON.
+-- | Output path for generated search index KLB payload.
 searchDBPath :: FilePath
 searchDBPath = rootPath </> "searchdb.klb"
 

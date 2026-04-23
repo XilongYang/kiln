@@ -7,11 +7,11 @@ import Modules.Utils.Klb
 -- | Search-item artifact model shared by build and indexing steps.
 --
 -- The builder writes one KLB block per post and main concatenates those blocks
--- into @searchdb.json@ consumed by the frontend search script.
+-- into @searchdb.klb@ consumed by the frontend search script.
 
 -- ---[ Public API ]------------------------------------------------------------
 
--- | Search-document record serialized as KLB and concatenated into @searchdb.json@.
+-- | Search-document record serialized as KLB and concatenated into @searchdb.klb@.
 --
 -- Each post contributes exactly one record.
 data SearchItem = SearchItem
