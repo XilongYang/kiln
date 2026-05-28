@@ -16,7 +16,6 @@ import Modules.Utils.Files (hashCheck)
 -- This module centralizes incremental-build policy:
 -- - post plans are gated by source hash state, mtime ordering, and output existence
 -- - index plan is gated by metadata-artifact hash state and output existence
--- - both plans are additionally gated by builder-source hash state
 
 -- ---[ Public API ]------------------------------------------------------------
 
@@ -31,19 +30,16 @@ shouldBuild (BuildPostPlan plan) = postShouldBuild plan
 -- | Index rebuild rule.
 --
 -- Rebuild only when either:
--- - builder sources changed, or
 -- - index target missing, or
 -- - metadata artifact aggregate changed.
 indexShouldBuild :: IndexBuildPlan -> IO Bool
 indexShouldBuild plan = do
   allCheckPassed <- andM 
-    [ builderNotChange
-    , targetExists
+    [ targetExists
     , hashCheckPassed
     ]
   return (not allCheckPassed)
   where
-    builderNotChange = hashCheck builderPath builderStatePath
     targetExists = doesFileExist $ planIndexHtmlPath plan
     hashCheckPassed = hashCheck metaArtifactsPath metaStatePath
     
@@ -51,15 +47,13 @@ indexShouldBuild plan = do
 -- | Post rebuild rule.
 --
 -- Rebuild only when any prerequisite is invalid:
--- - builder sources changed
 -- - target html missing
 -- - source file mtime is newer than target html
 -- - source hash differs from stored post state
 postShouldBuild :: PostBuildPlan -> IO Bool
 postShouldBuild plan = do
   allCheckPassed <- andM 
-    [ builderNotChange
-    , targetExists
+    [ targetExists
     , srcNotNewerThanTarget
     , hashCheckPassed
     ]
@@ -69,7 +63,6 @@ postShouldBuild plan = do
     targetPath = planTargetHtmlPath plan
     statePath = planPostStatePath plan
 
-    builderNotChange = hashCheck builderPath builderStatePath
     targetExists = doesFileExist $ planTargetHtmlPath plan
 
     srcNotNewerThanTarget = do

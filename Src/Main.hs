@@ -10,9 +10,8 @@ import Modules.SearchDB
 import Modules.Template
 import Modules.Utils.OrphanCheck (checkOrphans)
 import Modules.Utils.TempDir (withTempDir)
-import Modules.Utils.Files
 
-import System.Directory (listDirectory, createDirectoryIfMissing, removeFile)
+import System.Directory (listDirectory)
 import System.FilePath
 
 -- ---[ Overview ]------------------------------------------------------------
@@ -39,7 +38,6 @@ import System.FilePath
 -- 4) Build index from metadata artifacts.
 -- 5) Concatenate search-item artifacts into @searchdb.klb@.
 -- 6) Generate subset font from charset artifacts.
--- 7) Update builder source hash state.
 main :: IO ()
 main = withTempDir tempPath $ do
   -- Warning when references point to missing posts/resources.
@@ -69,8 +67,6 @@ main = withTempDir tempPath $ do
 
   -- Subset fonts to reduce shipped asset size.
   genFontSubset 
-
-  hashUpdate builderPath builderStatePath
 
 -- ---[ Implementation Details ]-----------------------------------------------
 

@@ -1,6 +1,6 @@
 module Modules.Config where
 
-import Modules.ConfigReader (readRootPath)
+import Modules.ConfigReader (readBuilderPath, readRootPath)
 import System.FilePath
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -18,7 +18,8 @@ rootPath = unsafePerformIO readRootPath
 {-# NOINLINE rootPath #-}
 
 builderPath :: FilePath
-builderPath = rootPath </> "Src"
+builderPath = unsafePerformIO (readBuilderPath rootPath)
+{-# NOINLINE builderPath #-}
 
 -- | Directory containing source markdown posts.
 srcPath :: FilePath
