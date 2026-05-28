@@ -46,11 +46,14 @@
     mkKiln = pkgs:
       let
         kilnUnwrapped = mkKilnUnwrapped pkgs;
+        pyWithFontTools = pkgs.python314.withPackages (ps: with ps; [
+          fonttools
+          brotli
+        ]);
         runtimeDeps = with pkgs; [
           coreutils
           pandoc
-          python314Packages.fonttools
-          python314Packages.brotli
+          pyWithFontTools
         ];
       in
       pkgs.symlinkJoin {
@@ -95,13 +98,18 @@
       let pkgs = import nixpkgs { inherit system; };
       in {
         default = pkgs.mkShell {
-          packages = with pkgs; [
+          packages = with pkgs;
+          let
+            pyWithFontTools = python314.withPackages (ps: with ps; [
+              fonttools
+              brotli
+            ]);
+          in [
             # Build/runtime validation tools
             gnumake
             haskell.packages.ghc9103.ghc
             pandoc
-            python314Packages.fonttools
-            python314Packages.brotli
+            pyWithFontTools
 
             # Dev-only tools
             haskell.packages.ghc9103.haskell-language-server
