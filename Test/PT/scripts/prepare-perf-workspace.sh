@@ -49,7 +49,7 @@ cat > "$WORK_ROOT/template/index.html" <<'EOF'
 <html><body>$posts$</body></html>
 EOF
 
-: > "$WORK_ROOT/res/fonts/SourceHanSerifCN-Regular.otf"
+: > "$WORK_ROOT/res/fonts/cn.woff2"
 
 cat > "$WORK_ROOT/bin/pandoc" <<'EOF'
 #!/bin/sh

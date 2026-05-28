@@ -1,8 +1,6 @@
 module Modules.Config where
 
-import Modules.ConfigReader (readBuilderPath, readRootPath)
 import System.FilePath
-import System.IO.Unsafe (unsafePerformIO)
 
 -- ---[ Overview ]------------------------------------------------------------
 -- | Centralized path and naming configuration for the build pipeline.
@@ -14,12 +12,10 @@ import System.IO.Unsafe (unsafePerformIO)
 
 -- | Repository root for all relative build paths.
 rootPath :: FilePath
-rootPath = unsafePerformIO readRootPath
-{-# NOINLINE rootPath #-}
+rootPath = "."
 
 builderPath :: FilePath
-builderPath = unsafePerformIO (readBuilderPath rootPath)
-{-# NOINLINE builderPath #-}
+builderPath = rootPath </> "Src"
 
 -- | Directory containing source markdown posts.
 srcPath :: FilePath
@@ -94,11 +90,11 @@ fontPath = rootPath  </> "res" </> "fonts"
 
 -- | Source font file path used as subsetting input.
 originFontFilePath :: FilePath
-originFontFilePath =  fontPath </> "SourceHanSerifCN-Regular.otf"
+originFontFilePath =  fontPath </> "cn.woff2"
 
 -- | Generated subset font output path.
 subsetFontFilePath :: FilePath
-subsetFontFilePath = fontPath </> "SourceHanSerifCN-Subset.woff2"
+subsetFontFilePath = fontPath </> "cn-subset.woff2"
 
 -- | Root directory for incremental build cache data.
 cacheRoot :: FilePath

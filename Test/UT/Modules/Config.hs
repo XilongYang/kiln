@@ -66,11 +66,11 @@ testFontPathConstants =
     assertEq "fontPath should be root/res/fonts"
       (rootPath </> "res" </> "fonts")
       fontPath
-    assertEq "origin font path should point to SourceHanSerifCN-Regular.otf"
-      (fontPath </> "SourceHanSerifCN-Regular.otf")
+    assertEq "origin font path should point to cn.woff2"
+      (fontPath </> "cn.woff2")
       originFontFilePath
-    assertEq "subset font path should point to SourceHanSerifCN-Subset.woff2"
-      (fontPath </> "SourceHanSerifCN-Subset.woff2")
+    assertEq "subset font path should point to cn-subset.woff2"
+      (fontPath </> "cn-subset.woff2")
       subsetFontFilePath
 
 testCachePathConstants :: TestCase

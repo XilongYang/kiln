@@ -1,120 +1,179 @@
-# Kiln Builder
+# Kiln
 
-A standalone Haskell static-site builder used by the Kiln blog pipeline.
+A standalone static-site builder.
 
-## What It Does
+`kiln` scans your workspace, builds post pages and index, generates search data, and subsets font files.
 
-The builder reads markdown posts from `src/` and produces site artifacts:
+## Requirements
 
-- Per-post HTML pages in `post/`
-- Site index page `index.html`
-- Search database `searchdb.klb`
-- Subset CJK font `res/fonts/SourceHanSerifCN-Subset.woff2`
+Runtime tools (must be available in `PATH`):
 
-## Runtime Environment
-
-Required tools:
-
-- GHC / `runghc`
 - `pandoc`
 - `pyftsubset` (from Python `fonttools`)
-- `brotli` (required by some fonttools setups)
+- `sha256sum` (from `coreutils`)
 
-## Repository Layout
+If installed via this repo's Nix package (`.#kiln`), these runtime tools are injected automatically.
 
-```text
-.
-├─ Src/                         # Builder source code (entry: Src/Main.hs)
-├─ Test/                        # Unit tests (UT) and performance tests (PT)
-├─ kiln.conf                    # Runtime config file
-├─ ut.sh                        # UT runner
-└─ pt.sh                        # PT runner
-```
+## Workspace Layout
 
-Runtime workspace/files (under `rootPath`, default `.`):
+`kiln` always uses the current working directory (`.`) as project root.
+
+Required input/output layout:
 
 ```text
-<rootPath>/
-├─ src/                         # Build input posts
-├─ template/                    # Build input templates
-├─ res/                         # Static resources (fonts, etc.)
-├─ post/                        # Generated post html
-├─ temp/                        # Temporary files during one run
-├─ .cache/                      # Incremental states/artifacts
-├─ index.html                   # Generated index
-└─ searchdb.klb                 # Generated search database
+<workspace>/
+├─ src/                          # input markdown posts
+├─ template/
+│  ├─ post.html                  # post template
+│  ├─ index.html                 # index template
+│  └─ component/                 # reusable template components
+├─ res/
+│  └─ fonts/
+│     └─ cn.woff2                # source font input for subsetting
+├─ post/                         # generated post html outputs
+├─ temp/                         # temporary runtime files (recreated each run)
+├─ .cache/                       # incremental build cache/state
+├─ index.html                    # generated index page
+└─ searchdb.klb                  # generated search payload
 ```
 
-## Build Flow
+## Build Behavior
 
-Execution starts from `Src/Main.hs`.
+`kiln` performs one full build flow:
 
-1. Recreate the temp workspace (`temp/`).
-2. Warn about orphan pages in `post/` with no matching source markdown.
-3. Expand template placeholders from `template/component/`.
-4. Parse each markdown file in `src/`:
-   - front matter: `title`, `author`, `date`
-   - abstract/body split at the first `## ` heading
-5. Build post pages (incremental).
-6. Build `index.html` from metadata artifacts (incremental).
+1. Recreate `temp/`.
+2. Warn orphan pages in `post/`.
+3. Expand templates from `template/component/`.
+4. Parse markdown posts from `src/`.
+5. Build `post/*.html` incrementally.
+6. Build `index.html` incrementally.
 7. Merge search-item artifacts into `searchdb.klb`.
-8. Merge charset artifacts and run `pyftsubset` for font subsetting.
+8. Merge charset artifacts and run `pyftsubset`.
 
-## Incremental Build Rules
+Font subsetting paths are fixed:
 
-### Post page rebuild
+- Input: `res/fonts/cn.woff2`
+- Output: `res/fonts/cn-subset.woff2`
 
-A post is rebuilt when any condition is true:
+## Incremental Rules
 
-- target `post/*.html` is missing
-- source markdown mtime is newer than target
-- source hash changed vs saved state
-- builder source hash changed
+### Post rebuild
+
+A post rebuilds when any condition is true:
+
+- target `post/*.html` missing
+- source mtime newer than target mtime
+- source hash changed vs cached state
 
 ### Index rebuild
 
-The index is rebuilt when any condition is true:
+Index rebuilds when any condition is true:
 
-- `index.html` is missing
+- `index.html` missing
 - metadata artifact hash changed
-- builder source hash changed
 
-## Config
+## Local Development
 
-`rootPath` resolution priority:
-
-1. `KILN_ROOT_PATH`
-2. `KILN_CONFIG_PATH` (or default `kiln.conf`) with `rootPath=...`
-3. default `.`
-
-## Usage
-
-### Build
+Run directly with GHC:
 
 ```bash
 runghc -iSrc Src/Main.hs
 ```
 
-### Unit Tests
+Unit tests:
 
 ```bash
 ./ut.sh
 ```
 
-### Performance Tests
+Performance tests:
 
 ```bash
 ./pt.sh
 ```
 
-Set PT memory limit (KiB):
+With PT memory limit (KiB):
 
 ```bash
 PT_ULIMIT_VMEM_KB=3145728 ./pt.sh
 ```
 
+## Nix / Flake Usage
+
+### 1) Build and install from this repository
+
+Build package:
+
+```bash
+nix build .#kiln
+```
+
+Run directly:
+
+```bash
+nix run .#kiln
+```
+
+Install to user profile:
+
+```bash
+nix profile install .#kiln
+```
+
+Binary name is `kiln`.
+
+### 2) Use as dependency in another flake
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    kiln.url = "github:XilongYang/kiln";
+  };
+
+  outputs = { self, nixpkgs, kiln, ... }:
+  let
+    system = "x86_64-linux";
+    pkgs = import nixpkgs {
+      inherit system;
+      overlays = [ kiln.overlays.default ];
+    };
+  in {
+    devShells.${system}.default = pkgs.mkShell {
+      packages = [ pkgs.kiln ];
+    };
+  };
+}
+```
+
+Without overlay, you can also reference:
+
+```nix
+kiln.packages.${system}.kiln
+```
+
+Both styles still require `inputs.kiln` to be defined.  
+Overlay just lets you use `pkgs.kiln` instead of the longer `kiln.packages.${system}.kiln`.
+
+### 3) Install in NixOS
+
+```nix
+{
+  nixpkgs.overlays = [ kiln.overlays.default ];
+  environment.systemPackages = [ pkgs.kiln ];
+}
+```
+
+or directly:
+
+```nix
+{
+  environment.systemPackages = [ kiln.packages.${pkgs.system}.kiln ];
+}
+```
+
 ## Notes
 
-- PT script prepares performance fixtures before running tests.
-- Builder state and artifact hashes are stored under `.cache/`.
-- Generated outputs are intended to be deterministic for identical inputs and toolchain versions.
+- This repository intentionally does not use runtime config files.
+- Path conventions are fixed by code to keep distribution simple.
+- To switch actual source font, keep `res/fonts/cn.woff2` as a symlink to your desired font file.
