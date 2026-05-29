@@ -9,6 +9,7 @@ import qualified Test.UT.Modules.Builder as UtBuilder
 import qualified Test.UT.Modules.BuildJudger as UtBuildJudger
 import qualified Test.UT.Modules.BuildPlan as UtBuildPlan
 import qualified Test.UT.Modules.Config as UtConfig
+import qualified Test.UT.Modules.ConfigReader as UtConfigReader
 import qualified Test.UT.Modules.Index.Render as UtIndexRender
 import qualified Test.UT.Modules.Index.Item as UtIndexItem
 import qualified Test.UT.Modules.Main as UtMain
@@ -33,6 +34,7 @@ main = do
         , runSuite UtKlb.suiteName UtKlb.testCases
         , runSuite UtTypeAlias.suiteName UtTypeAlias.testCases
         , runSuite UtConfig.suiteName UtConfig.testCases
+        , runSuite UtConfigReader.suiteName UtConfigReader.testCases
         , runSuite UtTemplate.suiteName UtTemplate.testCases
         , runSuite UtTempDir.suiteName UtTempDir.testCases
         , runSuite UtPostParse.suiteName UtPostParse.testCases

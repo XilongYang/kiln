@@ -1,6 +1,8 @@
 module Modules.Config where
 
+import Modules.ConfigReader (readRootPath)
 import System.FilePath
+import System.IO.Unsafe (unsafePerformIO)
 
 -- ---[ Overview ]------------------------------------------------------------
 -- | Centralized path and naming configuration for the build pipeline.
@@ -12,10 +14,11 @@ import System.FilePath
 
 -- | Repository root for all relative build paths.
 rootPath :: FilePath
-rootPath = "."
+rootPath = unsafePerformIO readRootPath
+{-# NOINLINE rootPath #-}
 
 builderPath :: FilePath
-builderPath = rootPath </> "builder" </> "Src"
+builderPath = rootPath </> "Src"
 
 -- | Directory containing source markdown posts.
 srcPath :: FilePath
