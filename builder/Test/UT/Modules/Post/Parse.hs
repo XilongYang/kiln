@@ -1,9 +1,8 @@
 module Test.UT.Modules.Post.Parse (suiteName, testCases) where
 
-import Modules.Post (Post(..), PostMeta(..))
+import Modules.Post (PostMeta(..), postMeta, postAbstract, postBody)
 import Modules.Post.Parse (parsePost)
 import System.Directory (copyFile)
-import System.FilePath (takeBaseName)
 import Test.Framework.Asserts
 import Test.Framework.Paths
 import Test.Framework.TestSuite
@@ -14,20 +13,19 @@ suiteName = "Post.Parse"
 testCases :: [TestCase]
 testCases =
   [ testParsePostLoadsAndResolvesFields
-  , testParsePostThrowsWithoutOpeningDelimiter
-  , testParsePostThrowsWithoutClosingDelimiter
-  , testParsePostThrowsWhenRequiredMetaMissing
+  , testParsePostReturnsLeftWithoutOpeningDelimiter
+  , testParsePostReturnsLeftWithoutClosingDelimiter
+  , testParsePostReturnsLeftWhenRequiredMetaMissing
   ]
 
 testParsePostLoadsAndResolvesFields :: TestCase
 testParsePostLoadsAndResolvesFields =
-  mkTestCase "parsePost loads content and resolves paths/meta fields" $
-    withCasePaths suiteName "parsePostLoadsAndResolvesFields" ["src"] $ \casePaths -> do
+  mkTestCase "parsePost loads content and resolves meta/body fields" $
+    withCasePathsInSandbox suiteName "parsePostLoadsAndResolvesFields" ["src"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "parse-post-fixture.md"
       copyFile parsePostFixturePath sourcePath
-      post <- parsePost sourcePath
-      assertEq "parsePost should derive postName from filename" (takeBaseName sourcePath) (postName post)
-      assertEq "parsePost should resolve source path" sourcePath (postSourcePath post)
+      result <- parsePost sourcePath
+      post <- expectRight "parsePost should successfully parse valid fixture" result
       assertEq "parsePost should parse front matter into PostMeta"
         (PostMeta "Fixture Title" "Fixture Author" "2026-03-22")
         (postMeta post)
@@ -36,35 +34,37 @@ testParsePostLoadsAndResolvesFields =
         "## Sub Title1"
         (postBody post)
 
-testParsePostThrowsWithoutOpeningDelimiter :: TestCase
-testParsePostThrowsWithoutOpeningDelimiter =
-  mkTestCase "parsePost throws without opening delimiter" $
-    withCasePaths suiteName "parsePostThrowsWithoutOpeningDelimiter" ["src"] $ \casePaths -> do
+testParsePostReturnsLeftWithoutOpeningDelimiter :: TestCase
+testParsePostReturnsLeftWithoutOpeningDelimiter =
+  mkTestCase "parsePost returns Left without opening delimiter" $
+    withCasePathsInSandbox suiteName "parsePostReturnsLeftWithoutOpeningDelimiter" ["src"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "missing-opening.md"
       writeFile sourcePath "title: x\n---\nbody\n"
-      assertThrows "parsePost should reject content without opening delimiter" $
-        forceParsedPost sourcePath
+      result <- parsePost sourcePath
+      assertTrue "parsePost should reject content without opening delimiter" (isLeft result)
 
-testParsePostThrowsWithoutClosingDelimiter :: TestCase
-testParsePostThrowsWithoutClosingDelimiter =
-  mkTestCase "parsePost throws without closing delimiter" $
-    withCasePaths suiteName "parsePostThrowsWithoutClosingDelimiter" ["src"] $ \casePaths -> do
+testParsePostReturnsLeftWithoutClosingDelimiter :: TestCase
+testParsePostReturnsLeftWithoutClosingDelimiter =
+  mkTestCase "parsePost returns Left without closing delimiter" $
+    withCasePathsInSandbox suiteName "parsePostReturnsLeftWithoutClosingDelimiter" ["src"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "missing-closing.md"
       writeFile sourcePath (unlines ["---", "title: X", "author: Y", "date: 2026-03-22", "body"])
-      assertThrows "parsePost should reject content without closing delimiter" $
-        forceParsedPost sourcePath
+      result <- parsePost sourcePath
+      assertTrue "parsePost should reject content without closing delimiter" (isLeft result)
 
-testParsePostThrowsWhenRequiredMetaMissing :: TestCase
-testParsePostThrowsWhenRequiredMetaMissing =
-  mkTestCase "parsePost throws when required meta keys are missing" $
-    withCasePaths suiteName "parsePostThrowsWhenRequiredMetaMissing" ["src"] $ \casePaths -> do
+testParsePostReturnsLeftWhenRequiredMetaMissing :: TestCase
+testParsePostReturnsLeftWhenRequiredMetaMissing =
+  mkTestCase "parsePost returns Left when required meta keys are missing" $
+    withCasePathsInSandbox suiteName "parsePostReturnsLeftWhenRequiredMetaMissing" ["src"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "missing-meta.md"
       writeFile sourcePath (unlines ["---", "title: X", "date: 2026-03-22", "---", "", "Body"])
-      assertThrows "parsePost should fail when required metadata keys are missing" $
-        forceParsedPost sourcePath
+      result <- parsePost sourcePath
+      assertTrue "parsePost should fail when required metadata keys are missing" (isLeft result)
 
-forceParsedPost :: FilePath -> IO Int
-forceParsedPost sourcePath = do
-  post <- parsePost sourcePath
-  let meta = postMeta post
-  pure $! length (postBody post) + length (metaTitle meta) + length (metaAuthor meta) + length (metaDate meta)
+expectRight :: String -> Either a b -> IO b
+expectRight _ (Right value) = pure value
+expectRight message (Left _) = error ("Assertion failed: " ++ message)
+
+isLeft :: Either a b -> Bool
+isLeft (Left _) = True
+isLeft _ = False

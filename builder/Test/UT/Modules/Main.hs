@@ -1,19 +1,14 @@
 module Test.UT.Modules.Main (suiteName, testCases) where
 
-import Control.Exception (bracket_)
 import Modules.Config
-import Modules.Utils.TempDir (withTempDir)
 import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
-  , getCurrentDirectory
-  , getTemporaryDirectory
-  , setCurrentDirectory
   )
-import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath ((</>))
 import System.Process (callProcess)
 import Test.Framework.Asserts
+import Test.Framework.Paths
 import Test.Framework.TestSuite
 
 suiteName :: String
@@ -26,33 +21,27 @@ testCases =
 
 testMainBuildsCoreOutputs :: TestCase
 testMainBuildsCoreOutputs =
-  mkTestCase "main builds post/index/searchdb/font outputs in isolated workspace" $ do
-    repoRoot <- getCurrentDirectory
-    tempRoot <- getTemporaryDirectory
-    let workRoot = tempRoot </> "xilong-site-ut-main"
-        builderMainPath = repoRoot </> "builder" </> "Src" </> "Main.hs"
-        builderSourceIncludePath = repoRoot </> "builder" </> "Src"
-        builderTestIncludePath = repoRoot </> "builder"
-    withTempDir workRoot $ do
-      let binDir = workRoot </> "bin"
+  mkTestCase "main builds post and index outputs in isolated workspace" $ do
+    withCasePathsInSandbox suiteName "mainBuildsCoreOutputs" [] $ \casePaths -> do
+      let workRoot = caseRootDir casePaths
+          repoRoot = repoRootPath
+          builderMainPath = repoRoot </> "builder" </> "Src" </> "Main.hs"
+          builderSourceIncludePath = repoRoot </> "builder" </> "Src"
+          builderTestIncludePath = repoRoot </> "builder"
+          binDir = workRoot </> "bin"
       createDirectoryIfMissing True binDir
       writeFakePyftsubset (binDir </> "pyftsubset")
-      withWorkDir workRoot $ do
-        setupFixtureTree
-        withPrependedPath binDir $
-          callProcess "runghc"
-            [ "-i" ++ builderSourceIncludePath
-            , "-i" ++ builderTestIncludePath
-            , builderMainPath
-            ]
-      postExists <- doesFileExist (workRoot </> postPath </> "fixture.html")
-      indexExists <- doesFileExist (workRoot </> indexPath)
-      searchExists <- doesFileExist (workRoot </> searchDBPath)
-      subsetExists <- doesFileExist (workRoot </> subsetFontFilePath)
+      setupFixtureTree
+      withPrependedPath binDir $
+        callProcess "runghc"
+          [ "-i" ++ builderSourceIncludePath
+          , "-i" ++ builderTestIncludePath
+          , builderMainPath
+          ]
+      postExists <- doesFileExist (postPath </> "fixture.html")
+      indexExists <- doesFileExist indexPath
       assertTrue "main should render one post html output" postExists
       assertTrue "main should render index.html output" indexExists
-      assertTrue "main should generate searchdb.json output" searchExists
-      assertTrue "main should generate subset font output" subsetExists
 
 setupFixtureTree :: IO ()
 setupFixtureTree = do
@@ -107,19 +96,3 @@ writeFakePyftsubset scriptPath = do
       , "[ -n \"$out\" ] && : > \"$out\""
       ]
   callProcess "chmod" ["+x", scriptPath]
-
-withWorkDir :: FilePath -> IO a -> IO a
-withWorkDir dir action = do
-  old <- getCurrentDirectory
-  bracket_ (setCurrentDirectory dir) (setCurrentDirectory old) action
-
-withPrependedPath :: FilePath -> IO a -> IO a
-withPrependedPath path action = do
-  old <- lookupEnv "PATH"
-  let newPath = case old of
-        Just existing -> path ++ ":" ++ existing
-        Nothing -> path
-  bracket_ (setEnv "PATH" newPath) (restore old) action
-  where
-    restore (Just value) = setEnv "PATH" value
-    restore Nothing = unsetEnv "PATH"

@@ -3,7 +3,6 @@ module Test.UT.Modules.Post.Preprocess (suiteName, testCases) where
 import Modules.Post (Post(..), PostMeta(..))
 import Modules.Post.Preprocess (preprocessPost)
 import Test.Framework.Asserts
-import Test.Framework.Paths
 import Test.Framework.TestSuite
 
 suiteName :: String
@@ -20,9 +19,7 @@ testPreprocessPostIncludesMetaAbstractAndToc =
   mkTestCase "preprocessPost includes front matter abstract wrapper and toc marker" $ do
     let post =
           Post
-            { postName = "demo"
-            , postSourcePath = srcFixtureFile "demo.md"
-            , postBody = "Body line"
+            { postBody = "Body line"
             , postAbstract = "short abstract"
             , postMeta = PostMeta "T" "A" "2026-03-22"
             }
@@ -36,9 +33,7 @@ testPreprocessPostRewritesLanguageFenceOpeners =
   mkTestCase "preprocessPost rewrites language fence openers with classes" $ do
     let post =
           Post
-            { postName = "demo"
-            , postSourcePath = srcFixtureFile "demo.md"
-            , postBody = "```js\nconst x = 1;\n```"
+            { postBody = "```js\nconst x = 1;\n```"
             , postAbstract = "short abstract"
             , postMeta = PostMeta "T" "A" "2026-03-22"
             }

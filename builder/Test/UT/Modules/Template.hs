@@ -35,7 +35,7 @@ testCases =
 testExpandTemplateExpandsAndRemovesPlaceholders :: TestCase
 testExpandTemplateExpandsAndRemovesPlaceholders =
   mkTestCase "expandTemplate expands component placeholders in template files" $
-    withCasePaths suiteName "expandTemplateExpandsAndRemovesPlaceholders" ["template"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "expandTemplateExpandsAndRemovesPlaceholders" ["template"] $ \casePaths -> do
       (componentDir, templatePath) <- prepareTemplateFixtures casePaths
       generated <- expandTemplate templatePath componentDir
       assertContains "expandTemplate should include inserted common_head html" "fixture-head" generated
@@ -46,7 +46,7 @@ testExpandTemplateExpandsAndRemovesPlaceholders =
 testExpandTemplateWithMissingTemplateThrows :: TestCase
 testExpandTemplateWithMissingTemplateThrows =
   mkTestCase "expandTemplate throws when template file does not exist" $
-    withCasePaths suiteName "expandTemplateWithMissingTemplateThrows" ["template"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "expandTemplateWithMissingTemplateThrows" ["template"] $ \casePaths -> do
       (componentDir, _) <- prepareTemplateFixtures casePaths
       assertThrows "expandTemplate should fail on a missing template file" $
         expandTemplate (caseTemplateDir casePaths </> "missing-template.html") componentDir
@@ -54,7 +54,7 @@ testExpandTemplateWithMissingTemplateThrows =
 testExpandTemplateWithMissingComponentDirThrows :: TestCase
 testExpandTemplateWithMissingComponentDirThrows =
   mkTestCase "expandTemplate throws when component directory does not exist" $
-    withCasePaths suiteName "expandTemplateWithMissingComponentDirThrows" ["template"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "expandTemplateWithMissingComponentDirThrows" ["template"] $ \casePaths -> do
       (_, templatePath) <- prepareTemplateFixtures casePaths
       assertThrows "expandTemplate should fail on a missing component directory" $
         expandTemplate templatePath (caseTemplateDir casePaths </> "no-such-dir")

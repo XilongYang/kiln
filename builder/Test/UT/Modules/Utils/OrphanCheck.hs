@@ -1,18 +1,13 @@
 module Test.UT.Modules.Utils.OrphanCheck (suiteName, testCases) where
 
-import Control.Exception (bracket_)
 import Modules.Config (postPath, srcPath)
 import System.Directory
-  ( createDirectoryIfMissing
-  , getCurrentDirectory
-  , getTemporaryDirectory
-  , setCurrentDirectory
-  )
+  ( createDirectoryIfMissing )
 import System.FilePath ((</>))
 import System.Process (readProcess)
 import Test.Framework.Asserts
+import Test.Framework.Paths
 import Test.Framework.TestSuite
-import Modules.Utils.TempDir (withTempDir)
 
 suiteName :: String
 suiteName = "Utils.OrphanCheck"
@@ -54,16 +49,14 @@ testCheckOrphansWarnsWhenOrphansExist =
 
 runCheckOrphansInIsolatedWorkspace :: String -> IO () -> IO String
 runCheckOrphansInIsolatedWorkspace caseName setupAction = do
-  repoRoot <- getCurrentDirectory
-  tempRoot <- getTemporaryDirectory
-  let workRoot = tempRoot </> ("xilong-site-ut-orphan-" ++ caseName)
-      builderSourceIncludePath = repoRoot </> "builder" </> "Src"
-      runnerPath = workRoot </> "RunOrphanCheck.hs"
-  withTempDir workRoot $ do
-    withWorkDir workRoot setupAction
+  withCasePathsInSandbox suiteName caseName [] $ \casePaths -> do
+    let workRoot = caseRootDir casePaths
+        repoRoot = repoRootPath
+        builderSourceIncludePath = repoRoot </> "builder" </> "Src"
+        runnerPath = workRoot </> "RunOrphanCheck.hs"
+    setupAction
     writeFile runnerPath runnerSource
-    withWorkDir workRoot $
-      readProcess "runghc" ["-i" ++ builderSourceIncludePath, runnerPath] ""
+    readProcess "runghc" ["-i" ++ builderSourceIncludePath, runnerPath] ""
   where
     runnerSource =
       unlines
@@ -71,8 +64,3 @@ runCheckOrphansInIsolatedWorkspace caseName setupAction = do
         , "main :: IO ()"
         , "main = checkOrphans"
         ]
-
-withWorkDir :: FilePath -> IO a -> IO a
-withWorkDir dir action = do
-  old <- getCurrentDirectory
-  bracket_ (setCurrentDirectory dir) (setCurrentDirectory old) action

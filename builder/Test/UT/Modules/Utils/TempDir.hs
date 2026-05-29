@@ -27,7 +27,7 @@ testCases =
 testWithTempDirRecreatesCleanDirBeforeAction :: TestCase
 testWithTempDirRecreatesCleanDirBeforeAction =
   mkTestCase "withTempDir recreates a clean temp directory before action" $
-    withCasePaths suiteName "withTempDirRecreatesCleanDirBeforeAction" ["temp"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "withTempDirRecreatesCleanDirBeforeAction" ["temp"] $ \casePaths -> do
       let tempDirPath = caseTempDir casePaths
       createDirectoryIfMissing True tempDirPath
       writeFile (tempDirPath </> "stale.txt") "old"
@@ -42,7 +42,7 @@ testWithTempDirRecreatesCleanDirBeforeAction =
 testWithTempDirCleansAfterSuccess :: TestCase
 testWithTempDirCleansAfterSuccess =
   mkTestCase "withTempDir cleans temp directory after successful action" $
-    withCasePaths suiteName "withTempDirCleansAfterSuccess" ["temp"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "withTempDirCleansAfterSuccess" ["temp"] $ \casePaths -> do
       let tempDirPath = caseTempDir casePaths
       withTempDir tempDirPath $ writeFile (tempDirPath </> "fresh.txt") "new"
       existsAfterSuccess <- doesDirectoryExist tempDirPath
@@ -52,7 +52,7 @@ testWithTempDirCleansAfterSuccess =
 testWithTempDirCleansAfterFailure :: TestCase
 testWithTempDirCleansAfterFailure =
   mkTestCase "withTempDir cleans temp directory after failed action" $
-    withCasePaths suiteName "withTempDirCleansAfterFailure" ["temp"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "withTempDirCleansAfterFailure" ["temp"] $ \casePaths -> do
       let tempDirPath = caseTempDir casePaths
       assertThrows "withTempDir should still clean up when the action throws" $
         withTempDir tempDirPath $ do

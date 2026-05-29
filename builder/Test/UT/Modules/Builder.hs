@@ -2,10 +2,12 @@ module Test.UT.Modules.Builder (suiteName, testCases) where
 
 import Modules.BuildPlan
 import Modules.Builder
+import Modules.Config (tempIndexItemsKlbPath)
 import Modules.Index.Item (IndexItem(..))
-import Modules.Post.Parse (parsePost)
+import Modules.Utils.Klb (renderKlb)
 import System.Directory
   ( copyFile
+  , createDirectoryIfMissing
   , doesFileExist
   )
 import Test.Framework.Asserts
@@ -26,7 +28,7 @@ testCases =
 testExecuteBuildPostPlan :: TestCase
 testExecuteBuildPostPlan =
   mkTestCase "executeBuildPlan runs post plan and writes html under .mock/post" $
-    withCasePaths suiteName "executeBuildPostPlan" ["src", "post", "temp", "template"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "executeBuildPostPlan" ["src", "post", "temp", "template"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "parse-post-fixture.md"
           postTemplatePath = templateFile casePaths "post.html"
           outputPath = tempFile casePaths "builder-ut-preprocessed.md"
@@ -34,8 +36,7 @@ testExecuteBuildPostPlan =
           htmlPath = postFile casePaths "builder-ut-output.html"
       copyFile parsePostFixturePath sourcePath
       copyFile postTemplateFixturePath postTemplatePath
-      post <- parsePost sourcePath
-      let basePlan = expectPostPlan (mkBuildPostPlan post)
+      let basePlan = expectPostPlan (mkBuildPostPlan sourcePath)
       let plan =
             basePlan
               { planPreprocessedPath = outputPath
@@ -43,6 +44,7 @@ testExecuteBuildPostPlan =
               , planTargetHtmlPath = htmlPath
               , planPostTemplatePath = postTemplatePath
               }
+      createDirectoryIfMissing True (caseTempDir casePaths)
       executeBuildPlan (BuildPostPlan plan)
       exists <- doesFileExist outputPath
       assertTrue "executeBuildPlan should create preprocess markdown file for post plan" exists
@@ -61,21 +63,25 @@ testExecuteBuildPostPlan =
         "<pre class=\"language-C line-numbers match-braces\">"
         html
 
--- Confirms index build renders posts into template and writes target html file.
+-- Confirms index build reads temp KLB items, renders template and writes target html file.
 testExecuteBuildIndexPlan :: TestCase
 testExecuteBuildIndexPlan =
   mkTestCase "executeBuildPlan writes replaced index html to target file" $
-    withCasePaths suiteName "executeBuildIndexPlan" ["post", "template"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "executeBuildIndexPlan" ["post", "temp", "template"] $ \casePaths -> do
       let indexTemplatePath = templateFile casePaths "index.html"
           indexOutputPath = postFile casePaths "builder-ut-index.html"
       writeFile indexTemplatePath "<html><body>$posts$</body></html>"
+      klb <-
+        case renderKlb [IndexItem "Index Title" "2026" "03" "22" "/post/index-title.html"] of
+          Left e -> error ("Assertion failed: cannot render index-item KLB fixture: " ++ show e)
+          Right text -> pure text
+      createDirectoryIfMissing True (caseTempDir casePaths)
+      writeFile tempIndexItemsKlbPath klb
+      let base = expectIndexPlan mkBuildIndexPlan
       let plan =
-            IndexBuildPlan
-              { planIndexItems =
-                  [IndexItem "Index Title" "2026" "03" "22" "/post/index-title.html"]
-              , planIndexHtmlPath = indexOutputPath
+            base
+              { planIndexHtmlPath = indexOutputPath
               , planIndexTemplatePath = indexTemplatePath
-              , planIndexUrl = "/index.html"
               }
       executeBuildPlan (BuildIndexPlan plan)
       exists <- doesFileExist indexOutputPath
@@ -88,3 +94,7 @@ testExecuteBuildIndexPlan =
 expectPostPlan :: BuildPlan -> PostBuildPlan
 expectPostPlan (BuildPostPlan plan) = plan
 expectPostPlan _ = error "expected BuildPostPlan"
+
+expectIndexPlan :: BuildPlan -> IndexBuildPlan
+expectIndexPlan (BuildIndexPlan plan) = plan
+expectIndexPlan _ = error "expected BuildIndexPlan"
