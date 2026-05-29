@@ -52,7 +52,7 @@ runCheckOrphansInIsolatedWorkspace caseName setupAction = do
   withCasePathsInSandbox suiteName caseName [] $ \casePaths -> do
     let workRoot = caseRootDir casePaths
         repoRoot = repoRootPath
-        builderSourceIncludePath = repoRoot </> "builder" </> "Src"
+        builderSourceIncludePath = repoRoot </> "Src"
         runnerPath = workRoot </> "RunOrphanCheck.hs"
     setupAction
     writeFile runnerPath runnerSource

@@ -29,7 +29,7 @@ testCases =
 testShouldBuildIndexWhenMetaStateMissing :: TestCase
 testShouldBuildIndexWhenMetaStateMissing =
   mkTestCase "shouldBuild returns True for index plan when metadata state file is missing" $
-    withCasePathsInSandbox suiteName "indexShouldBuildWhenMetaStateMissing" ["builder/Src", ".cache/artifacts/meta"] $ \_ -> do
+    withCasePathsInSandbox suiteName "indexShouldBuildWhenMetaStateMissing" ["Src", ".cache/artifacts/meta"] $ \_ -> do
       writeFile (builderPath </> "build-judger-ut-builder-stub.hs") "stub"
       writeFile (metaArtifactsPath </> "item.klb") "size:1\nx:y\n"
       hashUpdate builderPath builderStatePath
@@ -39,7 +39,7 @@ testShouldBuildIndexWhenMetaStateMissing =
 testShouldBuildIndexWhenTargetMissing :: TestCase
 testShouldBuildIndexWhenTargetMissing =
   mkTestCase "shouldBuild returns True for index plan when index target file is missing" $
-    withCasePathsInSandbox suiteName "indexShouldBuildWhenTargetMissing" ["builder/Src", ".cache/artifacts/meta"] $ \_ -> do
+    withCasePathsInSandbox suiteName "indexShouldBuildWhenTargetMissing" ["Src", ".cache/artifacts/meta"] $ \_ -> do
       writeFile (builderPath </> "build-judger-ut-builder-stub.hs") "stub"
       writeFile (metaArtifactsPath </> "item.klb") "size:1\nx:y\n"
       hashUpdate builderPath builderStatePath
@@ -50,7 +50,7 @@ testShouldBuildIndexWhenTargetMissing =
 testShouldNotBuildIndexWhenBuilderAndMetaUnchanged :: TestCase
 testShouldNotBuildIndexWhenBuilderAndMetaUnchanged =
   mkTestCase "shouldBuild returns False for index plan when builder and metadata hashes are unchanged" $
-    withCasePathsInSandbox suiteName "indexShouldNotBuildWhenUnchanged" ["builder/Src", ".cache/artifacts/meta"] $ \_ -> do
+    withCasePathsInSandbox suiteName "indexShouldNotBuildWhenUnchanged" ["Src", ".cache/artifacts/meta"] $ \_ -> do
       writeFile (builderPath </> "build-judger-ut-builder-stub.hs") "stub"
       writeFile (metaArtifactsPath </> "item.klb") "size:1\nx:y\n"
       writeFile indexPath "<!doctype html>"
@@ -62,7 +62,7 @@ testShouldNotBuildIndexWhenBuilderAndMetaUnchanged =
 testShouldBuildIndexWhenBuilderHashChanged :: TestCase
 testShouldBuildIndexWhenBuilderHashChanged =
   mkTestCase "shouldBuild returns True for index plan when builder source hash changes" $
-    withCasePathsInSandbox suiteName "indexShouldBuildWhenBuilderHashChanged" ["builder/Src", ".cache/artifacts/meta"] $ \_ -> do
+    withCasePathsInSandbox suiteName "indexShouldBuildWhenBuilderHashChanged" ["Src", ".cache/artifacts/meta"] $ \_ -> do
       let builderStub = builderPath </> "build-judger-ut-builder-stub.hs"
       writeFile builderStub "v1"
       writeFile (metaArtifactsPath </> "item.klb") "size:1\nx:y\n"
@@ -76,7 +76,7 @@ testShouldBuildIndexWhenBuilderHashChanged =
 testShouldBuildPostWhenTargetMissing :: TestCase
 testShouldBuildPostWhenTargetMissing =
   mkTestCase "shouldBuild returns True for post plan when target html is missing" $
-    withCasePathsInSandbox suiteName "postShouldBuildWhenTargetMissing" ["src", "post", "builder/Src"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "postShouldBuildWhenTargetMissing" ["src", "post", "Src"] $ \casePaths -> do
       let src = srcFile casePaths "build-plan-ut-missing-source.md"
           target = postFile casePaths "build-plan-ut-missing-target.html"
       writeFile src "source"
@@ -91,7 +91,7 @@ testShouldBuildPostWhenTargetMissing =
 testShouldNotBuildPostWhenTargetAndStateAreCurrent :: TestCase
 testShouldNotBuildPostWhenTargetAndStateAreCurrent =
   mkTestCase "shouldBuild returns False for post plan when target exists and source hash is unchanged" $
-    withCasePathsInSandbox suiteName "postShouldNotBuildWhenTargetAndStateCurrent" ["src", "post", "builder/Src"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "postShouldNotBuildWhenTargetAndStateCurrent" ["src", "post", "Src"] $ \casePaths -> do
       let src = srcFile casePaths "build-plan-ut-source-current.md"
           target = postFile casePaths "build-plan-ut-target-current.html"
       writeFile src "same-source"
@@ -107,7 +107,7 @@ testShouldNotBuildPostWhenTargetAndStateAreCurrent =
 testShouldBuildPostWhenSourceNewerThanTarget :: TestCase
 testShouldBuildPostWhenSourceNewerThanTarget =
   mkTestCase "shouldBuild returns True for post plan when source mtime is newer than target mtime" $
-    withCasePathsInSandbox suiteName "postShouldBuildWhenSourceNewer" ["src", "post", "builder/Src"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "postShouldBuildWhenSourceNewer" ["src", "post", "Src"] $ \casePaths -> do
       let src = srcFile casePaths "build-plan-ut-source-newer.md"
           target = postFile casePaths "build-plan-ut-source-newer.html"
       writeFile target "existing-target"
@@ -124,7 +124,7 @@ testShouldBuildPostWhenSourceNewerThanTarget =
 testShouldBuildPostWhenSourceHashChanged :: TestCase
 testShouldBuildPostWhenSourceHashChanged =
   mkTestCase "shouldBuild returns True for post plan when source hash differs from cached state" $
-    withCasePathsInSandbox suiteName "postShouldBuildWhenSourceHashChanged" ["src", "post", "builder/Src"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "postShouldBuildWhenSourceHashChanged" ["src", "post", "Src"] $ \casePaths -> do
       let src = srcFile casePaths "build-plan-ut-source-changed.md"
           target = postFile casePaths "build-plan-ut-target-existing.html"
       writeFile src "old-source"

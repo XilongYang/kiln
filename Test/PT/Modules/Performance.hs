@@ -132,7 +132,7 @@ prepareWorkspace :: FilePath -> String -> FilePath -> CopyMode -> IO ()
 prepareWorkspace repoRoot caseName datasetRelPath mode =
   callProcess
     "sh"
-    [ repoRoot </> "builder" </> "Test" </> "PT" </> "scripts" </> "prepare-perf-workspace.sh"
+    [ repoRoot </> "Test" </> "PT" </> "scripts" </> "prepare-perf-workspace.sh"
     , repoRoot
     , caseName
     , datasetRelPath

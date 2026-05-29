@@ -29,9 +29,9 @@ testMainBuildsCoreOutputs =
     withCasePathsInSandbox suiteName "mainBuildsCoreOutputs" [] $ \casePaths -> do
       let workRoot = caseRootDir casePaths
           repoRoot = repoRootPath
-          builderMainPath = repoRoot </> "builder" </> "Src" </> "Main.hs"
-          builderSourceIncludePath = repoRoot </> "builder" </> "Src"
-          builderTestIncludePath = repoRoot </> "builder"
+          builderMainPath = repoRoot </> "Src" </> "Main.hs"
+          builderSourceIncludePath = repoRoot </> "Src"
+          builderTestIncludePath = repoRoot
           binDir = workRoot </> "bin"
       createDirectoryIfMissing True binDir
       writeFakePyftsubsetSimple (binDir </> "pyftsubset")

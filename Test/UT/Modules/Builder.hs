@@ -31,7 +31,7 @@ testCases =
 testExecuteBuildPostPlan :: TestCase
 testExecuteBuildPostPlan =
   mkTestCase "executeBuildPlan runs post plan and writes html under .mock/post" $
-    withCasePathsInSandbox suiteName "executeBuildPostPlan" ["src", "post", "temp", "template", "builder/Src"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "executeBuildPostPlan" ["src", "post", "temp", "template", "Src"] $ \casePaths -> do
       let sourcePath = srcFile casePaths "parse-post-fixture.md"
           postTemplatePath = templateFile casePaths "post.html"
           outputPath = tempFile casePaths "builder-ut-preprocessed.md"
@@ -105,7 +105,7 @@ testExecuteBuildPostPlan =
 testExecuteBuildIndexPlan :: TestCase
 testExecuteBuildIndexPlan =
   mkTestCase "executeBuildPlan renders index html from metadata artifacts and writes charset artifact" $
-    withCasePathsInSandbox suiteName "executeBuildIndexPlan" ["post", "temp", "template", ".cache/artifacts/meta", ".cache/artifacts/charset", "builder/Src"] $ \casePaths -> do
+    withCasePathsInSandbox suiteName "executeBuildIndexPlan" ["post", "temp", "template", ".cache/artifacts/meta", ".cache/artifacts/charset", "Src"] $ \casePaths -> do
       let indexTemplatePath = templateFile casePaths "index.html"
           indexOutputPath = postFile casePaths "builder-ut-index.html"
           metaPath = metaArtifactsPath </> "index-source.klb"

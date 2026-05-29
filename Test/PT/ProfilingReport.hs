@@ -144,7 +144,7 @@ compileProfileTarget exePath logPath =
         ++ shellQuote objDir
         ++ " -odir "
         ++ shellQuote objDir
-        ++ " -ibuilder/Src -ibuilder -i. builder/Test/PT/ProfileTarget.hs -o "
+        ++ " -iSrc -i. Test/PT/ProfileTarget.hs -o "
         ++ shellQuote exePath
         ++ " > "
         ++ shellQuote logPath
