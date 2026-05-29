@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v16
+
+      - name: Enable Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v8
+
+      - name: Run Unit Tests
+        run: nix develop -c sh ./ut.sh
+
+      - name: Run Performance Tests
+        run: nix develop -c sh ./pt.sh

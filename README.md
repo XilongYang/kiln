@@ -177,3 +177,28 @@ or directly:
 - This repository intentionally does not use runtime config files.
 - Path conventions are fixed by code to keep distribution simple.
 - To switch actual source font, keep `res/fonts/cn.woff2` as a symlink to your desired font file.
+
+## Commit Message Format
+
+Use:
+
+```text
+type(scope): summary
+```
+
+Examples:
+
+- `feat(builder): make fingerprint path configurable`
+- `refactor(config): consolidate config handling`
+- `test(build-judger): expand coverage`
+- `docs(repo): update README and ignore rules`
+- `chore(nix): bundle fonttools and brotli`
+
+Preferred `type` values:
+
+- `feat`
+- `fix`
+- `refactor`
+- `test`
+- `docs`
+- `chore`
