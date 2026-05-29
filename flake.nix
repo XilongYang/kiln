@@ -105,19 +105,11 @@
               brotli
             ]);
           in [
-            # Build/runtime validation tools
             gnumake
             haskell.packages.ghc9103.ghc
+            haskell.packages.ghc9103.haskell-language-server
             pandoc
             pyWithFontTools
-
-            # Dev-only tools
-            haskell.packages.ghc9103.haskell-language-server
-            vscode-langservers-extracted
-            typescript-language-server
-
-            # CodeX Dependencies
-            bubblewrap
           ];
         };
       });
