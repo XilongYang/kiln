@@ -4,32 +4,32 @@ import Data.List (isInfixOf)
 import Modules.Template
 
 import System.Directory
-  ( createDirectoryIfMissing
-  , doesDirectoryExist
-  , removePathForcibly
+  ( copyFile
+  , createDirectoryIfMissing
   )
 import System.FilePath ((</>))
 import UT.TestUtils.Asserts
+import UT.TestUtils.Paths
 import UT.TestUtils.TestSuite
 
 fixtureRoot :: FilePath
-fixtureRoot = "builder/UT/.mock/template"
+fixtureRoot = "builder/UT/.fixture/template"
 
-utComponentDir :: FilePath
-utComponentDir = fixtureRoot </> "component"
+fixtureComponentDir :: FilePath
+fixtureComponentDir = fixtureRoot </> "component"
 
-utTemplatePath :: FilePath
-utTemplatePath = fixtureRoot </> "post.html"
+fixtureTemplatePath :: FilePath
+fixtureTemplatePath = fixtureRoot </> "post.html"
 
-utRuntimeRoot :: FilePath
-utRuntimeRoot = fixtureRoot </> "runtime"
-
-withFreshRuntimeDir :: FilePath -> IO a -> IO a
-withFreshRuntimeDir dir action = do
-  exists <- doesDirectoryExist dir
-  if exists then removePathForcibly dir else pure ()
-  createDirectoryIfMissing True dir
-  action
+prepareTemplateFixtures :: CasePaths -> IO (FilePath, FilePath)
+prepareTemplateFixtures casePaths = do
+  let componentDir = caseTemplateDir casePaths </> "component"
+      templatePath = templateFile casePaths "post.html"
+  createDirectoryIfMissing True componentDir
+  copyFile (fixtureComponentDir </> "common_head.html") (componentDir </> "common_head.html")
+  copyFile (fixtureComponentDir </> "navbar.html") (componentDir </> "navbar.html")
+  copyFile fixtureTemplatePath templatePath
+  pure (componentDir, templatePath)
 
 -- Suite for placeholder expansion and template/component loading.
 suiteName :: String
@@ -37,63 +37,109 @@ suiteName = "Template"
 
 testCases :: [TestCase]
 testCases =
-  [ -- Test Case#1: Pure placeholder expansion should replace each known component.
-    mkTestCase "expandComponents replaces declared placeholders" $ do
-      let html = "<!--<navbar>--><main><!--<footnotes>--></main>"
-      let components = [("navbar", "<nav>bar</nav>"), ("footnotes", "<footer>end</footer>")]
-      let expanded = expandComponents html components
-      assertEq "expandComponents should replace every declared placeholder"
-        "<nav>bar</nav><main><footer>end</footer></main>"
-        expanded
-  , -- Test Case#2: Component loader should derive the name from the filename and read its html.
-    mkTestCase "loadComponent reads html and derives component name" $ do
-      (name, componentHtml) <- loadComponentFrom utComponentDir "navbar.html"
+  [ testExpandComponentsReplacesDeclaredPlaceholders
+  , testLoadComponentReadsNameAndHtml
+  , testGenTemplateExpandsAndRemovesPlaceholders
+  , testExpandComponentsKeepsUnknownPlaceholders
+  , testExpandComponentsWithEmptyListNoChange
+  , testLoadComponentsFromFiltersAndSorts
+  , testLoadComponentFromMissingFileThrows
+  , testLoadComponentsFromMissingDirThrows
+  , testGenTemplateFromMissingTemplateThrows
+  ]
+
+-- Confirms known placeholders are replaced by matching component html.
+testExpandComponentsReplacesDeclaredPlaceholders :: TestCase
+testExpandComponentsReplacesDeclaredPlaceholders =
+  mkTestCase "expandComponents replaces declared placeholders" $ do
+    let html = "<!--<navbar>--><main><!--<footnotes>--></main>"
+    let components = [("navbar", "<nav>bar</nav>"), ("footnotes", "<footer>end</footer>")]
+    let expanded = expandComponents html components
+    assertEq "expandComponents should replace every declared placeholder"
+      "<nav>bar</nav><main><footer>end</footer></main>"
+      expanded
+
+-- Confirms component loader derives component name from filename and reads html.
+testLoadComponentReadsNameAndHtml :: TestCase
+testLoadComponentReadsNameAndHtml =
+  mkTestCase "loadComponent reads html and derives component name" $
+    withCasePaths suiteName "loadComponentReadsNameAndHtml" ["template"] $ \casePaths -> do
+      (componentDir, _) <- prepareTemplateFixtures casePaths
+      (name, componentHtml) <- loadComponentFrom componentDir "navbar.html"
       assertEq "loadComponent should use filename stem as component name" "navbar" name
       assertContains "loadComponent should read component html" "Fixture Navbar" componentHtml
-  , -- Test Case#3: Full template generation should inline component html and remove placeholders.
-    mkTestCase "genTemplate expands component placeholders in template files" $ do
-      generated <- genTemplateFrom utComponentDir utTemplatePath
+
+-- Confirms template generation inlines component html and removes placeholders.
+testGenTemplateExpandsAndRemovesPlaceholders :: TestCase
+testGenTemplateExpandsAndRemovesPlaceholders =
+  mkTestCase "genTemplate expands component placeholders in template files" $
+    withCasePaths suiteName "genTemplateExpandsAndRemovesPlaceholders" ["template"] $ \casePaths -> do
+      (componentDir, templatePath) <- prepareTemplateFixtures casePaths
+      generated <- genTemplateFrom componentDir templatePath
       assertContains "genTemplate should include inserted common_head html" "fixture-head" generated
       assertContains "genTemplate should include inserted navbar html" "Fixture Navbar" generated
       assertFalse "genTemplate should remove component placeholders for navbar" $
         "<!--<navbar>-->" `isInfixOf` generated
-  , -- Test Case#4: Placeholder names not in the component list should be preserved.
-    mkTestCase "expandComponents keeps unknown placeholders unchanged" $ do
-      let html = "<!--<missing>--><section>ok</section>"
-      let expanded = expandComponents html [("navbar", "<nav>bar</nav>")]
-      assertEq "expandComponents should not remove unknown placeholders"
-        "<!--<missing>--><section>ok</section>"
-        expanded
-  , -- Test Case#5: Empty component list should leave template as-is.
-    mkTestCase "expandComponents with empty list keeps original html" $ do
-      let html = "<!--<navbar>--><article>body</article>"
-      let expanded = expandComponents html []
-      assertEq "expandComponents should return original html when no components exist"
-        html
-        expanded
-  , -- Test Case#6: Bulk component loader should only include .html files and keep sorted order.
-    mkTestCase "loadComponentsFrom filters non-html files and sorts by filename" $
-      withFreshRuntimeDir (utRuntimeRoot </> "component-sort") $ do
-        let dir = utRuntimeRoot </> "component-sort"
-        writeFile (dir </> "zeta.html") "Z"
-        writeFile (dir </> "alpha.html") "A"
-        writeFile (dir </> "notes.txt") "ignored"
-        writeFile (dir </> "BETA.HTML") "ignored-by-case"
 
-        components <- loadComponentsFrom dir
-        assertEq "loadComponentsFrom should load sorted .html components only"
-          [("alpha", "A"), ("zeta", "Z")]
-          components
-  , -- Test Case#7: Loading a missing component file should throw.
-    mkTestCase "loadComponentFrom throws when component file does not exist" $
+-- Confirms unknown placeholders remain untouched during expansion.
+testExpandComponentsKeepsUnknownPlaceholders :: TestCase
+testExpandComponentsKeepsUnknownPlaceholders =
+  mkTestCase "expandComponents keeps unknown placeholders unchanged" $ do
+    let html = "<!--<missing>--><section>ok</section>"
+    let expanded = expandComponents html [("navbar", "<nav>bar</nav>")]
+    assertEq "expandComponents should not remove unknown placeholders"
+      "<!--<missing>--><section>ok</section>"
+      expanded
+
+-- Confirms empty component list leaves template html unchanged.
+testExpandComponentsWithEmptyListNoChange :: TestCase
+testExpandComponentsWithEmptyListNoChange =
+  mkTestCase "expandComponents with empty list keeps original html" $ do
+    let html = "<!--<navbar>--><article>body</article>"
+    let expanded = expandComponents html []
+    assertEq "expandComponents should return original html when no components exist"
+      html
+      expanded
+
+-- Confirms component directory loader keeps only lowercase .html files in sorted order.
+testLoadComponentsFromFiltersAndSorts :: TestCase
+testLoadComponentsFromFiltersAndSorts =
+  mkTestCase "loadComponentsFrom filters non-html files and sorts by filename" $
+    withCasePaths suiteName "loadComponentsFromFiltersAndSorts" ["template"] $ \casePaths -> do
+      let dir = caseTemplateDir casePaths </> "component-sort"
+      createDirectoryIfMissing True dir
+      writeFile (dir </> "zeta.html") "Z"
+      writeFile (dir </> "alpha.html") "A"
+      writeFile (dir </> "notes.txt") "ignored"
+      writeFile (dir </> "BETA.HTML") "ignored-by-case"
+
+      components <- loadComponentsFrom dir
+      assertEq "loadComponentsFrom should load sorted .html components only"
+        [("alpha", "A"), ("zeta", "Z")]
+        components
+
+-- Confirms loading a missing component file raises an exception.
+testLoadComponentFromMissingFileThrows :: TestCase
+testLoadComponentFromMissingFileThrows =
+  mkTestCase "loadComponentFrom throws when component file does not exist" $
+    withCasePaths suiteName "loadComponentFromMissingFileThrows" ["template"] $ \casePaths -> do
+      (componentDir, _) <- prepareTemplateFixtures casePaths
       assertThrows "loadComponentFrom should fail on a missing file" $
-        loadComponentFrom utComponentDir "does-not-exist.html"
-  , -- Test Case#8: Loading components from a missing directory should throw.
-    mkTestCase "loadComponentsFrom throws when directory does not exist" $
+        loadComponentFrom componentDir "does-not-exist.html"
+
+-- Confirms loading components from a missing directory raises an exception.
+testLoadComponentsFromMissingDirThrows :: TestCase
+testLoadComponentsFromMissingDirThrows =
+  mkTestCase "loadComponentsFrom throws when directory does not exist" $
+    withCasePaths suiteName "loadComponentsFromMissingDirThrows" ["template"] $ \casePaths -> do
       assertThrows "loadComponentsFrom should fail on a missing directory" $
-        loadComponentsFrom (utRuntimeRoot </> "no-such-dir")
-  , -- Test Case#9: Generating template from a missing template file should throw.
-    mkTestCase "genTemplateFrom throws when template file does not exist" $
+        loadComponentsFrom (caseTemplateDir casePaths </> "no-such-dir")
+
+-- Confirms generating template from a missing template file raises an exception.
+testGenTemplateFromMissingTemplateThrows :: TestCase
+testGenTemplateFromMissingTemplateThrows =
+  mkTestCase "genTemplateFrom throws when template file does not exist" $
+    withCasePaths suiteName "genTemplateFromMissingTemplateThrows" ["template"] $ \casePaths -> do
+      (componentDir, _) <- prepareTemplateFixtures casePaths
       assertThrows "genTemplateFrom should fail on a missing template file" $
-        genTemplateFrom utComponentDir (utRuntimeRoot </> "missing-template.html")
-  ]
+        genTemplateFrom componentDir (caseTemplateDir casePaths </> "missing-template.html")
