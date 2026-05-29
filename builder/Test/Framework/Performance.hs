@@ -1,4 +1,4 @@
-module UT.TestUtils.Performance
+module Test.Framework.Performance
   ( PerfMetrics(..)
   , measurePerformance
   , printPerformanceReport
@@ -10,6 +10,7 @@ import qualified Data.ByteString.Char8 as BS
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.List (isPrefixOf)
 import GHC.Clock (getMonotonicTimeNSec)
+import System.Mem (performMajorGC)
 import System.CPUTime (getCPUTime)
 import System.Directory
   ( doesDirectoryExist
@@ -40,6 +41,11 @@ data ProcIo = ProcIo
 
 measurePerformance :: FilePath -> IO a -> IO (a, PerfMetrics)
 measurePerformance workspace action = do
+  -- Reduce memory carry-over from setup phase before baseline sampling.
+  performMajorGC
+  performMajorGC
+  threadDelay 50000
+
   workspaceBefore <- directorySize workspace
   ioBefore <- readProcIo
   rssBefore <- readVmRssKb

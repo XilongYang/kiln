@@ -1,4 +1,4 @@
-module UT.TestUtils.Colors where
+module Test.Framework.Colors where
 
 type Color = String
 

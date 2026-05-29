@@ -1,2 +1,2 @@
 .direnv*
-.build-cache*
+.cache*

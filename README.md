@@ -103,6 +103,18 @@ Run unit tests:
 make test
 ```
 
+Run performance tests:
+
+```bash
+make test-perf
+```
+
+Prepare/rebuild performance test datasets manually:
+
+```bash
+make perf-data
+```
+
 Clean generated artifacts:
 
 ```bash
@@ -113,7 +125,8 @@ Direct builder commands (without `make`):
 
 ```bash
 runghc -ibuilder builder/Main.hs
-runghc -ibuilder -i. builder/UT/RunTest.hs
+runghc -ibuilder -i. builder/Test/UT/RunTest.hs
+UT_ENABLE_PERF=1 runghc -ibuilder -i. builder/Test/PT/RunPerf.hs
 ```
 
 ## Incremental Build Rule

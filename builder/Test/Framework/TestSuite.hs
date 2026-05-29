@@ -1,4 +1,4 @@
-module UT.TestUtils.TestSuite
+module Test.Framework.TestSuite
   ( TestCase
   , SuiteResult(..)
   , mkTestCase
@@ -6,7 +6,7 @@ module UT.TestUtils.TestSuite
   ) where
 
 import Control.Exception (SomeException, displayException, try)
-import UT.TestUtils.Colors
+import Test.Framework.Colors
 
 -- Pre-colored status tags for per-test output lines.
 okTag :: String

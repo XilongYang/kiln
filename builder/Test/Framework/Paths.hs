@@ -1,4 +1,4 @@
-module UT.TestUtils.Paths
+module Test.Framework.Paths
   ( CasePaths(..)
   , withCasePaths
   , srcFile
@@ -32,7 +32,7 @@ data CasePaths = CasePaths
   , caseTemplateDir :: FilePath
   }
 
--- Creates a clean per-case workspace under builder/UT/.mock/<suite>/<case>.
+-- Creates a clean per-case workspace under builder/Test/UT/.mock/<suite>/<case>.
 --
 -- `requiredDirs` is a list like ["src", "post"] or ["temp", "template"].
 -- Only the requested directories are created.
@@ -95,7 +95,7 @@ navbarFixturePath :: FilePath
 navbarFixturePath = componentFixtureFile "navbar.html"
 
 utRoot :: FilePath
-utRoot = rootPath </> "builder" </> "UT"
+utRoot = rootPath </> "builder" </> "Test" </> "UT"
 
 utMockRoot :: FilePath
 utMockRoot = utRoot </> ".mock"

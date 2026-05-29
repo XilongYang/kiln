@@ -1,4 +1,4 @@
-module UT.TestUtils.Asserts
+module Test.Framework.Asserts
   ( assertTrue
   , assertFalse
   , assertEq
