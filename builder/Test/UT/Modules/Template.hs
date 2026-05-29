@@ -1,4 +1,4 @@
-module UT.Modules.Template (suiteName, testCases) where
+module Test.UT.Modules.Template (suiteName, testCases) where
 
 import Data.List (isInfixOf)
 import Modules.Template
@@ -8,9 +8,9 @@ import System.Directory
   , createDirectoryIfMissing
   )
 import System.FilePath ((</>))
-import UT.TestUtils.Asserts
-import UT.TestUtils.Paths
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.Paths
+import Test.Framework.TestSuite
 
 prepareTemplateFixtures :: CasePaths -> IO (FilePath, FilePath)
 prepareTemplateFixtures casePaths = do

@@ -1,10 +1,10 @@
-module UT.Modules.Index.Render (suiteName, testCases) where
+module Test.UT.Modules.Index.Render (suiteName, testCases) where
 
 import Data.List (isPrefixOf)
 import Modules.Index.Item (IndexItem(..))
 import Modules.Index.Render (renderIndex)
-import UT.TestUtils.Asserts
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.TestSuite
 
 -- Suite for index-builder grouping and ordering helpers.
 suiteName :: String

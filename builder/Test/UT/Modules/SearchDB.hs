@@ -1,4 +1,4 @@
-module UT.Modules.SearchDB (suiteName, testCases) where
+module Test.UT.Modules.SearchDB (suiteName, testCases) where
 
 import Modules.Post.Parse (parsePost)
 import Modules.SearchDB
@@ -13,9 +13,9 @@ import System.Directory
   ( copyFile
   , doesFileExist
   )
-import UT.TestUtils.Asserts
-import UT.TestUtils.Paths
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.Paths
+import Test.Framework.TestSuite
 
 -- Suite for search database serialization and generation helpers.
 suiteName :: String

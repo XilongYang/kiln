@@ -1,9 +1,9 @@
-module UT.Modules.Index.Item (suiteName, testCases) where
+module Test.UT.Modules.Index.Item (suiteName, testCases) where
 
 import Modules.Index.Item
 import Modules.Post (Post(..), PostMeta(..))
-import UT.TestUtils.Asserts
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.TestSuite
 
 suiteName :: String
 suiteName = "IndexItem"

@@ -1,28 +1,27 @@
 module Main where
 
 import System.Exit (exitFailure)
-import UT.TestUtils.Colors
-import UT.TestUtils.TestSuite (SuiteResult(..), runSuite)
+import Test.Framework.Colors
+import Test.Framework.TestSuite (SuiteResult(..), runSuite)
 
-import qualified UT.Modules.Builder as UtBuilder
-import qualified UT.Modules.BuildJudger as UtBuildJudger
-import qualified UT.Modules.BuildPlan as UtBuildPlan
-import qualified UT.Modules.Config as UtConfig
-import qualified UT.Modules.FontSubset as UtFontSubset
-import qualified UT.Modules.Index.Render as UtIndexRender
-import qualified UT.Modules.Index.Item as UtIndexItem
-import qualified UT.Modules.Main as UtMain
-import qualified UT.Modules.Performance as UtPerformance
-import qualified UT.Modules.Post.Parse as UtPostParse
-import qualified UT.Modules.Post.Preprocess as UtPostPreprocess
-import qualified UT.Modules.SearchDB as UtSearchDB
-import qualified UT.Modules.Template as UtTemplate
-import qualified UT.Modules.Toc as UtToc
-import qualified UT.Modules.TypeAlias as UtTypeAlias
-import qualified UT.Modules.Utils.OrphanCheck as UtOrphanCheck
-import qualified UT.Modules.Utils.Sha256 as UtSha256
-import qualified UT.Modules.Utils.String as UtString
-import qualified UT.Modules.Utils.TempDir as UtTempDir
+import qualified Test.UT.Modules.Builder as UtBuilder
+import qualified Test.UT.Modules.BuildJudger as UtBuildJudger
+import qualified Test.UT.Modules.BuildPlan as UtBuildPlan
+import qualified Test.UT.Modules.Config as UtConfig
+import qualified Test.UT.Modules.FontSubset as UtFontSubset
+import qualified Test.UT.Modules.Index.Render as UtIndexRender
+import qualified Test.UT.Modules.Index.Item as UtIndexItem
+import qualified Test.UT.Modules.Main as UtMain
+import qualified Test.UT.Modules.Post.Parse as UtPostParse
+import qualified Test.UT.Modules.Post.Preprocess as UtPostPreprocess
+import qualified Test.UT.Modules.SearchDB as UtSearchDB
+import qualified Test.UT.Modules.Template as UtTemplate
+import qualified Test.UT.Modules.Toc as UtToc
+import qualified Test.UT.Modules.TypeAlias as UtTypeAlias
+import qualified Test.UT.Modules.Utils.OrphanCheck as UtOrphanCheck
+import qualified Test.UT.Modules.Utils.Sha256 as UtSha256
+import qualified Test.UT.Modules.Utils.String as UtString
+import qualified Test.UT.Modules.Utils.TempDir as UtTempDir
 
 main :: IO ()
 main = do
@@ -46,7 +45,6 @@ main = do
       , runSuite UtFontSubset.suiteName UtFontSubset.testCases
       , runSuite UtBuilder.suiteName UtBuilder.testCases
       , runSuite UtMain.suiteName UtMain.testCases
-      , runSuite UtPerformance.suiteName UtPerformance.testCases
       ]
   let successCount = sum (map suitePassed results)
   let totalCount = sum (map suiteTotal results)

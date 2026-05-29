@@ -1,4 +1,4 @@
-module UT.Modules.Utils.TempDir (suiteName, testCases) where
+module Test.UT.Modules.Utils.TempDir (suiteName, testCases) where
 
 import Control.Exception (throwIO)
 import Modules.Utils.TempDir
@@ -8,9 +8,9 @@ import System.Directory
   , doesFileExist
   )
 import System.FilePath ((</>))
-import UT.TestUtils.Asserts
-import UT.TestUtils.Paths
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.Paths
+import Test.Framework.TestSuite
 
 -- Suite for deterministic temp directory lifecycle management.
 suiteName :: String

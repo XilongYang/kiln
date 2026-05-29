@@ -1,8 +1,8 @@
-module UT.Modules.Utils.String (suiteName, testCases) where
+module Test.UT.Modules.Utils.String (suiteName, testCases) where
 
 import Modules.Utils.String
-import UT.TestUtils.Asserts
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.TestSuite
 
 -- Suite for core string replacement and trimming helpers.
 suiteName :: String

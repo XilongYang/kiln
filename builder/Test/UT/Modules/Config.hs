@@ -1,9 +1,9 @@
-module UT.Modules.Config (suiteName, testCases) where
+module Test.UT.Modules.Config (suiteName, testCases) where
 
 import Modules.Config
 import System.FilePath ((</>))
-import UT.TestUtils.Asserts
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.TestSuite
 
 suiteName :: String
 suiteName = "Config"

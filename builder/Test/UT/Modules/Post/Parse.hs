@@ -1,12 +1,12 @@
-module UT.Modules.Post.Parse (suiteName, testCases) where
+module Test.UT.Modules.Post.Parse (suiteName, testCases) where
 
 import Modules.Post (Post(..), PostMeta(..))
 import Modules.Post.Parse (parsePost)
 import System.Directory (copyFile)
 import System.FilePath (takeBaseName)
-import UT.TestUtils.Asserts
-import UT.TestUtils.Paths
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.Paths
+import Test.Framework.TestSuite
 
 suiteName :: String
 suiteName = "Post.Parse"

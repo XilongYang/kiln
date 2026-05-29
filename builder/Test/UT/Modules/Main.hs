@@ -1,4 +1,4 @@
-module UT.Modules.Main (suiteName, testCases) where
+module Test.UT.Modules.Main (suiteName, testCases) where
 
 import Control.Exception (bracket_)
 import Modules.Config
@@ -13,8 +13,8 @@ import System.Directory
 import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath ((</>))
 import System.Process (callProcess)
-import UT.TestUtils.Asserts
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.TestSuite
 
 suiteName :: String
 suiteName = "Main"

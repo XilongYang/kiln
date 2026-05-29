@@ -1,8 +1,8 @@
-module UT.Modules.TypeAlias (suiteName, testCases) where
+module Test.UT.Modules.TypeAlias (suiteName, testCases) where
 
 import Modules.TypeAlias
-import UT.TestUtils.Asserts
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.TestSuite
 
 suiteName :: String
 suiteName = "TypeAlias"

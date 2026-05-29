@@ -1,4 +1,4 @@
-module UT.Modules.Builder (suiteName, testCases) where
+module Test.UT.Modules.Builder (suiteName, testCases) where
 
 import Modules.BuildPlan
 import Modules.Builder
@@ -8,9 +8,9 @@ import System.Directory
   ( copyFile
   , doesFileExist
   )
-import UT.TestUtils.Asserts
-import UT.TestUtils.Paths
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.Paths
+import Test.Framework.TestSuite
 
 -- Suite for builder integration-level execution helpers.
 suiteName :: String

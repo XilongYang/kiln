@@ -1,4 +1,4 @@
-module UT.Modules.Utils.OrphanCheck (suiteName, testCases) where
+module Test.UT.Modules.Utils.OrphanCheck (suiteName, testCases) where
 
 import Control.Exception (bracket_)
 import Modules.Config (postPath, srcPath)
@@ -10,8 +10,8 @@ import System.Directory
   )
 import System.FilePath ((</>))
 import System.Process (readProcess)
-import UT.TestUtils.Asserts
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.TestSuite
 import Modules.Utils.TempDir (withTempDir)
 
 suiteName :: String

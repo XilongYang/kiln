@@ -1,12 +1,12 @@
-module UT.Modules.BuildJudger (suiteName, testCases) where
+module Test.UT.Modules.BuildJudger (suiteName, testCases) where
 
 import Control.Concurrent (threadDelay)
 import Modules.BuildJudger (shouldBuild)
 import Modules.BuildPlan
 import Modules.Post (Post(..), PostMeta(..))
-import UT.TestUtils.Asserts
-import UT.TestUtils.Paths
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.Paths
+import Test.Framework.TestSuite
 
 suiteName :: String
 suiteName = "BuildJudger"

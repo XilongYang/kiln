@@ -1,12 +1,12 @@
-module UT.Modules.BuildPlan (suiteName, testCases) where
+module Test.UT.Modules.BuildPlan (suiteName, testCases) where
 
 import Modules.BuildPlan
 import Modules.Config
 import Modules.Post (Post(..), PostMeta(..))
 import System.FilePath ((</>))
-import UT.TestUtils.Asserts
-import UT.TestUtils.Paths (srcFixtureFile)
-import UT.TestUtils.TestSuite
+import Test.Framework.Asserts
+import Test.Framework.Paths (srcFixtureFile)
+import Test.Framework.TestSuite
 
 suiteName :: String
 suiteName = "BuildPlan"
