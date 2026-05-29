@@ -1,172 +1,120 @@
-# xilong.site
+# Kiln Builder
 
-Source repository for [xilong.site](https://xilong.site), a statically generated personal blog.
+A standalone Haskell static-site builder used by the Kiln blog pipeline.
 
-This project uses a custom Haskell builder (under `builder/`) to transform markdown posts in `src/` into HTML pages in `post/`, generate `index.html`, build `searchdb.klb`, and create a subset Chinese font for production.
+## What It Does
 
-## Highlights
+The builder reads markdown posts from `src/` and produces site artifacts:
 
-- Custom static-site pipeline written in Haskell (`runghc -ibuilder/Src builder/Src/Main.hs`)
-- Incremental post rebuilds based on source/target modification time
-- Template component expansion (`template/component/*.html`)
-- Markdown to HTML rendering via `pandoc`
-- Auto-generated TOC for post pages
-- Search index generation (`searchdb.klb`) from plain-text post content
-- Font subsetting via `pyftsubset` to reduce shipped CJK font size
+- Per-post HTML pages in `post/`
+- Site index page `index.html`
+- Search database `searchdb.klb`
+- Subset CJK font `res/fonts/SourceHanSerifCN-Subset.woff2`
+
+## Runtime Environment
+
+Required tools:
+
+- GHC / `runghc`
+- `pandoc`
+- `pyftsubset` (from Python `fonttools`)
+- `brotli` (required by some fonttools setups)
 
 ## Repository Layout
 
 ```text
 .
-├─ src/                 # Markdown sources with front matter
-├─ post/                # Generated post pages
-├─ template/            # HTML templates and components
-├─ style/               # CSS assets
-├─ scripts/             # Front-end scripts
-├─ res/                 # Static resources (fonts, images, third-party libs)
-├─ builder/             # Haskell build system + unit tests
-├─ index.html           # Generated homepage
-└─ searchdb.klb         # Generated search database (KLB)
+├─ Src/                         # Builder source code (entry: Src/Main.hs)
+├─ Test/                        # Unit tests (UT) and performance tests (PT)
+├─ kiln.conf                    # Runtime config file
+├─ ut.sh                        # UT runner
+└─ pt.sh                        # PT runner
 ```
 
-## Build Pipeline (Builder Behavior)
+Runtime workspace/files (under `rootPath`, default `.`):
 
-`builder/Src/Main.hs` executes the following steps:
-
-1. Recreate temp workspace (`temp/`) with `withTempDir`.
-2. Warn about orphan generated pages in `post/` that no longer have matching `src/*.md`.
-3. Render templates by expanding component placeholders like `<!--<navbar>-->`.
-4. Parse every markdown file in `src/`:
-   - Requires front matter delimited by `---`
-   - Reads `title`, `author`, `date`
-   - Splits abstract from body at the first `## ` heading
-5. Build post pages (incremental):
-   - Rebuild when any of these is true:
-     - builder source hash changed
-     - target `post/*.html` missing
-     - source `src/*.md` mtime is newer than target html
-     - source hash differs from stored post state
-   - Preprocess markdown (inject abstract block + `[[toc]]` + code fence class rewrite)
-   - Render with `pandoc`
-   - Inject generated TOC HTML into `[[toc]]`
-6. Build `index.html` from all posts, grouped by year and sorted by date (incremental):
-   - Rebuild when any of these is true:
-     - builder source hash changed
-     - `index.html` missing
-     - metadata artifacts hash changed
-7. Generate `searchdb.klb` by concatenating per-post search-item KLB artifacts.
-8. Build `res/fonts/SourceHanSerifCN-Subset.woff2` from characters used in generated pages.
-
-## Post Source Format
-
-Each post in `src/` must start with front matter:
-
-```md
----
-title: Your Post Title
-author: Your Name
-date: 2026-03-25
----
-
-Abstract paragraph(s)...
-
-## First Section
-Main content...
+```text
+<rootPath>/
+├─ src/                         # Build input posts
+├─ template/                    # Build input templates
+├─ res/                         # Static resources (fonts, etc.)
+├─ post/                        # Generated post html
+├─ temp/                        # Temporary files during one run
+├─ .cache/                      # Incremental states/artifacts
+├─ index.html                   # Generated index
+└─ searchdb.klb                 # Generated search database
 ```
 
-Notes:
+## Build Flow
 
-- The content before the first `## ` heading is treated as abstract.
-- The abstract is wrapped in `<div class="abstract">...</div>` by the builder.
-- Fenced code blocks like ```` ```haskell ```` are rewritten to include Prism classes.
-- Date format is expected to be `YYYY-MM-DD` for index grouping/sorting.
+Execution starts from `Src/Main.hs`.
 
-## Requirements
+1. Recreate the temp workspace (`temp/`).
+2. Warn about orphan pages in `post/` with no matching source markdown.
+3. Expand template placeholders from `template/component/`.
+4. Parse each markdown file in `src/`:
+   - front matter: `title`, `author`, `date`
+   - abstract/body split at the first `## ` heading
+5. Build post pages (incremental).
+6. Build `index.html` from metadata artifacts (incremental).
+7. Merge search-item artifacts into `searchdb.klb`.
+8. Merge charset artifacts and run `pyftsubset` for font subsetting.
 
-Required tools:
+## Incremental Build Rules
 
-- `make`
-- `runghc` (GHC)
-- `pandoc` (project historically requires `>= 2.17`)
-- `pyftsubset` (from Python `fonttools`)
-- `brotli` (needed by some fonttools setups)
+### Post page rebuild
 
-If you use Nix, this repo already provides a dev shell with these dependencies:
+A post is rebuilt when any condition is true:
 
-```bash
-nix develop
-```
+- target `post/*.html` is missing
+- source markdown mtime is newer than target
+- source hash changed vs saved state
+- builder source hash changed
+
+### Index rebuild
+
+The index is rebuilt when any condition is true:
+
+- `index.html` is missing
+- metadata artifact hash changed
+- builder source hash changed
+
+## Config
+
+`rootPath` resolution priority:
+
+1. `KILN_ROOT_PATH`
+2. `KILN_CONFIG_PATH` (or default `kiln.conf`) with `rootPath=...`
+3. default `.`
 
 ## Usage
 
-Build the site:
+### Build
 
 ```bash
-make
+runghc -iSrc Src/Main.hs
 ```
 
-Run unit tests:
+### Unit Tests
 
 ```bash
-make test
+./ut.sh
 ```
 
-Run performance tests:
+### Performance Tests
 
 ```bash
-make test-perf
+./pt.sh
 ```
 
-`test-perf` now runs under a shell `ulimit` virtual-memory cap (default `5242880` KiB, about `5 GiB`) to avoid PT runs exhausting host memory.
-You can override it per run:
+Set PT memory limit (KiB):
 
 ```bash
-make test-perf PT_ULIMIT_VMEM_KB=3145728
+PT_ULIMIT_VMEM_KB=3145728 ./pt.sh
 ```
 
-Prepare/rebuild performance test datasets manually:
+## Notes
 
-```bash
-make perf-data
-```
-
-Clean generated artifacts:
-
-```bash
-make clean
-```
-
-Direct builder commands (without `make`):
-
-```bash
-runghc -ibuilder/Src builder/Src/Main.hs
-runghc -ibuilder/Src -ibuilder -i. builder/Test/UT/RunTest.hs
-ulimit -Sv 5242880; runghc -ibuilder/Src -ibuilder -i. builder/Test/PT/RunPerf.hs
-```
-
-## Incremental Build Rule
-
-For each post page, rebuild happens when:
-
-- target HTML does not exist, or
-- source markdown modification time is newer than target HTML.
-
-`index.html` is incremental (same rule as Step 6 above).
-`searchdb.klb` aggregation and font subset generation run on every build.
-
-## Third-Party Libraries / Acknowledgements
-
-- Latex.css: <https://github.com/vincentdoerig/latex-css>
-- Prism: <https://github.com/PrismJS/prism>
-- MathJax: <https://github.com/mathjax/MathJax>
-
-## Fonts
-
-- JetBrains Mono: [OFL](./res/fonts/JetBrainsMono-Regular-OFL.txt)
-- Material Icons: [License](./res/fonts/MaterialIcons-LICENSE.txt)
-- Source Han Serif CN: [OFL](./res/fonts/SourceHanSerifCN-OFL.txt)
-
-## License
-
-- Source code: MIT, see [LICENSE](./LICENSE)
-- Articles and written content: CC BY-NC 4.0, see [CONTENT_LICENSE.txt](./CONTENT_LICENSE.txt)
+- PT script prepares performance fixtures before running tests.
+- Builder state and artifact hashes are stored under `.cache/`.
+- Generated outputs are intended to be deterministic for identical inputs and toolchain versions.

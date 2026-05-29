@@ -1,4 +1,4 @@
 .direnv*
 .cache*
 .codex
-builder/Test/UT/.mock/
+Test/UT/.mock/
