@@ -2,21 +2,39 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  test:
+  ut:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 30
 
-      - uses: DeterminateSystems/nix-installer-action@v17
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v17
 
       - name: Run Unit Tests
-        run: nix develop --command bash -c 'runghc test/UnitTest.hs'
+        run: nix develop -c sh ./ut.sh
+
+  pt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: ut
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v17
 
       - name: Run Performance Tests
-        run: nix develop --command bash -c 'runghc test/PerformanceTest.hs'
+        run: nix develop -c sh ./pt.sh
