@@ -1,7 +1,6 @@
 module Test.PT.Modules.Performance (suiteName, testCases) where
 
 import Control.Concurrent (threadDelay)
-import Control.Exception (bracket_)
 import Control.Monad (mapM_)
 import Modules.BuildPlan (mkBuildPostPlan)
 import Modules.Builder (executeBuildPlan)
@@ -14,13 +13,13 @@ import System.Directory
   , getCurrentDirectory
   , getModificationTime
   , listDirectory
-  , setCurrentDirectory
   )
-import System.Environment (lookupEnv, setEnv, unsetEnv)
+import System.Environment (lookupEnv)
 import System.FilePath ((</>), takeExtension)
 import System.IO (IOMode(AppendMode), hPutStr, withFile)
 import System.Process (callProcess)
 import Test.Framework.Asserts
+import Test.Framework.Paths (withPrependedPath, withWorkDir)
 import Test.Framework.Performance
 import Test.Framework.TestSuite
 
@@ -149,22 +148,6 @@ withPerfEnv :: FilePath -> IO a -> IO a
 withPerfEnv workRoot action =
   withWorkDir workRoot $
     withPrependedPath (workRoot </> "bin") action
-
-withWorkDir :: FilePath -> IO a -> IO a
-withWorkDir dir action = do
-  old <- getCurrentDirectory
-  bracket_ (setCurrentDirectory dir) (setCurrentDirectory old) action
-
-withPrependedPath :: FilePath -> IO a -> IO a
-withPrependedPath path action = do
-  old <- lookupEnv "PATH"
-  let newPath = case old of
-        Just existing -> path ++ ":" ++ existing
-        Nothing -> path
-  bracket_ (setEnv "PATH" newPath) (restore old) action
-  where
-    restore (Just value) = setEnv "PATH" value
-    restore Nothing = unsetEnv "PATH"
 
 ensurePerfEnabled :: String -> IO Bool
 ensurePerfEnabled title = do

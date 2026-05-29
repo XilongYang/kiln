@@ -1,6 +1,7 @@
 module Test.Framework.Paths
   ( CasePaths(..)
   , withCasePaths
+  , withCasePathsInSandbox
   , srcFile
   , postFile
   , tempFile
@@ -13,15 +14,25 @@ module Test.Framework.Paths
   , postTemplateFixturePath
   , commonHeadFixturePath
   , navbarFixturePath
+  , repoRootPath
+  , withWorkDir
+  , withPrependedPath
+  , withEnv
   ) where
 
 import Modules.Config (rootPath)
+import Control.Exception (bracket_)
 import System.Directory
   ( createDirectoryIfMissing
+  , makeAbsolute
   , doesDirectoryExist
+  , getCurrentDirectory
   , removePathForcibly
+  , setCurrentDirectory
   )
 import System.FilePath ((</>))
+import System.IO.Unsafe (unsafePerformIO)
+import System.Environment (lookupEnv, setEnv, unsetEnv)
 
 -- Structured path bundle for one UT case filesystem sandbox.
 data CasePaths = CasePaths
@@ -53,6 +64,13 @@ withCasePaths suiteName caseName requiredDirs action = do
         , caseTempDir = rootDir </> "temp"
         , caseTemplateDir = rootDir </> "template"
         }
+
+-- Creates a clean per-case workspace and runs the action with CWD switched
+-- to that case root so modules using relative config paths stay isolated.
+withCasePathsInSandbox :: String -> String -> [FilePath] -> (CasePaths -> IO a) -> IO a
+withCasePathsInSandbox suiteName caseName requiredDirs action =
+  withCasePaths suiteName caseName requiredDirs $ \casePaths ->
+    withWorkDir (caseRootDir casePaths) (action casePaths)
 
 srcFile :: CasePaths -> FilePath -> FilePath
 srcFile casePaths fileName = caseSrcDir casePaths </> fileName
@@ -95,7 +113,38 @@ navbarFixturePath :: FilePath
 navbarFixturePath = componentFixtureFile "navbar.html"
 
 utRoot :: FilePath
-utRoot = rootPath </> "builder" </> "Test" </> "UT"
+utRoot = repoRootAbs </> "builder" </> "Test" </> "UT"
 
 utMockRoot :: FilePath
 utMockRoot = utRoot </> ".mock"
+
+repoRootAbs :: FilePath
+repoRootAbs = unsafePerformIO (makeAbsolute rootPath)
+{-# NOINLINE repoRootAbs #-}
+
+repoRootPath :: FilePath
+repoRootPath = repoRootAbs
+
+withWorkDir :: FilePath -> IO a -> IO a
+withWorkDir dir action = do
+  old <- getCurrentDirectory
+  bracket_ (setCurrentDirectory dir) (setCurrentDirectory old) action
+
+withPrependedPath :: FilePath -> IO a -> IO a
+withPrependedPath path action = do
+  old <- lookupEnv "PATH"
+  let newPath = case old of
+        Just existing -> path ++ ":" ++ existing
+        Nothing -> path
+  bracket_ (setEnv "PATH" newPath) (restore old) action
+  where
+    restore (Just value) = setEnv "PATH" value
+    restore Nothing = unsetEnv "PATH"
+
+withEnv :: String -> String -> IO a -> IO a
+withEnv key value action = do
+  old <- lookupEnv key
+  bracket_ (setEnv key value) (restore old) action
+  where
+    restore (Just oldValue) = setEnv key oldValue
+    restore Nothing = unsetEnv key

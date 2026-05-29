@@ -8,7 +8,6 @@ import qualified Test.UT.Modules.Builder as UtBuilder
 import qualified Test.UT.Modules.BuildJudger as UtBuildJudger
 import qualified Test.UT.Modules.BuildPlan as UtBuildPlan
 import qualified Test.UT.Modules.Config as UtConfig
-import qualified Test.UT.Modules.FontSubset as UtFontSubset
 import qualified Test.UT.Modules.Index.Render as UtIndexRender
 import qualified Test.UT.Modules.Index.Item as UtIndexItem
 import qualified Test.UT.Modules.Main as UtMain
@@ -23,6 +22,7 @@ import qualified Test.UT.Modules.Utils.Klb as UtKlb
 import qualified Test.UT.Modules.Utils.Sha256 as UtSha256
 import qualified Test.UT.Modules.Utils.String as UtString
 import qualified Test.UT.Modules.Utils.TempDir as UtTempDir
+import qualified Test.UT.Modules.FontSubset as UtFontSubset
 
 main :: IO ()
 main = do
