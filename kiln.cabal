@@ -1,0 +1,20 @@
+cabal-version:      2.4
+name:                kiln
+version:             0.1.1
+synopsis:            Kiln builder
+license:             MIT
+license-file:        LICENSE
+build-type:          Simple
+
+library
+    hs-source-dirs:   src
+    exposed-modules:  Kiln.Version
+    build-depends:    base >=4 && <5, aeson
+    default-language: GHC2024
+
+executable kiln
+    main-is:          Main.hs
+    hs-source-dirs:   app
+    build-depends:    base >=4 && <5, kiln
+    default-language: GHC2024
+    ghc-options:      -O2
