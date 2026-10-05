@@ -25,6 +25,7 @@ library
     hs-source-dirs:   src
     exposed-modules:  Kiln.Init
                     , Kiln.Config
+                    , Kiln.Clean
     other-modules:    Paths_kiln
     autogen-modules:  Paths_kiln
     build-depends:    base >=4 && <5, directory, filepath, aeson
