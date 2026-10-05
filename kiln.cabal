@@ -5,11 +5,28 @@ synopsis:            Kiln builder
 license:             MIT
 license-file:        LICENSE
 build-type:          Simple
+data-files:
+    template/hello-kiln/**/*.css
+    template/hello-kiln/**/*.html
+    template/hello-kiln/**/*.js
+    template/hello-kiln/**/*.json
+    template/hello-kiln/**/*.md
+    template/hello-kiln/**/*.otf
+    template/hello-kiln/**/*.png
+    template/hello-kiln/**/*.svg
+    template/hello-kiln/**/*.ttf
+    template/hello-kiln/**/*.txt
+    template/hello-kiln/**/*.woff
+    template/hello-kiln/**/*.woff2
+    template/hello-kiln/res/latex-css-1.13.0/LICENSE
+    template/hello-kiln/res/mathjax-4.0.0/LICENSE
 
 library
     hs-source-dirs:   src
-    exposed-modules:  Kiln.Version
-    build-depends:    base >=4 && <5, aeson
+    exposed-modules:  Kiln.Init
+    other-modules:    Paths_kiln
+    autogen-modules:  Paths_kiln
+    build-depends:    base >=4 && <5, directory, filepath
     default-language: GHC2024
 
 executable kiln

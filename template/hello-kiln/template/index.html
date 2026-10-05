@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Kiln Example Site</title>
+        <!--<common_head>-->
+    </head>
+    <body>
+        <!--<navbar>-->
+        <div class="header">
+            <h1>Kiln Example Site</h1>
+        </div>
+        <div class="abstract">
+            <h2>About</h2>
+            <p>
+                This is a minimal example site built with
+                <a href="https://github.com/xilongyang/kiln">Kiln</a>, a static site engine
+                focused on plain text, long-term archives, and quiet publishing.
+                Every page here is generated from the markdown files in <code>src/</code>
+                using the templates in <code>template/</code> — browse the posts below
+                to see each feature in action.
+            </p>
+        </div>
+        <main>
+            <article>
+                <h2 id="posts">
+                    <span style="white-space: nowrap;">Posts: <i class="material-icons icon" id="post-filter">filter_list</i></span>
+                    <span id="post-filter-input" contenteditable="true"></span>
+                </h2>
+                <div id="posts_wrapper">
+                $posts$
+                </div>
+            </article>
+        </main>
+        <!--<navigator>-->
+        <!--<search_panel>-->
+        <!--<footnotes>-->
+    </body>
+</html>

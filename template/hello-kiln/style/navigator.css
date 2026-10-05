@@ -1,0 +1,13 @@
+.navigator {
+    position: fixed;
+    width: 24px;
+    height: 90px;
+    right: 2%;
+    bottom: 2%;
+}
+
+#back-top, #go-bottom {
+    border-radius: 6px;
+    width: 24px;
+    height: 24px;
+}

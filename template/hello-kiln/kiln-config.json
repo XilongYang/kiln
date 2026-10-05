@@ -1,0 +1,17 @@
+{
+  "path" : {
+    "in"  : {
+      "src"          : "src",
+      "template"     : "template",
+      "fonts"        : "res/fonts"
+    },
+    "out" : {
+      "post"         : "post",
+      "fonts-subset" : "fonts-subset",
+      "searchdb"     : "searchdb.json",
+      "index"        : "index.html",
+      "cache"        : ".cache"
+    }
+  },
+  "webroot" : "/"
+}

@@ -1,0 +1,36 @@
+#post-filter {
+    vertical-align: middle;
+}
+
+#post-filter-input {
+    display: none;
+    flex-grow: 1;
+    height: 100%;
+    width: 100%;
+    align-self: flex-end;
+    font-size: 16px;
+    line-height: 150%;
+    border: none;
+    border-bottom-style: solid;
+    outline: none;
+    background-color: var(--body-bg-color);
+    color: var(--body-color);
+    transition: 0.5s ease;
+}
+
+#post-filter-input:empty::before {
+    content: "Input to filter posts, opts: & | ~ ()";
+    color: gray;
+    pointer-events: none;
+}
+
+#post-filter-info {
+    display: none;
+    position: absolute;
+    height: 24px;
+    width: 100%;
+    font-size: 16px;
+    font-weight: normal;
+    line-height: 100%;
+    padding-left: 7.2rem;
+}

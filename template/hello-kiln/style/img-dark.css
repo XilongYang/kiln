@@ -1,0 +1,3 @@
+img {
+    filter: brightness(80%) saturate(1.25) invert(1) hue-rotate(180deg);
+}
