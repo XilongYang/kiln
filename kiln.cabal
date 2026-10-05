@@ -24,9 +24,10 @@ data-files:
 library
     hs-source-dirs:   src
     exposed-modules:  Kiln.Init
+                    , Kiln.Config
     other-modules:    Paths_kiln
     autogen-modules:  Paths_kiln
-    build-depends:    base >=4 && <5, directory, filepath
+    build-depends:    base >=4 && <5, directory, filepath, aeson
     default-language: GHC2024
 
 executable kiln
