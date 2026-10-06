@@ -2,6 +2,7 @@ module Main (main) where
 
 import Kiln.Init
 import Kiln.Clean
+import Kiln.Build
 
 import System.Environment (getArgs)
 import System.Exit (die)
@@ -12,7 +13,7 @@ main = do
   case args of
     ["init"]  -> Kiln.Init.kilnInit
     ["clean"] -> Kiln.Clean.kilnClean
-    ["build"] -> die "build"
-    []        -> die "build"
+    ["build"] -> Kiln.Build.kilnBuild
+    []        -> Kiln.Build.kilnBuild
     _         -> die "Usage: kiln (init|clean|build)"
 
