@@ -1,5 +1,6 @@
 module Kiln.Build (kilnBuild) where
 
+import Kiln.Build.FontSubset (subsetFonts)
 import Kiln.Build.Index (writeIndex)
 import Kiln.Build.Post (renderPosts)
 import Kiln.Build.SearchDb (writeSearchDb)
@@ -25,5 +26,7 @@ kilnBuild = do
     components <- loadComponents (dir </> "component")
     mapM_ (substituteComponentsInFile dir components) templateFiles
     results <- renderPosts config dir
-    writeIndex config dir (map fst results)
+    let entries = map fst results
+    writeIndex config dir entries
     writeSearchDb config results
+    subsetFonts config entries

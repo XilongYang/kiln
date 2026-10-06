@@ -17,7 +17,7 @@ configJson :: String
 configJson =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
   \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-  \\"index\":\"index.html\",\"cache\":\".cache\"}},\"webroot\":\"/blog/\"}"
+  \\"index\":\"index.html\",\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{}}"
 
 indexTemplate :: String
 indexTemplate =

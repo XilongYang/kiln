@@ -13,7 +13,7 @@
           hpkgs = pkgs.haskell.packages.ghc9103;
           src = pkgs.lib.fileset.toSource {
             root = ./.;
-            fileset = pkgs.lib.fileset.unions [ ./app ./src ./test ./template ./kiln.cabal ./LICENSE ./README.md ];
+            fileset = pkgs.lib.fileset.unions [ ./app ./src ./test ./template ./tools ./kiln.cabal ./LICENSE ./README.md ];
           };
           cabalDrv = (hpkgs.callCabal2nix "kiln" src { }).overrideAttrs (old: {
             nativeCheckInputs = (old.nativeCheckInputs or [ ]) ++ [ pkgs.pandoc ];

@@ -15,7 +15,7 @@ configJson :: String
 configJson =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
   \\"out\":{\"post\":\"dist/post\",\"fonts-subset\":\"dist/fonts\",\"searchdb\":\"dist/searchdb.json\",\
-  \\"index\":\"dist/index.html\",\"cache\":\"dist/.cache\"}},\"webroot\":\"/\"}"
+  \\"index\":\"dist/index.html\",\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\"fonts\":{}}"
 
 outPaths :: [FilePath]
 outPaths =

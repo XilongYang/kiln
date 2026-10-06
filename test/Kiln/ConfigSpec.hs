@@ -5,6 +5,7 @@ module Kiln.ConfigSpec (spec) where
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.Map.Strict as Map
 import Kiln.Config
 import Kiln.TestUtil (withTempDir)
 import System.Directory (withCurrentDirectory)
@@ -15,7 +16,8 @@ validJson :: ByteString
 validJson =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
   \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb\",\
-  \\"index\":\"index\",\"cache\":\"cache\"}},\"webroot\":\"/\"}"
+  \\"index\":\"index\",\"cache\":\"cache\"}},\"webroot\":\"/\",\
+  \\"fonts\":{\"a.ttf\":\"A\"}}"
 
 expectedConfig :: KilnConfig
 expectedConfig =
@@ -26,6 +28,7 @@ expectedConfig =
           , pathOut = OutPaths "post" "fonts-subset" "searchdb" "index" "cache"
           }
     , configWebroot = "/"
+    , configFonts = Map.fromList [("a.ttf", "A")]
     }
 
 spec :: Spec

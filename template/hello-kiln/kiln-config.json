@@ -13,5 +13,10 @@
       "cache"        : ".cache"
     }
   },
-  "webroot" : "/"
+  "webroot" : "/",
+  "fonts" : {
+    "JetBrainsMono-Regular.ttf"    : "Jetbrains Mono",
+    "MaterialIcons.woff2"          : "Material Icons",
+    "SourceHanSerifCN-Regular.otf" : "Kiln CJK Subset"
+  }
 }

@@ -10,6 +10,7 @@ module Kiln.Config
 
 import Control.Monad (unless)
 import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:))
+import Data.Map.Strict (Map)
 import System.Directory (doesFileExist)
 import System.Exit (die)
 
@@ -35,6 +36,9 @@ data PathConfig = PathConfig
 data KilnConfig = KilnConfig
   { configPath    :: PathConfig
   , configWebroot :: FilePath
+  , configFonts   :: Map String String
+    -- ^ local font filename (under @path.in.fonts@) -> the @font-family@
+    -- name it's declared under in the site's own CSS.
   } deriving (Show, Eq)
 
 instance FromJSON InPaths where
@@ -64,6 +68,7 @@ instance FromJSON KilnConfig where
     KilnConfig
       <$> o .: "path"
       <*> o .: "webroot"
+      <*> o .: "fonts"
 
 configFileName :: FilePath
 configFileName = "kiln-config.json"

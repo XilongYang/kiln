@@ -20,6 +20,7 @@ data-files:
     template/hello-kiln/**/*.woff2
     template/hello-kiln/res/latex-css-1.13.0/LICENSE
     template/hello-kiln/res/mathjax-4.0.0/LICENSE
+    tools/subset.py
 
 library
     hs-source-dirs:   src
@@ -33,9 +34,10 @@ library
                     , Kiln.Build.Post
                     , Kiln.Build.PostEntry
                     , Kiln.Build.SearchDb
+                    , Kiln.Build.FontSubset
     other-modules:    Paths_kiln
     autogen-modules:  Paths_kiln
-    build-depends:    base >=4 && <5, directory, filepath, aeson, process
+    build-depends:    base >=4 && <5, directory, filepath, aeson, process, containers
     default-language: GHC2024
 
 executable kiln
@@ -56,6 +58,6 @@ test-suite kiln-test
                       , Kiln.Build.IndexSpec
                       , Kiln.BuildSpec
                       , Kiln.TestUtil
-    build-depends:      base >=4 && <5, kiln, hspec, aeson, bytestring, directory, filepath
+    build-depends:      base >=4 && <5, kiln, hspec, aeson, bytestring, directory, filepath, containers
     build-tool-depends: hspec-discover:hspec-discover
     default-language:  GHC2024

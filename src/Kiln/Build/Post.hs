@@ -30,7 +30,7 @@ renderPosts config dir = do
 
 renderPost :: KilnConfig -> FilePath -> FilePath -> IO (PostEntry, String)
 renderPost config dir name = do
-  renderPostHtml pageTemplate webroot srcPath htmlOutputPath
+  renderPostHtml pageTemplate webroot slug srcPath htmlOutputPath
   renderPostItemJson itemTemplatePath slug srcPath itemJsonPath
   renderPostSearchText srcPath searchTextPath
   entry <- loadPostEntry itemJsonPath
@@ -52,13 +52,14 @@ renderPost config dir name = do
 
 -- | Run `srcPath` through pandoc using `pageTemplate`, writing the
 -- rendered post page to `outputPath`.
-renderPostHtml :: FilePath -> String -> FilePath -> FilePath -> IO ()
-renderPostHtml pageTemplate webroot srcPath outputPath =
+renderPostHtml :: FilePath -> String -> String -> FilePath -> FilePath -> IO ()
+renderPostHtml pageTemplate webroot slug srcPath outputPath =
   callProcess
     "pandoc"
     [ "--standalone"
     , "--template=" ++ pageTemplate
     , "--variable=webroot=" ++ webroot
+    , "--variable=slug=" ++ slug
     , "--output=" ++ outputPath
     , srcPath
     ]
