@@ -17,7 +17,7 @@ data InPaths = InPaths
   { inSrc      :: FilePath
   , inTemplate :: FilePath
   , inFonts    :: FilePath
-  } deriving Show
+  } deriving (Show, Eq)
 
 data OutPaths = OutPaths
   { outPost        :: FilePath
@@ -25,17 +25,17 @@ data OutPaths = OutPaths
   , outSearchDb    :: FilePath
   , outIndex       :: FilePath
   , outCache       :: FilePath
-  } deriving Show
+  } deriving (Show, Eq)
 
 data PathConfig = PathConfig
   { pathIn  :: InPaths
   , pathOut :: OutPaths
-  } deriving Show
+  } deriving (Show, Eq)
 
 data KilnConfig = KilnConfig
   { configPath    :: PathConfig
   , configWebroot :: FilePath
-  } deriving Show
+  } deriving (Show, Eq)
 
 instance FromJSON InPaths where
   parseJSON = withObject "in" $ \o ->

@@ -37,3 +37,15 @@ executable kiln
     build-depends:    base >=4 && <5, kiln
     default-language: GHC2024
     ghc-options:      -O2
+
+test-suite kiln-test
+    type:               exitcode-stdio-1.0
+    main-is:            Spec.hs
+    hs-source-dirs:     test
+    other-modules:      Kiln.ConfigSpec
+                      , Kiln.CleanSpec
+                      , Kiln.InitSpec
+                      , Kiln.TestUtil
+    build-depends:      base >=4 && <5, kiln, hspec, aeson, bytestring, directory, filepath
+    build-tool-depends: hspec-discover:hspec-discover
+    default-language:  GHC2024
