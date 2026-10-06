@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Build kiln (runs the cabal test suite via the Nix check phase)
+        run: nix build .#kiln -L
+
+      - name: Smoke-test init + build with the built binary
+        run: |
+          kiln="$PWD/result/bin/kiln"
+          scratch=$(mktemp -d)
+          cd "$scratch"
+          "$kiln" init
+          "$kiln" build
+          test -f index.html
+          test -f searchdb.json
+          "$kiln" clean
