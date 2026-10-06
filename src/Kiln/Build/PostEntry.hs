@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Kiln.Build.PostEntry (PostEntry (..), itemJsonTemplate, loadPostEntry) where
+module Kiln.Build.PostEntry (PostEntry (..), itemJsonTemplate, loadPostEntry, postUrl) where
 
 import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:))
 
@@ -23,3 +23,7 @@ itemJsonTemplate = "{\"title\": \"$title$\", \"date\": \"$date$\", \"slug\": \"$
 -- `PostEntry`.
 loadPostEntry :: FilePath -> IO PostEntry
 loadPostEntry jsonPath = either fail pure =<< eitherDecodeFileStrict jsonPath
+
+-- | The site-relative URL a post is published at.
+postUrl :: String -> PostEntry -> String
+postUrl webroot e = webroot ++ "post/" ++ postSlug e ++ ".html"

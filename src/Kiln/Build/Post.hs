@@ -1,32 +1,54 @@
 module Kiln.Build.Post (renderPosts) where
 
 import Kiln.Build.PostEntry (PostEntry, itemJsonTemplate, loadPostEntry)
+import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..))
 import System.Directory (createDirectoryIfMissing, listDirectory)
 import System.FilePath (takeBaseName, takeExtension, (</>))
+import System.IO (readFile')
 import System.Process (callProcess)
 
--- | Render every markdown post under `srcDir` through the (already
--- component-substituted) `post.html` template at `dir </> "post.html"`
--- into `postDir`, prefixing generated links with `webroot`. Returns a
--- `PostEntry` summary of each post for the index to list.
-renderPosts :: FilePath -> FilePath -> FilePath -> String -> IO [PostEntry]
-renderPosts dir srcDir postDir webroot = do
+-- | Render every markdown post in `config`'s source directory through the
+-- (already component-substituted) `dir </> "post.html"` template into
+-- `config`'s post output directory. Returns each post's `PostEntry`
+-- summary (for the index) paired with its plain-text content (for the
+-- search database).
+renderPosts :: KilnConfig -> FilePath -> IO [(PostEntry, String)]
+renderPosts config dir = do
   names <- listDirectory srcDir
   let mdNames = filter ((== ".md") . takeExtension) names
-      itemTemplatePath = dir </> "item.json.tpl"
-      itemJsonPath = dir </> "item.json"
   createDirectoryIfMissing True postDir
+  createDirectoryIfMissing True searchItemDir
   writeFile itemTemplatePath itemJsonTemplate
-  mapM (renderPost srcDir postDir (dir </> "post.html") itemTemplatePath itemJsonPath webroot) mdNames
-
-renderPost :: FilePath -> FilePath -> FilePath -> FilePath -> FilePath -> String -> FilePath -> IO PostEntry
-renderPost srcDir postDir pageTemplate itemTemplate itemJsonPath webroot name = do
-  renderPostHtml pageTemplate webroot srcPath (postDir </> slug ++ ".html")
-  renderPostItemJson itemTemplate slug srcPath itemJsonPath
-  loadPostEntry itemJsonPath
+  mapM (renderPost config dir) mdNames
   where
+    inPaths = pathIn (configPath config)
+    outPaths = pathOut (configPath config)
+    srcDir = inSrc inPaths
+    postDir = outPost outPaths
+    searchItemDir = dir </> "search-item"
+    itemTemplatePath = dir </> "item.json.tpl"
+
+renderPost :: KilnConfig -> FilePath -> FilePath -> IO (PostEntry, String)
+renderPost config dir name = do
+  renderPostHtml pageTemplate webroot srcPath htmlOutputPath
+  renderPostItemJson itemTemplatePath slug srcPath itemJsonPath
+  renderPostSearchText srcPath searchTextPath
+  entry <- loadPostEntry itemJsonPath
+  content <- readFile' searchTextPath
+  pure (entry, content)
+  where
+    inPaths = pathIn (configPath config)
+    outPaths = pathOut (configPath config)
+    srcDir = inSrc inPaths
+    postDir = outPost outPaths
+    webroot = configWebroot config
     slug = takeBaseName name
     srcPath = srcDir </> name
+    pageTemplate = dir </> "post.html"
+    itemTemplatePath = dir </> "item.json.tpl"
+    itemJsonPath = dir </> "item.json"
+    searchTextPath = dir </> "search-item" </> slug ++ ".txt"
+    htmlOutputPath = postDir </> slug ++ ".html"
 
 -- | Run `srcPath` through pandoc using `pageTemplate`, writing the
 -- rendered post page to `outputPath`.
@@ -53,6 +75,18 @@ renderPostItemJson itemTemplate slug srcPath outputPath =
     , "--wrap=none"
     , "--template=" ++ itemTemplate
     , "--variable=slug=" ++ slug
+    , "--output=" ++ outputPath
+    , srcPath
+    ]
+
+-- | Run `srcPath` through pandoc's plain writer (no template, just the
+-- body) for the search database to index, written to `outputPath`.
+renderPostSearchText :: FilePath -> FilePath -> IO ()
+renderPostSearchText srcPath outputPath =
+  callProcess
+    "pandoc"
+    [ "--to=plain"
+    , "--wrap=none"
     , "--output=" ++ outputPath
     , srcPath
     ]

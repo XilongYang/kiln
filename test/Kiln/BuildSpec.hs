@@ -1,6 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Kiln.BuildSpec (spec) where
 
-import Data.List (isInfixOf, isPrefixOf, tails)
+import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:))
+import Data.List (find, isInfixOf, isPrefixOf, tails)
 import Kiln.Build (kilnBuild)
 import Kiln.TestUtil (withTempDir)
 import System.Directory
@@ -36,6 +39,12 @@ navbarComponent = "<nav><a href=\"$webroot$\">THE-NAVBAR</a></nav>"
 postMd :: String -> String -> String -> String
 postMd title date body =
   "---\ntitle: " ++ title ++ "\ndate: " ++ date ++ "\n---\n\n" ++ body
+
+data SearchEntry = SearchEntry {seTitle :: String, seUrl :: String, seContent :: String}
+
+instance FromJSON SearchEntry where
+  parseJSON = withObject "search-entry" $ \o ->
+    SearchEntry <$> o .: "title" <*> o .: "url" <*> o .: "content"
 
 setUpProject :: IO ()
 setUpProject = do
@@ -73,6 +82,14 @@ spec = describe "kilnBuild" $
         let Just newerPos = substringIndex "/blog/post/Newer_Post.html" indexHtml
             Just olderPos = substringIndex "/blog/post/Older_Post.html" indexHtml
         newerPos `shouldSatisfy` (< olderPos)
+
+        searchDb <- either fail pure =<< eitherDecodeFileStrict "searchdb.json"
+        length (searchDb :: [SearchEntry]) `shouldBe` 2
+        case find ((== "Newer Post") . seTitle) searchDb of
+          Nothing -> expectationFailure "searchdb.json is missing the \"Newer Post\" entry"
+          Just e -> do
+            seUrl e `shouldBe` "/blog/post/Newer_Post.html"
+            seContent e `shouldSatisfy` ("Newer body." `isInfixOf`)
 
         doesDirectoryExist ".temp" `shouldReturn` False
   where

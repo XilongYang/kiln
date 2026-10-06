@@ -32,6 +32,7 @@ library
                     , Kiln.Build.Index
                     , Kiln.Build.Post
                     , Kiln.Build.PostEntry
+                    , Kiln.Build.SearchDb
     other-modules:    Paths_kiln
     autogen-modules:  Paths_kiln
     build-depends:    base >=4 && <5, directory, filepath, aeson, process
