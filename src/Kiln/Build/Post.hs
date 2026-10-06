@@ -56,7 +56,8 @@ renderPostHtml :: FilePath -> String -> String -> FilePath -> FilePath -> IO ()
 renderPostHtml pageTemplate webroot slug srcPath outputPath =
   callProcess
     "pandoc"
-    [ "--standalone"
+    [ "--quiet"
+    , "--standalone"
     , "--template=" ++ pageTemplate
     , "--variable=webroot=" ++ webroot
     , "--variable=slug=" ++ slug
@@ -71,7 +72,8 @@ renderPostItemJson :: FilePath -> String -> FilePath -> FilePath -> IO ()
 renderPostItemJson itemTemplate slug srcPath outputPath =
   callProcess
     "pandoc"
-    [ "--standalone"
+    [ "--quiet"
+    , "--standalone"
     , "--to=plain"
     , "--wrap=none"
     , "--template=" ++ itemTemplate
@@ -86,7 +88,8 @@ renderPostSearchText :: FilePath -> FilePath -> IO ()
 renderPostSearchText srcPath outputPath =
   callProcess
     "pandoc"
-    [ "--to=plain"
+    [ "--quiet"
+    , "--to=plain"
     , "--wrap=none"
     , "--output=" ++ outputPath
     , srcPath
