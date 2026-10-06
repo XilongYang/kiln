@@ -15,7 +15,9 @@
             root = ./.;
             fileset = pkgs.lib.fileset.unions [ ./app ./src ./test ./template ./kiln.cabal ./LICENSE ./README.md ];
           };
-          cabalDrv = hpkgs.callCabal2nix "kiln" src { };
+          cabalDrv = (hpkgs.callCabal2nix "kiln" src { }).overrideAttrs (old: {
+            nativeCheckInputs = (old.nativeCheckInputs or [ ]) ++ [ pkgs.pandoc ];
+          });
           runtimeDeps = with pkgs; [
             coreutils
             pandoc
