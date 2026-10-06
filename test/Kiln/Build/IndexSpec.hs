@@ -1,6 +1,7 @@
-module Kiln.IndexSpec (spec) where
+module Kiln.Build.IndexSpec (spec) where
 
-import Kiln.Index (PostEntry (..), renderPostsList)
+import Kiln.Build.Index (renderPostsList)
+import Kiln.Build.PostEntry (PostEntry (..))
 import Test.Hspec
 
 spec :: Spec

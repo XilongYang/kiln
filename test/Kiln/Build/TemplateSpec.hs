@@ -1,6 +1,6 @@
-module Kiln.TemplateSpec (spec) where
+module Kiln.Build.TemplateSpec (spec) where
 
-import Kiln.Template (renderComponents, replaceAll)
+import Kiln.Build.Template (renderComponents, replaceAll)
 import Test.Hspec
 
 spec :: Spec

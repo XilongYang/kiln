@@ -1,13 +1,20 @@
-module Kiln.Index (PostEntry (..), renderPostsList) where
+module Kiln.Build.Index (renderPostsList, writeIndex) where
 
 import Data.List (groupBy, sortBy)
 import Data.Ord (Down (..), comparing)
+import Kiln.Build.PostEntry (PostEntry (..))
+import Kiln.Build.Template (replaceAll)
+import System.FilePath ((</>))
+import System.IO (readFile')
 
-data PostEntry = PostEntry
-  { postTitle :: String
-  , postDate  :: String -- ^ "YYYY-MM-DD"
-  , postSlug  :: String
-  }
+-- | Fill in the `$posts$` and `$webroot$` placeholders of the (already
+-- component-substituted) index.html template at `dir </> "index.html"`
+-- and write the result to the configured index output path.
+writeIndex :: FilePath -> [PostEntry] -> String -> FilePath -> IO ()
+writeIndex dir entries webroot indexPath = do
+  content <- readFile' (dir </> "index.html")
+  let withPosts = replaceAll "$posts$" (renderPostsList webroot entries) content
+  writeFile indexPath (replaceAll "$webroot$" webroot withPosts)
 
 -- | Render the posts list markup that fills the @$posts$@ placeholder in
 -- index.html: entries grouped by year (newest year first), newest post
