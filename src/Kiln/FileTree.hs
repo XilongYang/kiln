@@ -6,8 +6,11 @@ import System.Directory
   ( copyFile
   , createDirectoryIfMissing
   , doesDirectoryExist
+  , getPermissions
   , listDirectory
   , removeDirectoryRecursive
+  , setOwnerWritable
+  , setPermissions
   )
 import System.FilePath ((</>))
 
@@ -22,7 +25,12 @@ copyEntry src dst name = do
   isDir <- doesDirectoryExist srcPath
   if isDir
     then copyTree srcPath dstPath
-    else copyFile srcPath dstPath
+    else do
+      -- copyFile also copies the source's permissions; if the source
+      -- (e.g. a Nix store path) is read-only, make sure the copy isn't.
+      copyFile srcPath dstPath
+      permissions <- getPermissions dstPath
+      setPermissions dstPath (setOwnerWritable True permissions)
   where
     srcPath = src </> name
     dstPath = dst </> name
