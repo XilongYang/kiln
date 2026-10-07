@@ -1,9 +1,14 @@
 window.MathJax = {
     options: {
         enableMenu: false,
-        enableSpeech: false,
-        enableBraille: false,
-        enableAssistiveMml: false,
-        enableExplorer: false
+        menuOptions: {
+            settings: {
+                enrich: false,
+                speech: false,
+                braille: false,
+                assistiveMml: false,
+                collapsible: false
+            }
+        }
     }
 }
