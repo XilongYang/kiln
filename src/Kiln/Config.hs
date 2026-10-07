@@ -5,11 +5,12 @@ module Kiln.Config
   , PathConfig (..)
   , InPaths (..)
   , OutPaths (..)
+  , TocConfig (..)
   , readConfig
   ) where
 
 import Control.Monad (unless)
-import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:))
+import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:), (.:?), (.!=))
 import Data.Map.Strict (Map)
 import System.Directory (doesFileExist)
 import System.Exit (die)
@@ -33,12 +34,19 @@ data PathConfig = PathConfig
   , pathOut :: OutPaths
   } deriving (Show, Eq)
 
+data TocConfig = TocConfig
+  { tocEnable          :: Bool
+  , tocDepth           :: Int
+  , tocNumberSections  :: Bool
+  } deriving (Show, Eq)
+
 data KilnConfig = KilnConfig
   { configPath    :: PathConfig
   , configWebroot :: FilePath
   , configFonts   :: Map String String
     -- ^ local font filename (under @path.in.fonts@) -> the @font-family@
     -- name it's declared under in the site's own CSS.
+  , configToc     :: TocConfig
   } deriving (Show, Eq)
 
 instance FromJSON InPaths where
@@ -63,12 +71,20 @@ instance FromJSON PathConfig where
       <$> o .: "in"
       <*> o .: "out"
 
+instance FromJSON TocConfig where
+  parseJSON = withObject "toc" $ \o ->
+    TocConfig
+      <$> o .:? "enable" .!= True
+      <*> o .:? "depth" .!= 3
+      <*> o .:? "number-sections" .!= False
+
 instance FromJSON KilnConfig where
   parseJSON = withObject "kiln-config" $ \o ->
     KilnConfig
       <$> o .: "path"
       <*> o .: "webroot"
       <*> o .: "fonts"
+      <*> o .:? "toc" .!= TocConfig True 3 False
 
 configFileName :: FilePath
 configFileName = "kiln-config.json"

@@ -29,6 +29,7 @@ expectedConfig =
           }
     , configWebroot = "/"
     , configFonts = Map.fromList [("a.ttf", "A")]
+    , configToc = TocConfig True 3 False
     }
 
 spec :: Spec

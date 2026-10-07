@@ -4,7 +4,7 @@ import Data.Char (isSpace)
 import Data.List (dropWhileEnd, isPrefixOf)
 import Kiln.Build.PostEntry (PostEntry, itemJsonTemplate, loadPostEntry)
 import Kiln.Build.Template (replaceAll)
-import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..))
+import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..), TocConfig (..))
 import System.Directory (createDirectoryIfMissing, listDirectory)
 import System.FilePath (takeBaseName, takeExtension, (</>))
 import System.IO (readFile')
@@ -35,7 +35,7 @@ renderPost :: KilnConfig -> FilePath -> FilePath -> IO (PostEntry, String)
 renderPost config dir name = do
   src <- readFile' srcPath
   writeFile rewrittenPath (rewriteLanguageMarks src)
-  renderPostHtml pageTemplate webroot slug rewrittenPath htmlOutputPath
+  renderPostHtml (tocEnable toc) (tocDepth toc) (tocNumberSections toc) pageTemplate webroot slug rewrittenPath htmlOutputPath
   renderPostItemJson itemTemplatePath slug srcPath itemJsonPath
   renderPostSearchText srcPath searchTextPath
   entry <- loadPostEntry itemJsonPath
@@ -47,6 +47,7 @@ renderPost config dir name = do
     srcDir = inSrc inPaths
     postDir = outPost outPaths
     webroot = configWebroot config
+    toc = configToc config
     slug = takeBaseName name
     srcPath = srcDir </> name
     rewrittenPath = dir </> name
@@ -58,19 +59,25 @@ renderPost config dir name = do
 
 -- | Run `srcPath` through pandoc using `pageTemplate`, writing the
 -- rendered post page to `outputPath`.
-renderPostHtml :: FilePath -> String -> String -> FilePath -> FilePath -> IO ()
-renderPostHtml pageTemplate webroot slug srcPath outputPath =
+renderPostHtml :: Bool -> Int -> Bool -> FilePath -> String -> String -> FilePath -> FilePath -> IO ()
+renderPostHtml enableToc tocDepth numberSections pageTemplate webroot slug srcPath outputPath =
   callProcess
     "pandoc"
-    [ "--quiet"
-    , "--standalone"
-    , "--mathjax"
-    , "--template=" ++ pageTemplate
-    , "--variable=webroot=" ++ webroot
-    , "--variable=slug=" ++ slug
-    , "--output=" ++ outputPath
-    , srcPath
-    ]
+    ( [ "--quiet"
+      , "--standalone"
+      , "--mathjax"
+      , "--template=" ++ pageTemplate
+      , "--variable=webroot=" ++ webroot
+      , "--variable=slug=" ++ slug
+      , "--output=" ++ outputPath
+      , srcPath
+      ]
+      ++ tocFlags
+    )
+  where
+    tocFlags
+      | enableToc = ["--toc", "--toc-depth=" ++ show tocDepth] ++ ["--number-sections" | numberSections]
+      | otherwise = []
 
 -- | Run `srcPath` through pandoc using `itemTemplate` (see
 -- `itemJsonTemplate`) to extract its title/date/slug as JSON, written to
