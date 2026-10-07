@@ -2,9 +2,11 @@
 <html>
     <head>
         <title>$title$ - Kiln Example Site</title>
-        <!-- Must come before common_head's site-wide font subset, so this post's narrower subset wins the unicode-range cascade -->
-        <link href="$webroot$fonts-subset/$slug$.css" rel="stylesheet">
         <!--<common_head>-->
+        <!-- Must come after common_head's site-wide font subset above: browsers resolve
+             overlapping unicode-range @font-face rules by picking the *last* matching one, so
+             this post's narrower subset needs to load after site.css to take priority. -->
+        <link href="$webroot$fonts-subset/$slug$.css" rel="stylesheet">
     </head>
     <body>
         <!--<navbar>-->

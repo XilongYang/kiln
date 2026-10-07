@@ -4,10 +4,12 @@
     <link rel="icon" href="$webroot$res/kiln.png" type="image/png">
     <link rel="apple-touch-icon" href="$webroot$res/kiln.png">
     <!-- Stylesheets -->
-    <!-- Must come before wrapper.css/fonts.css below, so narrower font subsets win the unicode-range cascade -->
-    <link href="$webroot$fonts-subset/site.css" rel="stylesheet">
     <link id="anti-flash" href="$webroot$style/anti-flash-light.css" rel="stylesheet">
     <link href="$webroot$style/wrapper.css" rel="stylesheet">
+    <!-- Must come after wrapper.css/fonts.css above: browsers resolve overlapping unicode-range
+         @font-face rules by picking the *last* matching one, so this site-wide subset needs to
+         load after the full-font fallback to actually take priority. -->
+    <link href="$webroot$fonts-subset/site.css" rel="stylesheet">
     <link id="code-style" href="$webroot$res/latex-css-1.13.0/prism/prism-one-light.css" rel="stylesheet">
     <link id="img-invert" href="" rel="stylesheet">
 
