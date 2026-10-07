@@ -15,8 +15,8 @@
   },
   "webroot" : "/",
   "fonts" : {
-    "JetBrainsMono-Regular.ttf"    : "Jetbrains Mono",
+    "JetBrainsMono-Regular.ttf"    : "JetBrains Mono",
     "MaterialIcons.woff2"          : "Material Icons",
-    "SourceHanSerifCN-Regular.otf" : "Kiln CJK Subset"
+    "SourceHanSerifCN-Regular.otf" : "Source Han Serif CN"
   }
 }

@@ -2,7 +2,7 @@
   font-family: 'Material Icons';
   font-style: normal;
   font-weight: 400;
-  src: url('/res/fonts/MaterialIcons.woff2') format('woff2');
+  src: url('/fonts-subset/MaterialIcons.woff2') format('woff2');
 }
 
 .material-icons {
@@ -22,12 +22,11 @@
 }
 
 @font-face {
-  font-family: 'Jetbrains Mono';
-  src: url('/res/fonts/JetBrainsMono-Regular.ttf');
+  font-family: 'JetBrains Mono';
+  src: url('/fonts-subset/JetBrainsMono-Regular.woff2') format('woff2');
 }
 
-/* Last-resort tier: the full CJK font, used via patches.css's --font-stack-* fallback. */
 @font-face {
-  font-family: 'Kiln CJK Subset';
-  src: url('/res/fonts/SourceHanSerifCN-Regular.otf');
+  font-family: 'Source Han Serif CN';
+  src: url('/fonts-subset/SourceHanSerifCN-Regular.woff2') format('woff2');
 }

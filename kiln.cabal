@@ -20,7 +20,6 @@ data-files:
     template/hello-kiln/**/*.woff2
     template/hello-kiln/res/latex-css-1.13.0/LICENSE
     template/hello-kiln/res/mathjax-4.0.0/LICENSE
-    tools/subset.py
 
 library
     hs-source-dirs:   src
