@@ -58,6 +58,7 @@ renderPostHtml pageTemplate webroot slug srcPath outputPath =
     "pandoc"
     [ "--quiet"
     , "--standalone"
+    , "--mathjax"
     , "--template=" ++ pageTemplate
     , "--variable=webroot=" ++ webroot
     , "--variable=slug=" ++ slug
