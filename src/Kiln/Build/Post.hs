@@ -1,6 +1,9 @@
 module Kiln.Build.Post (renderPosts) where
 
+import Data.Char (isSpace)
+import Data.List (dropWhileEnd, isPrefixOf)
 import Kiln.Build.PostEntry (PostEntry, itemJsonTemplate, loadPostEntry)
+import Kiln.Build.Template (replaceAll)
 import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..))
 import System.Directory (createDirectoryIfMissing, listDirectory)
 import System.FilePath (takeBaseName, takeExtension, (</>))
@@ -30,7 +33,9 @@ renderPosts config dir = do
 
 renderPost :: KilnConfig -> FilePath -> FilePath -> IO (PostEntry, String)
 renderPost config dir name = do
-  renderPostHtml pageTemplate webroot slug srcPath htmlOutputPath
+  src <- readFile' srcPath
+  writeFile rewrittenPath (rewriteLanguageMarks src)
+  renderPostHtml pageTemplate webroot slug rewrittenPath htmlOutputPath
   renderPostItemJson itemTemplatePath slug srcPath itemJsonPath
   renderPostSearchText srcPath searchTextPath
   entry <- loadPostEntry itemJsonPath
@@ -44,6 +49,7 @@ renderPost config dir name = do
     webroot = configWebroot config
     slug = takeBaseName name
     srcPath = srcDir </> name
+    rewrittenPath = dir </> name
     pageTemplate = dir </> "post.html"
     itemTemplatePath = dir </> "item.json.tpl"
     itemJsonPath = dir </> "item.json"
@@ -95,3 +101,23 @@ renderPostSearchText srcPath outputPath =
     , "--output=" ++ outputPath
     , srcPath
     ]
+
+-- | Rewrite a plain @```lang@ fence opener into the pandoc attribute form
+-- that gives Prism's line-numbers/match-braces plugins something to key
+-- off of; fences without a language tag are left untouched.
+rewriteLanguageMarks :: String -> String
+rewriteLanguageMarks =
+  unlines . map rewriteLanguageMarkLine . lines
+  where
+    rewriteLanguageMarkLine :: String -> String
+    rewriteLanguageMarkLine line
+      | not $ "```" `isPrefixOf` stripped = line
+      | mark == "" = line
+      | otherwise = indent ++ replaceAll "[mark]" mark "``` {.language-[mark] .line-numbers .match-braces}"
+      where
+        indent = takeWhile isSpace line
+        stripped = dropWhile isSpace line
+        mark = trim $ drop 3 stripped
+
+trim :: String -> String
+trim = dropWhileEnd isSpace . dropWhile isSpace
