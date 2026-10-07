@@ -6,7 +6,8 @@ html {
 }
 
 body {
-    font-family: 'Latin Modern', 'Kiln CJK Subset', Georgia, Cambria, 'Times New Roman', Times, serif;
+    /* --font-stack-SourceHanSerifCN-Regular: post subset, site subset, full font (fonts-subset/*.css) */
+    font-family: 'Latin Modern', var(--font-stack-SourceHanSerifCN-Regular, 'Kiln CJK Subset'), Georgia, Cambria, 'Times New Roman', Times, serif;
     transition: 0.5s ease;
 }
 

@@ -26,10 +26,7 @@
   src: url('/res/fonts/JetBrainsMono-Regular.ttf');
 }
 
-/* Last-resort tier: the full CJK font, used only for characters not
-   covered by this page's (or the site-wide) font subset, both declared
-   later in the cascade via fonts-subset/*.css so their narrower
-   unicode-range wins the overlap. */
+/* Last-resort tier: the full CJK font, used via patches.css's --font-stack-* fallback. */
 @font-face {
   font-family: 'Kiln CJK Subset';
   src: url('/res/fonts/SourceHanSerifCN-Regular.otf');

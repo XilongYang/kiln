@@ -1,5 +1,6 @@
 module Kiln.Build.FontSubset (subsetFonts) where
 
+import Data.List (intercalate)
 import qualified Data.Map.Strict as Map
 import Kiln.Build.PostEntry (PostEntry (..))
 import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..))
@@ -14,16 +15,14 @@ import System.Process (readProcessWithExitCode)
 -- declared in `config`'s `fonts` map down to just the characters its
 -- rendered HTML actually uses and write a CSS file declaring
 -- `@font-face` rules (with accurate `unicode-range`) for the fonts that
--- were used. A font a page doesn't use at all is left out of that page's
--- CSS, so the page falls back to the full font already declared in
--- style/fonts.css.
+-- were used, each under its own tier-specific name (see `subsetFontsFor`).
 subsetFonts :: KilnConfig -> [PostEntry] -> IO ()
 subsetFonts config entries = do
   createDirectoryIfMissing True subsetDir
   dataDir <- getDataDir
   let scriptPath = dataDir </> "tools" </> "subset.py"
-  mapM_ (\e -> subsetFontsFor scriptPath fontsDir localFonts (subsetDir </> postSlug e) [postPath e]) entries
-  subsetFontsFor scriptPath fontsDir localFonts (subsetDir </> "site") (map postPath entries ++ [indexPath])
+  mapM_ (\e -> subsetFontsFor scriptPath fontsDir localFonts [postSlug e, "Site"] (subsetDir </> postSlug e) [postPath e]) entries
+  subsetFontsFor scriptPath fontsDir localFonts ["Site"] (subsetDir </> "site") (map postPath entries ++ [indexPath])
   where
     inPaths = pathIn (configPath config)
     outPaths = pathOut (configPath config)
@@ -36,20 +35,26 @@ subsetFonts config entries = do
 
 -- | Subset every font in `localFonts` against `htmlPaths`, writing
 -- `<prefix>.css` declaring the fonts that were actually used (each
--- pointing at its own `<prefix>-<font>.woff2`).
-subsetFontsFor :: FilePath -> FilePath -> [(FilePath, String)] -> FilePath -> [FilePath] -> IO ()
-subsetFontsFor scriptPath fontsDir localFonts prefix htmlPaths = do
+-- pointing at its own `<prefix>-<font>.woff2`), under `'<family>
+-- (<tierLabels head>)'` plus a `--font-stack-<font file>` custom property
+-- chaining the rest of `tierLabels` and the plain `family` as fallbacks.
+subsetFontsFor :: FilePath -> FilePath -> [(FilePath, String)] -> [String] -> FilePath -> [FilePath] -> IO ()
+subsetFontsFor scriptPath fontsDir localFonts tierLabels prefix htmlPaths = do
   rules <- mapM trySubset localFonts
   writeFile (prefix ++ ".css") (concat [rule | Just rule <- rules])
   where
     trySubset (fileName, family) = do
-      let fontPath = fontsDir </> fileName
+      let tierNames = [family ++ " (" ++ label ++ ")" | label <- tierLabels] ++ [family]
+          tieredFamily = case tierLabels of
+            (label : _) -> family ++ " (" ++ label ++ ")"
+            [] -> family
+          fontPath = fontsDir </> fileName
           woffPath = prefix ++ "-" ++ takeBaseName fileName ++ ".woff2"
       exists <- doesFileExist fontPath
       if exists
         then do
           result <- subsetFont scriptPath fontPath woffPath htmlPaths
-          pure (fontFaceRule family woffPath <$> result)
+          pure (fontFaceAndStackRule fileName tieredFamily tierNames woffPath <$> result)
         else pure Nothing
 
 -- | Run `tools/subset.py` against `fontPath` (which must already exist),
@@ -68,6 +73,10 @@ subsetFont scriptPath fontPath woffPath htmlPaths = do
       ioError . userError $
         "failed to subset " ++ fontPath ++ " for " ++ show htmlPaths ++ ": " ++ err
 
+fontFaceAndStackRule :: FilePath -> String -> [String] -> FilePath -> String -> String
+fontFaceAndStackRule fileName tieredFamily tierNames woffPath unicodeRange =
+  fontFaceRule tieredFamily woffPath unicodeRange ++ stackRule fileName tierNames
+
 fontFaceRule :: String -> FilePath -> String -> String
 fontFaceRule family woffPath unicodeRange =
   "@font-face { font-family: '"
@@ -76,4 +85,12 @@ fontFaceRule family woffPath unicodeRange =
     ++ takeBaseName woffPath
     ++ ".woff2') format('woff2'); unicode-range: "
     ++ unicodeRange
+    ++ "; }\n"
+
+stackRule :: FilePath -> [String] -> String
+stackRule fileName tierNames =
+  ":root { --font-stack-"
+    ++ takeBaseName fileName
+    ++ ": "
+    ++ intercalate ", " [ "'" ++ name ++ "'" | name <- tierNames ]
     ++ "; }\n"
