@@ -5,7 +5,6 @@
 
   outputs = { self, nixpkgs }:
     let
-      version = "0.1.1";
       systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
       mkKiln = pkgs:
@@ -25,7 +24,7 @@
           ];
           kilnUnwrapped = pkgs.haskell.lib.justStaticExecutables cabalDrv;
           kiln = pkgs.symlinkJoin {
-            name = "kiln-${version}";
+            name = "kiln-${kilnUnwrapped.version}";
             paths = [ kilnUnwrapped ];
             nativeBuildInputs = [ pkgs.makeWrapper ];
             postBuild = ''

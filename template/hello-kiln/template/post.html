@@ -10,7 +10,18 @@
             <h1>$title$</h1>
             <p class="author">$author$<br>$date$</p>
         </div>
-        $toc$
+        <div class="abstract">
+            $abstract$
+        </div>
+        <nav role="navigation" class="toc">
+            <h2>
+                Contents
+                <i class="material-icons icon" id="toc-control">remove</i>
+            </h2>
+            <div id="toc-items" style="display: inherit;">
+                $toc$
+            </div>
+        </nav>
         <main>
             $body$
         </main>

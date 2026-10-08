@@ -10,103 +10,172 @@ import System.FilePath (takeBaseName, takeExtension, (</>))
 import System.IO (readFile')
 import System.Process (callProcess)
 
+-- | Metadata shared across a post's render steps that isn't itself a
+-- filesystem path: its slug, the site's webroot, and the table-of-contents
+-- settings.
+data PostMeta = PostMeta
+  { postSlug    :: String
+  , postWebroot :: String
+  , postToc     :: TocConfig
+  }
+
+-- | Every filesystem path touched while rendering one post. Grouping these
+-- avoids passing a run of same-typed `FilePath`/`String` arguments
+-- positionally, where it's easy to pass them in the wrong order.
+data PostPaths = PostPaths
+  { postSrcPath        :: FilePath -- ^ the post's original markdown
+  , postRewrittenPath  :: FilePath -- ^ language-mark-rewritten body fed to pandoc
+  , postPageTemplate   :: FilePath -- ^ the post page template, @post.html@
+  , postItemTemplate   :: FilePath -- ^ the item JSON template, @item.json.tpl@
+  , postItemJsonPath   :: FilePath -- ^ the rendered item JSON, for the index
+  , postSearchTextPath :: FilePath -- ^ the rendered plain text, for the search database
+  , postHtmlOutputPath :: FilePath -- ^ the rendered post page
+  }
+
 -- | Render every markdown post in `config`'s source directory through the
--- (already component-substituted) `dir </> "post.html"` template into
+-- (already component-substituted) `tempDir </> "post.html"` template into
 -- `config`'s post output directory. Returns each post's `PostEntry`
 -- summary (for the index) paired with its plain-text content (for the
 -- search database).
 renderPosts :: KilnConfig -> FilePath -> IO [(PostEntry, String)]
-renderPosts config dir = do
+renderPosts config tempDir = do
   names <- listDirectory srcDir
   let mdNames = filter ((== ".md") . takeExtension) names
   createDirectoryIfMissing True postDir
   createDirectoryIfMissing True searchItemDir
   writeFile itemTemplatePath itemJsonTemplate
-  mapM (renderPost config dir) mdNames
+  mapM (renderPost config tempDir) mdNames
   where
     inPaths = pathIn (configPath config)
     outPaths = pathOut (configPath config)
     srcDir = inSrc inPaths
     postDir = outPost outPaths
-    searchItemDir = dir </> "search-item"
-    itemTemplatePath = dir </> "item.json.tpl"
+    searchItemDir = tempDir </> "search-item"
+    itemTemplatePath = tempDir </> "item.json.tpl"
 
 renderPost :: KilnConfig -> FilePath -> FilePath -> IO (PostEntry, String)
-renderPost config dir name = do
-  src <- readFile' srcPath
-  writeFile rewrittenPath (rewriteLanguageMarks src)
-  renderPostHtml (tocEnable toc) (tocDepth toc) (tocNumberSections toc) pageTemplate webroot slug rewrittenPath htmlOutputPath
-  renderPostItemJson itemTemplatePath slug srcPath itemJsonPath
-  renderPostSearchText srcPath searchTextPath
-  entry <- loadPostEntry itemJsonPath
-  content <- readFile' searchTextPath
+renderPost config tempDir name = do
+  src <- readFile' (postSrcPath paths)
+  let (abstractSrc, bodySrc) = splitAbstract (rewriteLanguageMarks src)
+  writeFile (postRewrittenPath paths) bodySrc
+  abstractHtml <- traverse (renderAbstractHtml tempDir) abstractSrc
+  renderPostHtml meta paths abstractHtml
+  renderPostItemJson meta paths
+  renderPostSearchText paths
+  entry <- loadPostEntry (postItemJsonPath paths)
+  content <- readFile' (postSearchTextPath paths)
   pure (entry, content)
   where
     inPaths = pathIn (configPath config)
     outPaths = pathOut (configPath config)
     srcDir = inSrc inPaths
     postDir = outPost outPaths
-    webroot = configWebroot config
-    toc = configToc config
     slug = takeBaseName name
-    srcPath = srcDir </> name
-    rewrittenPath = dir </> name
-    pageTemplate = dir </> "post.html"
-    itemTemplatePath = dir </> "item.json.tpl"
-    itemJsonPath = dir </> "item.json"
-    searchTextPath = dir </> "search-item" </> slug ++ ".txt"
-    htmlOutputPath = postDir </> slug ++ ".html"
+    meta =
+      PostMeta
+        { postSlug = slug
+        , postWebroot = configWebroot config
+        , postToc = configToc config
+        }
+    paths =
+      PostPaths
+        { postSrcPath = srcDir </> name
+        , postRewrittenPath = tempDir </> name
+        , postPageTemplate = tempDir </> "post.html"
+        , postItemTemplate = tempDir </> "item.json.tpl"
+        , postItemJsonPath = tempDir </> "item.json"
+        , postSearchTextPath = tempDir </> "search-item" </> slug ++ ".txt"
+        , postHtmlOutputPath = postDir </> slug ++ ".html"
+        }
 
--- | Run `srcPath` through pandoc using `pageTemplate`, writing the
--- rendered post page to `outputPath`.
-renderPostHtml :: Bool -> Int -> Bool -> FilePath -> String -> String -> FilePath -> FilePath -> IO ()
-renderPostHtml enableToc tocDepth numberSections pageTemplate webroot slug srcPath outputPath =
+-- | Split a post's (already language-mark-rewritten) source on a line
+-- consisting solely of the @<!--more-->@ marker. The text before the
+-- marker becomes the post's abstract; the text after it (reattached to
+-- any YAML frontmatter, so pandoc still sees the post's title/date/etc.)
+-- becomes the body that gets rendered. Posts without the marker are
+-- passed through unchanged, with no abstract.
+splitAbstract :: String -> (Maybe String, String)
+splitAbstract src = case break isMoreMarker rest of
+  (before, _ : after) -> (Just (trim (unlines before)), unlines (frontmatter ++ "" : after))
+  (_, [])             -> (Nothing, src)
+  where
+    (frontmatter, rest) = splitFrontmatter (lines src)
+    isMoreMarker = (== "<!--more-->") . trim
+
+-- | Split off a leading YAML metadata block (the @---@-delimited lines,
+-- delimiters included) from the rest of a post's lines, if one is
+-- present.
+splitFrontmatter :: [String] -> ([String], [String])
+splitFrontmatter (l : ls)
+  | trim l == "---" = case break ((== "---") . trim) ls of
+      (fm, closing : rest) -> (l : fm ++ [closing], rest)
+      (_, [])              -> ([], l : ls)
+splitFrontmatter ls = ([], ls)
+
+-- | Run an abstract's markdown through pandoc's HTML writer (no
+-- template, just the rendered fragment) so it can be spliced into the
+-- post page as the @abstract@ variable.
+renderAbstractHtml :: FilePath -> String -> IO String
+renderAbstractHtml tempDir abstractSrc = do
+  writeFile abstractSrcPath abstractSrc
+  callProcess "pandoc" ["--quiet", "--to=html", "--wrap=none", "--output=" ++ abstractHtmlPath, abstractSrcPath]
+  readFile' abstractHtmlPath
+  where
+    abstractSrcPath = tempDir </> "abstract.md"
+    abstractHtmlPath = tempDir </> "abstract.html"
+
+-- | Run the rewritten post body through pandoc using the page template,
+-- writing the rendered post page.
+renderPostHtml :: PostMeta -> PostPaths -> Maybe String -> IO ()
+renderPostHtml meta paths abstractHtml =
   callProcess
     "pandoc"
     ( [ "--quiet"
       , "--standalone"
       , "--mathjax"
-      , "--template=" ++ pageTemplate
-      , "--variable=webroot=" ++ webroot
-      , "--variable=slug=" ++ slug
-      , "--output=" ++ outputPath
-      , srcPath
+      , "--template=" ++ postPageTemplate paths
+      , "--variable=webroot=" ++ postWebroot meta
+      , "--variable=slug=" ++ postSlug meta
+      , "--output=" ++ postHtmlOutputPath paths
+      , postRewrittenPath paths
       ]
       ++ tocFlags
+      ++ abstractFlag
     )
   where
+    toc = postToc meta
     tocFlags
-      | enableToc = ["--toc", "--toc-depth=" ++ show tocDepth] ++ ["--number-sections" | numberSections]
+      | tocEnable toc = ["--toc", "--toc-depth=" ++ show (tocDepth toc)] ++ ["--number-sections" | tocNumberSections toc]
       | otherwise = []
+    abstractFlag = maybe [] (\h -> ["--variable=abstract=" ++ h]) abstractHtml
 
--- | Run `srcPath` through pandoc using `itemTemplate` (see
--- `itemJsonTemplate`) to extract its title/date/slug as JSON, written to
--- `outputPath`.
-renderPostItemJson :: FilePath -> String -> FilePath -> FilePath -> IO ()
-renderPostItemJson itemTemplate slug srcPath outputPath =
+-- | Run the post's source through pandoc using the item template (see
+-- `itemJsonTemplate`) to extract its title/date/slug as JSON.
+renderPostItemJson :: PostMeta -> PostPaths -> IO ()
+renderPostItemJson meta paths =
   callProcess
     "pandoc"
     [ "--quiet"
     , "--standalone"
     , "--to=plain"
     , "--wrap=none"
-    , "--template=" ++ itemTemplate
-    , "--variable=slug=" ++ slug
-    , "--output=" ++ outputPath
-    , srcPath
+    , "--template=" ++ postItemTemplate paths
+    , "--variable=slug=" ++ postSlug meta
+    , "--output=" ++ postItemJsonPath paths
+    , postSrcPath paths
     ]
 
--- | Run `srcPath` through pandoc's plain writer (no template, just the
--- body) for the search database to index, written to `outputPath`.
-renderPostSearchText :: FilePath -> FilePath -> IO ()
-renderPostSearchText srcPath outputPath =
+-- | Run the post's source through pandoc's plain writer (no template,
+-- just the body) for the search database to index.
+renderPostSearchText :: PostPaths -> IO ()
+renderPostSearchText paths =
   callProcess
     "pandoc"
     [ "--quiet"
     , "--to=plain"
     , "--wrap=none"
-    , "--output=" ++ outputPath
-    , srcPath
+    , "--output=" ++ postSearchTextPath paths
+    , postSrcPath paths
     ]
 
 -- | Rewrite a plain @```lang@ fence opener into the pandoc attribute form
