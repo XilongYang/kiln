@@ -1,13 +1,21 @@
 module Kiln.Build.Post (renderPosts) where
 
+import Control.Monad (when)
 import Data.Char (isSpace)
-import Data.List (dropWhileEnd, isPrefixOf)
+import Data.List (dropWhileEnd, isPrefixOf, nub, (\\))
+import Kiln.Build.Cache (cacheFile, isFileFresh, isGlobalFresh, recordFile, recordGlobal)
 import Kiln.Build.PostEntry (PostEntry, itemJsonTemplate, loadPostEntry)
 import Kiln.Build.Template (replaceAll)
 import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..), TocConfig (..))
-import System.Directory (createDirectoryIfMissing, listDirectory)
+import System.Directory
+  ( createDirectoryIfMissing
+  , doesDirectoryExist
+  , doesFileExist
+  , listDirectory
+  , removeFile
+  )
 import System.FilePath (takeBaseName, takeExtension, (</>))
-import System.IO (readFile')
+import System.IO (hPutStrLn, readFile', stdout)
 import System.Process (callProcess)
 
 -- | Metadata shared across a post's render steps that isn't itself a
@@ -32,6 +40,9 @@ data PostPaths = PostPaths
   , postHtmlOutputPath :: FilePath -- ^ the rendered post page
   , postTocTemplate    :: FilePath -- ^ the bare @$toc$@ template, @toc.tpl@
   , postTocHtmlPath    :: FilePath -- ^ the rendered standalone toc fragment
+  , postStageCachePath :: FilePath -- ^ cached source mtime/size/hash, under @.cache/stage@
+  , postItemCachePath  :: FilePath -- ^ cached item JSON, under @.cache/items@
+  , postSearchCachePath :: FilePath -- ^ cached search text, under @.cache/search@
   }
 
 -- | Render every markdown post in `config`'s source directory through the
@@ -39,6 +50,14 @@ data PostPaths = PostPaths
 -- `config`'s post output directory. Returns each post's `PostEntry`
 -- summary (for the index) paired with its plain-text content (for the
 -- search database).
+--
+-- A post is skipped (and its cached outputs reused) when neither its
+-- source nor anything that could affect every post's rendering --
+-- `webroot`, the `toc` settings, or the post page template itself -- has
+-- changed since the last build; see `Kiln.Build.Cache`. Posts whose
+-- source has disappeared are warned about but left in place, since they
+-- may still be linked from elsewhere; a post's cache is only dropped once
+-- both its source and its rendered output are gone.
 renderPosts :: KilnConfig -> FilePath -> IO [(PostEntry, String)]
 renderPosts config tempDir = do
   names <- listDirectory srcDir
@@ -47,7 +66,13 @@ renderPosts config tempDir = do
   createDirectoryIfMissing True searchItemDir
   writeFile itemTemplatePath itemJsonTemplate
   writeFile tocTemplatePath "$toc$"
-  mapM (renderPost config tempDir) mdNames
+  template <- readFile' (tempDir </> "post.html")
+  let fingerprint = configWebroot config ++ "\n" ++ show (configToc config) ++ "\n" ++ template
+  globalFresh <- isGlobalFresh globalCachePath fingerprint
+  results <- mapM (renderPost config tempDir globalFresh) mdNames
+  recordGlobal globalCachePath fingerprint
+  sweepOrphans outPaths (map takeBaseName mdNames)
+  pure results
   where
     inPaths = pathIn (configPath config)
     outPaths = pathOut (configPath config)
@@ -56,24 +81,64 @@ renderPosts config tempDir = do
     searchItemDir = tempDir </> "search-item"
     itemTemplatePath = tempDir </> "item.json.tpl"
     tocTemplatePath = tempDir </> "toc.tpl"
+    globalCachePath = outCache outPaths </> "global"
 
-renderPost :: KilnConfig -> FilePath -> FilePath -> IO (PostEntry, String)
-renderPost config tempDir name = do
-  src <- readFile' (postSrcPath paths)
-  let (abstractSrc, bodySrc) = splitAbstract (rewriteLanguageMarks src)
-  writeFile (postRewrittenPath paths) bodySrc
-  abstractHtml <- traverse (renderAbstractHtml tempDir) abstractSrc
-  renderPostHtml meta paths abstractHtml
-  renderPostItemJson meta paths
-  renderPostSearchText paths
-  entry <- loadPostEntry (postItemJsonPath paths)
-  content <- readFile' (postSearchTextPath paths)
-  pure (entry, content)
+-- | Warn about any rendered post under `outPaths`'s `outPost` whose
+-- source is no longer among `currentSlugs` (left alone, since it may
+-- still be linked from elsewhere), and silently drop the `outCache`
+-- entry for any post that has neither a source nor a rendered output
+-- left -- pure bookkeeping nobody can see, so there's nothing to warn
+-- about.
+sweepOrphans :: OutPaths -> [String] -> IO ()
+sweepOrphans outPaths currentSlugs = do
+  postSlugs <- map takeBaseName . filter ((== ".html") . takeExtension) <$> listDirectory postDir
+  stageExists <- doesDirectoryExist stageCacheDir
+  cachedSlugs <-
+    if stageExists
+      then map takeBaseName . filter ((== ".src") . takeExtension) <$> listDirectory stageCacheDir
+      else pure []
+  let sweepSlug slug
+        | slug `elem` postSlugs =
+            warn (postDir </> slug ++ ".html" ++ " has no matching source file; leaving it in place")
+        | otherwise =
+            mapM_
+              removeIfExists
+              [ stageCacheDir </> slug ++ ".src"
+              , outCache outPaths </> "items" </> slug ++ ".json"
+              , outCache outPaths </> "search" </> slug ++ ".txt"
+              ]
+  mapM_ sweepSlug (nub (postSlugs ++ cachedSlugs) \\ currentSlugs)
+  where
+    postDir = outPost outPaths
+    stageCacheDir = outCache outPaths </> "stage"
+
+warn :: String -> IO ()
+warn = hPutStrLn stdout . ("Warning: " ++)
+
+removeIfExists :: FilePath -> IO ()
+removeIfExists path = do
+  exists <- doesFileExist path
+  when exists (removeFile path)
+
+renderPost :: KilnConfig -> FilePath -> Bool -> FilePath -> IO (PostEntry, String)
+renderPost config tempDir globalFresh name = do
+  htmlExists <- doesFileExist (postHtmlOutputPath paths)
+  fresh <-
+    if globalFresh && htmlExists
+      then isFileFresh (postStageCachePath paths) (postSrcPath paths)
+      else pure False
+  if fresh
+    then do
+      entry <- loadPostEntry (postItemCachePath paths)
+      content <- readFile' (postSearchCachePath paths)
+      pure (entry, content)
+    else rebuild
   where
     inPaths = pathIn (configPath config)
     outPaths = pathOut (configPath config)
     srcDir = inSrc inPaths
     postDir = outPost outPaths
+    cacheDir = outCache outPaths
     slug = takeBaseName name
     meta =
       PostMeta
@@ -92,7 +157,24 @@ renderPost config tempDir name = do
         , postHtmlOutputPath = postDir </> slug ++ ".html"
         , postTocTemplate = tempDir </> "toc.tpl"
         , postTocHtmlPath = tempDir </> slug ++ "-toc.html"
+        , postStageCachePath = cacheDir </> "stage" </> slug ++ ".src"
+        , postItemCachePath = cacheDir </> "items" </> slug ++ ".json"
+        , postSearchCachePath = cacheDir </> "search" </> slug ++ ".txt"
         }
+    rebuild = do
+      src <- readFile' (postSrcPath paths)
+      let (abstractSrc, bodySrc) = splitAbstract (rewriteLanguageMarks src)
+      writeFile (postRewrittenPath paths) bodySrc
+      abstractHtml <- traverse (renderAbstractHtml tempDir) abstractSrc
+      renderPostHtml meta paths abstractHtml
+      renderPostItemJson meta paths
+      renderPostSearchText paths
+      entry <- loadPostEntry (postItemJsonPath paths)
+      content <- readFile' (postSearchTextPath paths)
+      cacheFile (postItemCachePath paths) (postItemJsonPath paths)
+      cacheFile (postSearchCachePath paths) (postSearchTextPath paths)
+      recordFile (postStageCachePath paths) (postSrcPath paths)
+      pure (entry, content)
 
 -- | Split a post's (already language-mark-rewritten) source on a line
 -- consisting solely of the @<!--more-->@ marker. The text before the
