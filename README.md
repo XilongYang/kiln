@@ -48,8 +48,7 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
   "webroot": "/",
   "toc": {
     "enable": true,
-    "depth": 3,
-    "number-sections": false
+    "depth": 3
   },
   "fonts": {
     "JetBrainsMono-Regular.ttf": "JetBrains Mono",
@@ -70,7 +69,6 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
 - `webroot` — the site's root path, used when generating absolute links
 - `toc.enable` — whether pandoc generates a table of contents for each post (optional, default `true`)
 - `toc.depth` — depth of the table of contents pandoc generates for each post (optional, default `3`)
-- `toc.number-sections` — whether pandoc numbers section headings in posts (optional, default `false`)
 - `fonts` — maps each font file name (relative to `path.in.fonts`) to the `font-family` name it is declared under in the site's own CSS, so kiln knows which font to subset for which family
 
 ## Project layout

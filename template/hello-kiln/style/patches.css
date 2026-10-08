@@ -100,8 +100,8 @@ code[class*=language-], pre[class*=language-] {
     font-style: italic;
 }
 
-.toc ul{
-    list-style-type: none;
+.toc ol{
+    list-style-type: decimal;
 }
 
 @media print {

@@ -15,9 +15,8 @@
   },
   "webroot" : "/",
   "toc" : {
-    "enable"          : true,
-    "depth"           : 3,
-    "number-sections" : false
+    "enable" : true,
+    "depth"  : 3
   },
   "fonts" : {
     "JetBrainsMono-Regular.ttf"    : "JetBrains Mono",

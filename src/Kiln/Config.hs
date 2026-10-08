@@ -37,7 +37,6 @@ data PathConfig = PathConfig
 data TocConfig = TocConfig
   { tocEnable          :: Bool
   , tocDepth           :: Int
-  , tocNumberSections  :: Bool
   } deriving (Show, Eq)
 
 data KilnConfig = KilnConfig
@@ -76,7 +75,6 @@ instance FromJSON TocConfig where
     TocConfig
       <$> o .:? "enable" .!= True
       <*> o .:? "depth" .!= 3
-      <*> o .:? "number-sections" .!= False
 
 instance FromJSON KilnConfig where
   parseJSON = withObject "kiln-config" $ \o ->
@@ -84,7 +82,7 @@ instance FromJSON KilnConfig where
       <$> o .: "path"
       <*> o .: "webroot"
       <*> o .: "fonts"
-      <*> o .:? "toc" .!= TocConfig True 3 False
+      <*> o .:? "toc" .!= TocConfig True 3
 
 configFileName :: FilePath
 configFileName = "kiln-config.json"

@@ -30,6 +30,8 @@ data PostPaths = PostPaths
   , postItemJsonPath   :: FilePath -- ^ the rendered item JSON, for the index
   , postSearchTextPath :: FilePath -- ^ the rendered plain text, for the search database
   , postHtmlOutputPath :: FilePath -- ^ the rendered post page
+  , postTocTemplate    :: FilePath -- ^ the bare @$toc$@ template, @toc.tpl@
+  , postTocHtmlPath    :: FilePath -- ^ the rendered standalone toc fragment
   }
 
 -- | Render every markdown post in `config`'s source directory through the
@@ -44,6 +46,7 @@ renderPosts config tempDir = do
   createDirectoryIfMissing True postDir
   createDirectoryIfMissing True searchItemDir
   writeFile itemTemplatePath itemJsonTemplate
+  writeFile tocTemplatePath "$toc$"
   mapM (renderPost config tempDir) mdNames
   where
     inPaths = pathIn (configPath config)
@@ -52,6 +55,7 @@ renderPosts config tempDir = do
     postDir = outPost outPaths
     searchItemDir = tempDir </> "search-item"
     itemTemplatePath = tempDir </> "item.json.tpl"
+    tocTemplatePath = tempDir </> "toc.tpl"
 
 renderPost :: KilnConfig -> FilePath -> FilePath -> IO (PostEntry, String)
 renderPost config tempDir name = do
@@ -86,6 +90,8 @@ renderPost config tempDir name = do
         , postItemJsonPath = tempDir </> "item.json"
         , postSearchTextPath = tempDir </> "search-item" </> slug ++ ".txt"
         , postHtmlOutputPath = postDir </> slug ++ ".html"
+        , postTocTemplate = tempDir </> "toc.tpl"
+        , postTocHtmlPath = tempDir </> slug ++ "-toc.html"
         }
 
 -- | Split a post's (already language-mark-rewritten) source on a line
@@ -125,9 +131,17 @@ renderAbstractHtml tempDir abstractSrc = do
     abstractHtmlPath = tempDir </> "abstract.html"
 
 -- | Run the rewritten post body through pandoc using the page template,
--- writing the rendered post page.
+-- writing the rendered post page. The table of contents, if enabled, is
+-- rendered separately (see `renderTocHtml`) so its @<ul>@s can be
+-- rewritten into @<ol>@s before being spliced in as the @toc@ variable;
+-- pandoc's own `--toc` flag only ever emits @<ul>@s.
 renderPostHtml :: PostMeta -> PostPaths -> Maybe String -> IO ()
-renderPostHtml meta paths abstractHtml =
+renderPostHtml meta paths abstractHtml = do
+  tocFlag <- if tocEnable toc
+    then do
+      tocHtml <- renderTocHtml meta paths
+      pure ["--variable=toc=" ++ olify tocHtml]
+    else pure []
   callProcess
     "pandoc"
     ( [ "--quiet"
@@ -139,15 +153,33 @@ renderPostHtml meta paths abstractHtml =
       , "--output=" ++ postHtmlOutputPath paths
       , postRewrittenPath paths
       ]
-      ++ tocFlags
+      ++ tocFlag
       ++ abstractFlag
     )
   where
     toc = postToc meta
-    tocFlags
-      | tocEnable toc = ["--toc", "--toc-depth=" ++ show (tocDepth toc)] ++ ["--number-sections" | tocNumberSections toc]
-      | otherwise = []
     abstractFlag = maybe [] (\h -> ["--variable=abstract=" ++ h]) abstractHtml
+
+-- | Render the post body's table of contents on its own, via a template
+-- that's just @$toc$@, so it can be post-processed independently of the
+-- post's own body (which may contain unrelated @<ul>@s of its own).
+renderTocHtml :: PostMeta -> PostPaths -> IO String
+renderTocHtml meta paths = do
+  callProcess
+    "pandoc"
+    [ "--quiet"
+    , "--toc"
+    , "--toc-depth=" ++ show (tocDepth (postToc meta))
+    , "--template=" ++ postTocTemplate paths
+    , "--output=" ++ postTocHtmlPath paths
+    , postRewrittenPath paths
+    ]
+  readFile' (postTocHtmlPath paths)
+
+-- | Rewrite a rendered toc fragment's @<ul>@/@</ul>@ tags into
+-- @<ol>@/@</ol>@, so the toc reads as a numbered list.
+olify :: String -> String
+olify = replaceAll "</ul>" "</ol>" . replaceAll "<ul>" "<ol>"
 
 -- | Run the post's source through pandoc using the item template (see
 -- `itemJsonTemplate`) to extract its title/date/slug as JSON.
