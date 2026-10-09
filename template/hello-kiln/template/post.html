@@ -2,10 +2,10 @@
 <html>
     <head>
         <title>$title$ - Kiln Example Site</title>
-        <!--<common_head>-->
+        ${ component/common_head() }
     </head>
     <body>
-        <!--<navbar>-->
+        ${ component/navbar() }
         <div class="header">
             <h1>$title$</h1>
             <p class="author">$author$<br>$date$</p>
@@ -25,8 +25,8 @@
         <main>
             $body$
         </main>
-        <!--<navigator>-->
-        <!--<search_panel>-->
-        <!--<footnotes>-->
+        ${ component/navigator() }
+        ${ component/search_panel() }
+        ${ component/footnotes() }
     </body>
 </html>

@@ -29,14 +29,14 @@ configJson =
 
 indexTemplate :: String
 indexTemplate =
-  "<html><body><!--<navbar>-->\n\
+  "<html><body>${ component/navbar() }\n\
   \<div id=\"posts_wrapper\">\n\
   \$posts$\n\
   \</div></body></html>"
 
 postTemplate :: String
 postTemplate =
-  "<html><head><title>$title$</title></head><body><!--<navbar>-->\n\
+  "<html><head><title>$title$</title></head><body>${ component/navbar() }\n\
   \<h1>$title$</h1><p>$date$</p>\n\
   \$body$\n\
   \</body></html>"

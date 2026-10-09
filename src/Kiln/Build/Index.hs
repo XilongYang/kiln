@@ -2,25 +2,49 @@ module Kiln.Build.Index (renderPostsList, writeIndex) where
 
 import Data.List (groupBy, sortBy)
 import Data.Ord (Down (..), comparing)
+import Kiln.Build.Cache (componentsFingerprint, isGlobalFresh, recordGlobal)
 import Kiln.Build.PostEntry (PostEntry (..), postUrl)
-import Kiln.Build.Template (replaceAll)
 import Kiln.Config (KilnConfig (..), OutPaths (..), PathConfig (..))
+import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 import System.IO (readFile')
+import System.Process (callProcess)
 
--- | Fill in the `$posts$` and `$webroot$` placeholders of the (already
--- component-substituted) index.html template at `dir </> "index.html"`
--- and write the result to `config`'s index output path.
+-- | Render the index.html template at `dir </> "index.html"` through
+-- pandoc into `config`'s index output path, filling in its `$webroot$`
+-- and `$posts$` variables and resolving any `${ component/*() }`
+-- partials it references. Skipped, reusing the existing output, when
+-- neither the template, any component it could reference, the site's
+-- webroot, nor the post list itself has changed since the last build.
 writeIndex :: KilnConfig -> FilePath -> [PostEntry] -> IO ()
 writeIndex config dir entries = do
-  content <- readFile' indexTemplatePath
-  let withPosts = replaceAll "$posts$" (renderPostsList webroot entries) content
-  writeFile indexPath (replaceAll "$webroot$" webroot withPosts)
+  template <- readFile' indexTemplatePath
+  components <- componentsFingerprint dir
+  outputExists <- doesFileExist indexPath
+  let postsHtml = renderPostsList webroot entries
+      fingerprint = webroot ++ "\n" ++ template ++ "\n" ++ components ++ "\n" ++ postsHtml
+  fresh <- isGlobalFresh fingerprintCachePath fingerprint
+  if fresh && outputExists
+    then pure ()
+    else do
+      writeFile emptyInputPath ""
+      callProcess
+        "pandoc"
+        [ "--quiet"
+        , "--template=" ++ indexTemplatePath
+        , "--variable=webroot=" ++ webroot
+        , "--variable=posts=" ++ postsHtml
+        , "--output=" ++ indexPath
+        , emptyInputPath
+        ]
+      recordGlobal fingerprintCachePath fingerprint
   where
     outPaths = pathOut (configPath config)
     webroot = configWebroot config
     indexPath = outIndex outPaths
     indexTemplatePath = dir </> "index.html"
+    emptyInputPath = dir </> "index.md"
+    fingerprintCachePath = outCache outPaths </> "index-global"
 
 -- | Render the posts list markup that fills the @$posts$@ placeholder in
 -- index.html: entries grouped by year (newest year first), newest post

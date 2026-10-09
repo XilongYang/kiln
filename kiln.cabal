@@ -28,7 +28,7 @@ library
                     , Kiln.Clean
                     , Kiln.Build
                     , Kiln.FileTree
-                    , Kiln.Build.Template
+                    , Kiln.Str
                     , Kiln.Build.Index
                     , Kiln.Build.Post
                     , Kiln.Build.PostEntry
@@ -54,7 +54,7 @@ test-suite kiln-test
     other-modules:      Kiln.ConfigSpec
                       , Kiln.CleanSpec
                       , Kiln.InitSpec
-                      , Kiln.Build.TemplateSpec
+                      , Kiln.StrSpec
                       , Kiln.Build.IndexSpec
                       , Kiln.BuildSpec
                       , Kiln.TestUtil

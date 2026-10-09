@@ -9,12 +9,22 @@ module Kiln.Build.Cache
   , isGlobalFresh
   , recordGlobal
   , cacheFile
+  , componentsFingerprint
   ) where
 
 import Control.Monad (when)
+import Data.List (sort)
 import Data.Time.Clock (UTCTime)
-import System.Directory (copyFile, createDirectoryIfMissing, doesFileExist, getFileSize, getModificationTime)
-import System.FilePath (takeDirectory)
+import System.Directory
+  ( copyFile
+  , createDirectoryIfMissing
+  , doesDirectoryExist
+  , doesFileExist
+  , getFileSize
+  , getModificationTime
+  , listDirectory
+  )
+import System.FilePath (takeDirectory, (</>))
 import System.IO (readFile')
 import System.Process (readProcess)
 import Text.Read (readMaybe)
@@ -78,6 +88,22 @@ cacheFile :: FilePath -> FilePath -> IO ()
 cacheFile cachePath srcPath = do
   createDirectoryIfMissing True (takeDirectory cachePath)
   copyFile srcPath cachePath
+
+-- | The concatenated contents of every file under `dir </> "component"`,
+-- sorted by name for a stable result. Any component a page's template
+-- references via a pandoc @${ name() }@ partial can change that page's
+-- rendered output without the page's own template file changing, so
+-- this belongs alongside a page template's own content in a cache
+-- fingerprint.
+componentsFingerprint :: FilePath -> IO String
+componentsFingerprint dir = do
+  let compDir = dir </> "component"
+  exists <- doesDirectoryExist compDir
+  if not exists
+    then pure ""
+    else do
+      names <- sort <$> listDirectory compDir
+      concat <$> mapM (readFile' . (compDir </>)) names
 
 readSnapshot :: FilePath -> IO (Maybe (UTCTime, Integer, String))
 readSnapshot path = do

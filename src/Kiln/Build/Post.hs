@@ -2,10 +2,10 @@ module Kiln.Build.Post (renderPosts) where
 
 import Control.Monad (when)
 import Data.Char (isSpace)
-import Data.List (dropWhileEnd, isPrefixOf, nub, (\\))
-import Kiln.Build.Cache (cacheFile, isFileFresh, isGlobalFresh, recordFile, recordGlobal)
+import Data.List (isPrefixOf, nub, (\\))
+import Kiln.Build.Cache (cacheFile, componentsFingerprint, isFileFresh, isGlobalFresh, recordFile, recordGlobal)
 import Kiln.Build.PostEntry (PostEntry, itemJsonTemplate, loadPostEntry)
-import Kiln.Build.Template (replaceAll)
+import Kiln.Str (replaceAll, trim)
 import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..), TocConfig (..))
 import System.Directory
   ( createDirectoryIfMissing
@@ -67,7 +67,8 @@ renderPosts config tempDir = do
   writeFile itemTemplatePath itemJsonTemplate
   writeFile tocTemplatePath "$toc$"
   template <- readFile' (tempDir </> "post.html")
-  let fingerprint = configWebroot config ++ "\n" ++ show (configToc config) ++ "\n" ++ template
+  components <- componentsFingerprint tempDir
+  let fingerprint = configWebroot config ++ "\n" ++ show (configToc config) ++ "\n" ++ template ++ "\n" ++ components
   globalFresh <- isGlobalFresh globalCachePath fingerprint
   results <- mapM (renderPost config tempDir globalFresh) mdNames
   recordGlobal globalCachePath fingerprint
@@ -308,6 +309,3 @@ rewriteLanguageMarks =
         indent = takeWhile isSpace line
         stripped = dropWhile isSpace line
         mark = trim $ drop 3 stripped
-
-trim :: String -> String
-trim = dropWhileEnd isSpace . dropWhile isSpace
