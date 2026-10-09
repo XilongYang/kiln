@@ -14,13 +14,14 @@
             root = ./.;
             fileset = pkgs.lib.fileset.unions [ ./app ./src ./test ./template ./kiln.cabal ./LICENSE ./README.md ];
           };
+          pythonWithFontTools = pkgs.python314.withPackages (ps: [ ps.fonttools ps.brotli ]);
           cabalDrv = (hpkgs.callCabal2nix "kiln" src { }).overrideAttrs (old: {
-            nativeCheckInputs = (old.nativeCheckInputs or [ ]) ++ [ pkgs.pandoc ];
+            nativeCheckInputs = (old.nativeCheckInputs or [ ]) ++ [ pkgs.pandoc pythonWithFontTools ];
           });
           runtimeDeps = with pkgs; [
             coreutils
             pandoc
-            (python314.withPackages (ps: [ ps.fonttools ps.brotli ]))
+            pythonWithFontTools
           ];
           kilnUnwrapped = pkgs.haskell.lib.justStaticExecutables cabalDrv;
           kiln = pkgs.symlinkJoin {
