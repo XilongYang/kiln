@@ -11,7 +11,7 @@ import Test.Hspec
 -- that the whole tree (not just the top level) gets copied.
 sampleFiles :: [FilePath]
 sampleFiles =
-  [ "404.html"
+  [ "template/404.html"
   , "kiln-config.json"
   , "res/kiln.png"
   , "res/fonts/JetBrainsMono-Regular.ttf"

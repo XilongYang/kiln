@@ -29,7 +29,7 @@ library
                     , Kiln.Build
                     , Kiln.FileTree
                     , Kiln.Str
-                    , Kiln.Build.Index
+                    , Kiln.Build.Page
                     , Kiln.Build.Post
                     , Kiln.Build.PostEntry
                     , Kiln.Build.SearchDb
@@ -55,7 +55,7 @@ test-suite kiln-test
                       , Kiln.CleanSpec
                       , Kiln.InitSpec
                       , Kiln.StrSpec
-                      , Kiln.Build.IndexSpec
+                      , Kiln.Build.PageSpec
                       , Kiln.BuildSpec
                       , Kiln.TestUtil
                       , Paths_kiln

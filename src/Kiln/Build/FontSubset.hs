@@ -4,7 +4,7 @@ import Control.Monad (unless, when)
 import qualified Data.Map.Strict as Map
 import Kiln.Build.Cache (isFileFresh, recordFile)
 import Kiln.Build.PostEntry (PostEntry (..))
-import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..))
+import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PageConfig (..), PathConfig (..))
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.FilePath (takeBaseName, (</>))
 import System.Process (callProcess)
@@ -30,11 +30,10 @@ subsetFonts config entries = do
     outPaths = pathOut (configPath config)
     fontsDir = inFonts inPaths
     postDir = outPost outPaths
-    indexPath = outIndex outPaths
     subsetDir = outFontsSubset outPaths
     fontsCacheDir = outCache outPaths </> "fonts"
     localFonts = Map.keys (configFonts config)
-    htmlPaths = map postPath entries ++ [indexPath]
+    htmlPaths = map postPath entries ++ map pageOutput (configPages config)
     postPath e = postDir </> postSlug e ++ ".html"
 
     -- | Pages are watched, not produced, by this step, so their cached

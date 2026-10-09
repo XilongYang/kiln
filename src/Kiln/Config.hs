@@ -6,6 +6,7 @@ module Kiln.Config
   , InPaths (..)
   , OutPaths (..)
   , TocConfig (..)
+  , PageConfig (..)
   , readConfig
   ) where
 
@@ -25,8 +26,18 @@ data OutPaths = OutPaths
   { outPost        :: FilePath
   , outFontsSubset :: FilePath
   , outSearchDb    :: FilePath
-  , outIndex       :: FilePath
   , outCache       :: FilePath
+  } deriving (Show, Eq)
+
+-- | One page to generate, outside of the per-post pages @kiln build@
+-- already renders: its own template (a path under @path.in.template@,
+-- alongside @post.html@ and @component/@), and the site-relative path to
+-- write it to. `pageName` is just an identifier -- used to key this
+-- page's build cache -- not itself part of the output path.
+data PageConfig = PageConfig
+  { pageName     :: String
+  , pageTemplate :: FilePath
+  , pageOutput   :: FilePath
   } deriving (Show, Eq)
 
 data PathConfig = PathConfig
@@ -46,6 +57,7 @@ data KilnConfig = KilnConfig
     -- ^ local font filename (under @path.in.fonts@) -> the @font-family@
     -- name it's declared under in the site's own CSS.
   , configToc     :: TocConfig
+  , configPages   :: [PageConfig]
   } deriving (Show, Eq)
 
 instance FromJSON InPaths where
@@ -61,8 +73,14 @@ instance FromJSON OutPaths where
       <$> o .: "post"
       <*> o .: "fonts-subset"
       <*> o .: "searchdb"
-      <*> o .: "index"
       <*> o .: "cache"
+
+instance FromJSON PageConfig where
+  parseJSON = withObject "page" $ \o ->
+    PageConfig
+      <$> o .: "name"
+      <*> o .: "template"
+      <*> o .: "output"
 
 instance FromJSON PathConfig where
   parseJSON = withObject "path" $ \o ->
@@ -83,6 +101,7 @@ instance FromJSON KilnConfig where
       <*> o .: "webroot"
       <*> o .: "fonts"
       <*> o .:? "toc" .!= TocConfig True 3
+      <*> o .: "pages"
 
 configFileName :: FilePath
 configFileName = "kiln-config.json"

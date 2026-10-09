@@ -9,7 +9,6 @@
       "post"         : "post",
       "fonts-subset" : "fonts-subset",
       "searchdb"     : "searchdb.json",
-      "index"        : "index.html",
       "cache"        : ".cache"
     }
   },
@@ -18,6 +17,10 @@
     "enable" : true,
     "depth"  : 3
   },
+  "pages" : [
+    { "name" : "index", "template" : "index.html", "output" : "index.html" },
+    { "name" : "404",   "template" : "404.html",   "output" : "404.html"   }
+  ],
   "fonts" : {
     "JetBrainsMono-Regular.ttf"    : "JetBrains Mono",
     "MaterialIcons.woff2"          : "Material Icons",

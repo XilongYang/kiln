@@ -1,7 +1,7 @@
 module Kiln.Build (kilnBuild) where
 
 import Kiln.Build.FontSubset (subsetFonts)
-import Kiln.Build.Index (writeIndex)
+import Kiln.Build.Page (writePage)
 import Kiln.Build.Post (renderPosts)
 import Kiln.Build.SearchDb (writeSearchDb)
 import Kiln.Config (InPaths (..), KilnConfig (..), PathConfig (..), readConfig)
@@ -26,8 +26,8 @@ kilnBuild = do
     logMsg "Rendering posts..."
     results <- renderPosts config dir
     let entries = map fst results
-    logMsg "Writing index..."
-    writeIndex config dir entries
+    logMsg "Writing pages..."
+    mapM_ (writePage config dir entries) (configPages config)
     logMsg "Writing search database..."
     writeSearchDb config results
     logMsg "Subsetting fonts..."

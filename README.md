@@ -5,7 +5,7 @@ A minimal static blog generator written in Haskell, distributed as a Nix flake.
 ## Features
 
 - `kiln init` — scaffold the bundled `hello-kiln` template into the current (empty) directory
-- `kiln build` — render Markdown posts with pandoc, assemble HTML component templates, generate the homepage and search index, and subset the configured fonts down to the characters actually used on the site (`pyftsubset`); posts and font subsets are cached under `path.out.cache`, so a rebuild skips anything whose inputs haven't changed. A post removed from `path.in.src` is warned about but its already-rendered page is left in place; only once that rendered page is also gone does `kiln build` drop its cache entry
+- `kiln build` — render Markdown posts and every configured page (see `pages` below) with pandoc, generate the search index, and subset the configured fonts down to the characters actually used on the site (`pyftsubset`); posts, pages, and font subsets are cached under `path.out.cache`, so a rebuild skips anything whose inputs haven't changed. A post removed from `path.in.src` is warned about but its already-rendered page is left in place; only once that rendered page is also gone does `kiln build` drop its cache entry
 - `kiln clean` — remove build output, including the cache (so the next `kiln build` is a full rebuild)
 - running `kiln` with no arguments is equivalent to `kiln build`
 
@@ -41,7 +41,6 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
       "post": "post",
       "fonts-subset": "fonts-subset",
       "searchdb": "searchdb.json",
-      "index": "index.html",
       "cache": ".cache"
     }
   },
@@ -50,6 +49,10 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
     "enable": true,
     "depth": 3
   },
+  "pages": [
+    { "name": "index", "template": "index.html", "output": "index.html" },
+    { "name": "404", "template": "404.html", "output": "404.html" }
+  ],
   "fonts": {
     "JetBrainsMono-Regular.ttf": "JetBrains Mono",
     "MaterialIcons.woff2": "Material Icons",
@@ -64,17 +67,17 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
 - `path.out.post` — output directory for rendered post HTML
 - `path.out.fonts-subset` — output directory for the subset `.woff2` fonts
 - `path.out.searchdb` — output path for the generated search index JSON
-- `path.out.index` — output path for the generated homepage
-- `path.out.cache` — directory used to track rendered posts' and subset fonts' inputs, so unchanged ones are skipped on the next build; delete it (or run `kiln clean`) to force a full rebuild
+- `path.out.cache` — directory used to track rendered posts', pages', and subset fonts' inputs, so unchanged ones are skipped on the next build; delete it (or run `kiln clean`) to force a full rebuild
 - `webroot` — the site's root path, used when generating absolute links
 - `toc.enable` — whether pandoc generates a table of contents for each post (optional, default `true`)
 - `toc.depth` — depth of the table of contents pandoc generates for each post (optional, default `3`)
+- `pages` — every non-post page to generate: `template` is a path under `path.in.template` (rendered through pandoc the same way `post.html` is, with a `webroot` variable and a `posts` variable listing every post), and `output` is where to write it; `name` just identifies the page (e.g. for its own build cache), independent of its output path
 - `fonts` — maps each font file name (relative to `path.in.fonts`) to the `font-family` name it is declared under in the site's own CSS, so kiln knows which font to subset for which family
 
 ## Project layout
 
 - `app/` — executable entry point, dispatches the `init`/`build`/`clean` subcommands
-- `src/Kiln/` — core logic (`Init`, `Config`, `Clean`, `Build`, and the `Build.*` modules for template substitution, post rendering, the index, the search database, font subsetting, and the incremental build cache)
+- `src/Kiln/` — core logic (`Init`, `Config`, `Clean`, `Build`, `Str`, and the `Build.*` modules for post rendering, pages, the search database, font subsetting, and the incremental build cache)
 - `template/hello-kiln/` — the default site template scaffolded by `kiln init`
 - `test/` — hspec test suite
 

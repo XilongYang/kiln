@@ -25,7 +25,19 @@ configJson :: String
 configJson =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
   \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-  \\"index\":\"index.html\",\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{}}"
+  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{},\
+  \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"}]}"
+
+-- | `configJson`, plus a second configured page (a stand-in for a 404
+-- page, named distinctly to prove `kilnBuild` renders every configured
+-- page generically, not just one hardcoded as "the index").
+configJsonWithExtraPage :: String
+configJsonWithExtraPage =
+  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
+  \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
+  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{},\
+  \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"},\
+  \{\"name\":\"not-found\",\"template\":\"404.html\",\"output\":\"404.html\"}]}"
 
 indexTemplate :: String
 indexTemplate =
@@ -43,6 +55,12 @@ postTemplate =
 
 navbarComponent :: String
 navbarComponent = "<nav><a href=\"$webroot$\">THE-NAVBAR</a></nav>"
+
+notFoundTemplate :: String
+notFoundTemplate =
+  "<html><body>${ component/navbar() }\n\
+  \<h1>Not Found</h1>\n\
+  \</body></html>"
 
 postMd :: String -> String -> String -> String
 postMd title date body =
@@ -72,8 +90,9 @@ configJsonWithFont :: String
 configJsonWithFont =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
   \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-  \\"index\":\"index.html\",\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\
-  \\"fonts\":{\"" ++ fontFileName ++ "\":\"Mono\"}}"
+  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\
+  \\"fonts\":{\"" ++ fontFileName ++ "\":\"Mono\"},\
+  \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"}]}"
 
 -- | `setUpProject`, plus a real font (borrowed from the shipped
 -- hello-kiln template, via the same `Paths_kiln` data-dir lookup `Init`
@@ -146,6 +165,18 @@ spec = describe "kilnBuild" $ do
 
         doesDirectoryExist ".temp" `shouldReturn` False
 
+  it "renders every configured page, not just the one named \"index\"" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        setUpProject
+        writeFile "kiln-config.json" configJsonWithExtraPage
+        writeFile "template/404.html" notFoundTemplate
+        kilnBuild
+
+        notFoundHtml <- readFile "404.html"
+        notFoundHtml `shouldSatisfy` ("<a href=\"/blog/\">THE-NAVBAR</a>" `isInfixOf`)
+        notFoundHtml `shouldSatisfy` ("<h1>Not Found</h1>" `isInfixOf`)
+
   it "serves an unchanged post from cache, without needing pandoc again" $
     withTempDir $ \dir ->
       withCurrentDirectory dir $ do
@@ -172,7 +203,8 @@ spec = describe "kilnBuild" $ do
         writeFile "kiln-config.json"
           "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
           \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-          \\"index\":\"index.html\",\"cache\":\".cache\"}},\"webroot\":\"/elsewhere/\",\"fonts\":{}}"
+          \\"cache\":\".cache\"}},\"webroot\":\"/elsewhere/\",\"fonts\":{},\
+          \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"}]}"
         withoutPandoc kilnBuild `shouldThrow` anyIOException
 
   it "warns about, but keeps, an orphaned post; only drops its cache once the output is gone too" $

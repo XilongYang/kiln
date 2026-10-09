@@ -16,8 +16,9 @@ validJson :: ByteString
 validJson =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
   \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb\",\
-  \\"index\":\"index\",\"cache\":\"cache\"}},\"webroot\":\"/\",\
-  \\"fonts\":{\"a.ttf\":\"A\"}}"
+  \\"cache\":\"cache\"}},\"webroot\":\"/\",\
+  \\"fonts\":{\"a.ttf\":\"A\"},\
+  \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"}]}"
 
 expectedConfig :: KilnConfig
 expectedConfig =
@@ -25,11 +26,12 @@ expectedConfig =
     { configPath =
         PathConfig
           { pathIn = InPaths "src" "template" "fonts"
-          , pathOut = OutPaths "post" "fonts-subset" "searchdb" "index" "cache"
+          , pathOut = OutPaths "post" "fonts-subset" "searchdb" "cache"
           }
     , configWebroot = "/"
     , configFonts = Map.fromList [("a.ttf", "A")]
     , configToc = TocConfig True 3
+    , configPages = [PageConfig "index" "index.html" "index.html"]
     }
 
 spec :: Spec

@@ -1,6 +1,6 @@
-module Kiln.Build.IndexSpec (spec) where
+module Kiln.Build.PageSpec (spec) where
 
-import Kiln.Build.Index (renderPostsList)
+import Kiln.Build.Page (renderPostsList)
 import Kiln.Build.PostEntry (PostEntry (..))
 import Test.Hspec
 
