@@ -43,7 +43,10 @@ indexTemplate :: String
 indexTemplate =
   "<html><body>${ component/navbar() }\n\
   \<div id=\"posts_wrapper\">\n\
-  \$posts$\n\
+  \$for(posts)$\n\
+  \$if(posts.newYear)$<h3>$posts.year$</h3>$endif$\n\
+  \<p><a href=\"$posts.url$\">$posts.title$</a> abstract=[$posts.abstract$] content=[$posts.content$]</p>\n\
+  \$endfor$\n\
   \</div></body></html>"
 
 postTemplate :: String
@@ -81,7 +84,7 @@ setUpProject = do
   writeFile "template/component/navbar.html" navbarComponent
   createDirectoryIfMissing True "src"
   writeFile "src/Older_Post.md" (postMd "Older Post" "2024-01-01" "Older body.")
-  writeFile "src/Newer_Post.md" (postMd "Newer Post" "2024-05-01" "Newer body.")
+  writeFile "src/Newer_Post.md" (postMd "Newer Post" "2024-05-01" "Newer intro.\n\n<!--more-->\n\nNewer body.")
 
 fontFileName :: String
 fontFileName = "JetBrainsMono-Regular.ttf"
@@ -147,9 +150,15 @@ spec = describe "kilnBuild" $ do
 
         indexHtml <- readFile "index.html"
         indexHtml `shouldSatisfy` ("<a href=\"/blog/\">THE-NAVBAR</a>" `isInfixOf`)
-        indexHtml `shouldSatisfy` ("$posts$" `notIsInfixOf`)
+        indexHtml `shouldSatisfy` ("$for(posts)$" `notIsInfixOf`)
         indexHtml `shouldSatisfy` ("$webroot$" `notIsInfixOf`)
         indexHtml `shouldSatisfy` ("<h3>2024</h3>" `isInfixOf`)
+        -- Newer post's abstract (before its <!--more--> marker) and full
+        -- content (including the text after it) must both reach the page.
+        indexHtml `shouldSatisfy` ("abstract=[<p>\nNewer intro.\n</p>]" `isInfixOf`)
+        indexHtml `shouldSatisfy` ("content=[<p>\nNewer body.\n</p>]" `isInfixOf`)
+        -- A post with no <!--more--> marker has no abstract at all.
+        indexHtml `shouldSatisfy` ("abstract=[] content=[<p>\nOlder body.\n</p>]" `isInfixOf`)
         -- Newer post must be listed before the older one (same year, newest first).
         let Just newerPos = substringIndex "/blog/post/Newer_Post.html" indexHtml
             Just olderPos = substringIndex "/blog/post/Older_Post.html" indexHtml

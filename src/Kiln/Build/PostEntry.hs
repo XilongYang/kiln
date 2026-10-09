@@ -1,26 +1,70 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Kiln.Build.PostEntry (PostEntry (..), itemJsonTemplate, loadPostEntry, postUrl) where
+module Kiln.Build.PostEntry
+  ( PostEntry (..)
+  , PostFrontmatter (..)
+  , frontmatterTemplate
+  , loadFrontmatter
+  , loadPostEntry
+  , postUrl
+  ) where
 
-import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:))
+import Data.Aeson (FromJSON (..), ToJSON (..), eitherDecodeFileStrict, object, withObject, (.:), (.=))
+
+-- | A post's title/date, as pulled from its markdown frontmatter by
+-- pandoc via `frontmatterTemplate`. Kept separate from `PostEntry`:
+-- these two fields are safe to round-trip through a literal
+-- (non-escaping) pandoc template splice, since frontmatter values are
+-- plain text -- unlike `PostEntry`'s `abstract`/`content`, which are
+-- full of characters (quotes, newlines) that need real JSON escaping.
+data PostFrontmatter = PostFrontmatter
+  { fmTitle :: String
+  , fmDate  :: String -- ^ "YYYY-MM-DD"
+  }
+
+instance FromJSON PostFrontmatter where
+  parseJSON = withObject "post-frontmatter" $ \o ->
+    PostFrontmatter <$> o .: "title" <*> o .: "date"
+
+-- | pandoc template text that serializes a post's frontmatter title/date
+-- as the JSON the `FromJSON` instance above expects back.
+frontmatterTemplate :: String
+frontmatterTemplate = "{\"title\": \"$title$\", \"date\": \"$date$\"}"
+
+-- | Parse a rendered `frontmatterTemplate` file back into a
+-- `PostFrontmatter`.
+loadFrontmatter :: FilePath -> IO PostFrontmatter
+loadFrontmatter jsonPath = either fail pure =<< eitherDecodeFileStrict jsonPath
 
 data PostEntry = PostEntry
-  { postTitle :: String
-  , postDate  :: String -- ^ "YYYY-MM-DD"
-  , postSlug  :: String
-  }
+  { postTitle    :: String
+  , postDate     :: String -- ^ "YYYY-MM-DD"
+  , postSlug     :: String
+  , postAbstract :: Maybe String -- ^ rendered HTML, if the post has an @<!--more-->@ marker
+  , postContent  :: String -- ^ the post's full rendered body HTML
+  } deriving (Show)
+
+instance ToJSON PostEntry where
+  toJSON e =
+    object
+      [ "title" .= postTitle e
+      , "date" .= postDate e
+      , "slug" .= postSlug e
+      , "abstract" .= postAbstract e
+      , "content" .= postContent e
+      ]
 
 instance FromJSON PostEntry where
   parseJSON = withObject "post-entry" $ \o ->
-    PostEntry <$> o .: "title" <*> o .: "date" <*> o .: "slug"
+    PostEntry
+      <$> o .: "title"
+      <*> o .: "date"
+      <*> o .: "slug"
+      <*> o .: "abstract"
+      <*> o .: "content"
 
--- | pandoc template text that serializes a post's title/date/slug as the
--- JSON the `FromJSON` instance above expects back.
-itemJsonTemplate :: String
-itemJsonTemplate = "{\"title\": \"$title$\", \"date\": \"$date$\", \"slug\": \"$slug$\"}"
-
--- | Parse a JSON file produced by pandoc from `itemJsonTemplate` into a
--- `PostEntry`.
+-- | Parse a `PostEntry` previously written by `Data.Aeson.encodeFile`
+-- (kiln's own cached entry json -- see `Kiln.Build.Post`).
 loadPostEntry :: FilePath -> IO PostEntry
 loadPostEntry jsonPath = either fail pure =<< eitherDecodeFileStrict jsonPath
 

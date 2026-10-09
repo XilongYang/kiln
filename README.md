@@ -71,7 +71,7 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
 - `webroot` — the site's root path, used when generating absolute links
 - `toc.enable` — whether pandoc generates a table of contents for each post (optional, default `true`)
 - `toc.depth` — depth of the table of contents pandoc generates for each post (optional, default `3`)
-- `pages` — every non-post page to generate: `template` is a path under `path.in.template` (rendered through pandoc the same way `post.html` is, with a `webroot` variable and a `posts` variable listing every post), and `output` is where to write it; `name` just identifies the page (e.g. for its own build cache), independent of its output path
+- `pages` — every non-post page to generate: `template` is a path under `path.in.template` (rendered through pandoc the same way `post.html` is), and `output` is where to write it; `name` just identifies the page (e.g. for its own build cache), independent of its output path. Every page template gets a `webroot` variable and a `posts` metadata list (newest post first) it can lay out itself with pandoc's own `$for(posts)$`; each post in that list has `title`, `date`, `monthDay`, `url`, `abstract` (rendered HTML, or null if the post has no `<!--more-->` marker), `content` (the post's full rendered body HTML), `year`, `newYear`, and `lastOfYear` (the latter two precomputed so a template can open/close a per-year wrapper, like the shipped `index.html` does, without any stateful looping of its own)
 - `fonts` — maps each font file name (relative to `path.in.fonts`) to the `font-family` name it is declared under in the site's own CSS, so kiln knows which font to subset for which family
 
 ## Project layout

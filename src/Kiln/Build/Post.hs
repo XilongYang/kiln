@@ -1,10 +1,11 @@
 module Kiln.Build.Post (renderPosts) where
 
 import Control.Monad (when)
+import Data.Aeson (encodeFile)
 import Data.Char (isSpace)
 import Data.List (isPrefixOf, nub, (\\))
 import Kiln.Build.Cache (cacheFile, componentsFingerprint, isFileFresh, isGlobalFresh, recordFile, recordGlobal)
-import Kiln.Build.PostEntry (PostEntry, itemJsonTemplate, loadPostEntry)
+import Kiln.Build.PostEntry (PostEntry (..), PostFrontmatter (..), frontmatterTemplate, loadFrontmatter, loadPostEntry)
 import Kiln.Str (replaceAll, trim)
 import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..), TocConfig (..))
 import System.Directory
@@ -14,7 +15,7 @@ import System.Directory
   , listDirectory
   , removeFile
   )
-import System.FilePath (takeBaseName, takeExtension, (</>))
+import System.FilePath (takeBaseName, takeDirectory, takeExtension, (</>))
 import System.IO (hPutStrLn, readFile', stdout)
 import System.Process (callProcess)
 
@@ -22,7 +23,7 @@ import System.Process (callProcess)
 -- filesystem path: its slug, the site's webroot, and the table-of-contents
 -- settings.
 data PostMeta = PostMeta
-  { postSlug    :: String
+  { metaSlug    :: String
   , postWebroot :: String
   , postToc     :: TocConfig
   }
@@ -31,25 +32,26 @@ data PostMeta = PostMeta
 -- avoids passing a run of same-typed `FilePath`/`String` arguments
 -- positionally, where it's easy to pass them in the wrong order.
 data PostPaths = PostPaths
-  { postSrcPath        :: FilePath -- ^ the post's original markdown
-  , postRewrittenPath  :: FilePath -- ^ language-mark-rewritten body fed to pandoc
-  , postPageTemplate   :: FilePath -- ^ the post page template, @post.html@
-  , postItemTemplate   :: FilePath -- ^ the item JSON template, @item.json.tpl@
-  , postItemJsonPath   :: FilePath -- ^ the rendered item JSON, for the index
-  , postSearchTextPath :: FilePath -- ^ the rendered plain text, for the search database
-  , postHtmlOutputPath :: FilePath -- ^ the rendered post page
-  , postTocTemplate    :: FilePath -- ^ the bare @$toc$@ template, @toc.tpl@
-  , postTocHtmlPath    :: FilePath -- ^ the rendered standalone toc fragment
-  , postStageCachePath :: FilePath -- ^ cached source mtime/size/hash, under @.cache/stage@
-  , postItemCachePath  :: FilePath -- ^ cached item JSON, under @.cache/items@
-  , postSearchCachePath :: FilePath -- ^ cached search text, under @.cache/search@
+  { postSrcPath             :: FilePath -- ^ the post's original markdown
+  , postRewrittenPath       :: FilePath -- ^ language-mark-rewritten, abstract-split body fed to pandoc
+  , postPageTemplate        :: FilePath -- ^ the post page template, @post.html@
+  , postFrontmatterTemplate :: FilePath -- ^ the frontmatter JSON template, @frontmatter.json.tpl@
+  , postFrontmatterJsonPath :: FilePath -- ^ the rendered frontmatter JSON (title/date)
+  , postContentHtmlPath     :: FilePath -- ^ the rendered body HTML, for other pages' @posts@ metadata
+  , postSearchTextPath      :: FilePath -- ^ the rendered plain text, for the search database
+  , postHtmlOutputPath      :: FilePath -- ^ the rendered post page
+  , postTocTemplate         :: FilePath -- ^ the bare @$toc$@ template, @toc.tpl@
+  , postTocHtmlPath         :: FilePath -- ^ the rendered standalone toc fragment
+  , postStageCachePath      :: FilePath -- ^ cached source mtime/size/hash, under @.cache/stage@
+  , postItemCachePath       :: FilePath -- ^ cached `PostEntry` json, under @.cache/items@
+  , postSearchCachePath     :: FilePath -- ^ cached search text, under @.cache/search@
   }
 
 -- | Render every markdown post in `config`'s source directory through the
 -- (already component-substituted) `tempDir </> "post.html"` template into
 -- `config`'s post output directory. Returns each post's `PostEntry`
--- summary (for the index) paired with its plain-text content (for the
--- search database).
+-- (fed into every page's @posts@ metadata, see `Kiln.Build.Page`) paired
+-- with its plain-text content (for the search database).
 --
 -- A post is skipped (and its cached outputs reused) when neither its
 -- source nor anything that could affect every post's rendering --
@@ -64,7 +66,7 @@ renderPosts config tempDir = do
   let mdNames = filter ((== ".md") . takeExtension) names
   createDirectoryIfMissing True postDir
   createDirectoryIfMissing True searchItemDir
-  writeFile itemTemplatePath itemJsonTemplate
+  writeFile frontmatterTemplatePath frontmatterTemplate
   writeFile tocTemplatePath "$toc$"
   template <- readFile' (tempDir </> "post.html")
   components <- componentsFingerprint tempDir
@@ -80,7 +82,7 @@ renderPosts config tempDir = do
     srcDir = inSrc inPaths
     postDir = outPost outPaths
     searchItemDir = tempDir </> "search-item"
-    itemTemplatePath = tempDir </> "item.json.tpl"
+    frontmatterTemplatePath = tempDir </> "frontmatter.json.tpl"
     tocTemplatePath = tempDir </> "toc.tpl"
     globalCachePath = outCache outPaths </> "global"
 
@@ -143,7 +145,7 @@ renderPost config tempDir globalFresh name = do
     slug = takeBaseName name
     meta =
       PostMeta
-        { postSlug = slug
+        { metaSlug = slug
         , postWebroot = configWebroot config
         , postToc = configToc config
         }
@@ -152,8 +154,9 @@ renderPost config tempDir globalFresh name = do
         { postSrcPath = srcDir </> name
         , postRewrittenPath = tempDir </> name
         , postPageTemplate = tempDir </> "post.html"
-        , postItemTemplate = tempDir </> "item.json.tpl"
-        , postItemJsonPath = tempDir </> "item.json"
+        , postFrontmatterTemplate = tempDir </> "frontmatter.json.tpl"
+        , postFrontmatterJsonPath = tempDir </> "frontmatter.json"
+        , postContentHtmlPath = tempDir </> slug ++ "-content.html"
         , postSearchTextPath = tempDir </> "search-item" </> slug ++ ".txt"
         , postHtmlOutputPath = postDir </> slug ++ ".html"
         , postTocTemplate = tempDir </> "toc.tpl"
@@ -167,12 +170,22 @@ renderPost config tempDir globalFresh name = do
       let (abstractSrc, bodySrc) = splitAbstract (rewriteLanguageMarks src)
       writeFile (postRewrittenPath paths) bodySrc
       abstractHtml <- traverse (renderAbstractHtml tempDir) abstractSrc
+      contentHtml <- renderContentHtml paths
       renderPostHtml meta paths abstractHtml
-      renderPostItemJson meta paths
+      renderFrontmatterJson paths
       renderPostSearchText paths
-      entry <- loadPostEntry (postItemJsonPath paths)
+      frontmatter <- loadFrontmatter (postFrontmatterJsonPath paths)
       content <- readFile' (postSearchTextPath paths)
-      cacheFile (postItemCachePath paths) (postItemJsonPath paths)
+      let entry =
+            PostEntry
+              { postTitle = fmTitle frontmatter
+              , postDate = fmDate frontmatter
+              , postSlug = slug
+              , postAbstract = abstractHtml
+              , postContent = contentHtml
+              }
+      createDirectoryIfMissing True (takeDirectory (postItemCachePath paths))
+      encodeFile (postItemCachePath paths) entry
       cacheFile (postSearchCachePath paths) (postSearchTextPath paths)
       recordFile (postStageCachePath paths) (postSrcPath paths)
       pure (entry, content)
@@ -213,6 +226,18 @@ renderAbstractHtml tempDir abstractSrc = do
     abstractSrcPath = tempDir </> "abstract.md"
     abstractHtmlPath = tempDir </> "abstract.html"
 
+-- | Run the post's rewritten body (already written to
+-- `postRewrittenPath`) through pandoc's HTML writer (no template, just
+-- the rendered fragment), so other pages can include this post's full
+-- content in their own @posts@ metadata without re-rendering it
+-- themselves.
+renderContentHtml :: PostPaths -> IO String
+renderContentHtml paths = do
+  callProcess "pandoc" ["--quiet", "--to=html", "--wrap=none", "--output=" ++ contentHtmlPath, postRewrittenPath paths]
+  readFile' contentHtmlPath
+  where
+    contentHtmlPath = postContentHtmlPath paths
+
 -- | Run the rewritten post body through pandoc using the page template,
 -- writing the rendered post page. The table of contents, if enabled, is
 -- rendered separately (see `renderTocHtml`) so its @<ul>@s can be
@@ -232,7 +257,7 @@ renderPostHtml meta paths abstractHtml = do
       , "--mathjax"
       , "--template=" ++ postPageTemplate paths
       , "--variable=webroot=" ++ postWebroot meta
-      , "--variable=slug=" ++ postSlug meta
+      , "--variable=slug=" ++ metaSlug meta
       , "--output=" ++ postHtmlOutputPath paths
       , postRewrittenPath paths
       ]
@@ -264,19 +289,18 @@ renderTocHtml meta paths = do
 olify :: String -> String
 olify = replaceAll "</ul>" "</ol>" . replaceAll "<ul>" "<ol>"
 
--- | Run the post's source through pandoc using the item template (see
--- `itemJsonTemplate`) to extract its title/date/slug as JSON.
-renderPostItemJson :: PostMeta -> PostPaths -> IO ()
-renderPostItemJson meta paths =
+-- | Run the post's source through pandoc using `frontmatterTemplate` to
+-- extract its title/date as JSON.
+renderFrontmatterJson :: PostPaths -> IO ()
+renderFrontmatterJson paths =
   callProcess
     "pandoc"
     [ "--quiet"
     , "--standalone"
     , "--to=plain"
     , "--wrap=none"
-    , "--template=" ++ postItemTemplate paths
-    , "--variable=slug=" ++ postSlug meta
-    , "--output=" ++ postItemJsonPath paths
+    , "--template=" ++ postFrontmatterTemplate paths
+    , "--output=" ++ postFrontmatterJsonPath paths
     , postSrcPath paths
     ]
 

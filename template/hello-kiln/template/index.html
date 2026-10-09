@@ -27,7 +27,20 @@
                     <span id="post-filter-input" contenteditable="true"></span>
                 </h2>
                 <div id="posts_wrapper">
-                $posts$
+                <div class="post-wrapper">
+$for(posts)$
+$if(posts.newYear)$
+                    <div class="post-year-wrapper" style="display: block;">
+                        <h3>$posts.year$</h3>
+$endif$
+                        <div class="post-wrapper" style="display: block;">
+                            <p>$posts.monthDay$ <a href="$posts.url$">$posts.title$</a></p>
+                        </div>
+$if(posts.lastOfYear)$
+                    </div>
+$endif$
+$endfor$
+                </div>
                 </div>
             </article>
         </main>
