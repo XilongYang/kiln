@@ -18,10 +18,13 @@ jobs:
       - name: Smoke-test init + build with the built binary
         run: |
           kiln="$PWD/result/bin/kiln"
-          scratch=$(mktemp -d)
-          cd "$scratch"
-          "$kiln" init
-          "$kiln" build
-          test -f index.html
-          test -f searchdb.json
-          "$kiln" clean
+          for template in default flow; do
+            scratch=$(mktemp -d)
+            cd "$scratch"
+            "$kiln" init "$template"
+            "$kiln" build
+            test -f index.html
+            test -f searchdb.json
+            "$kiln" clean
+            cd "$OLDPWD"
+          done

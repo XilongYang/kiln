@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Flow</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <!-- Icons -->
+        <link rel="icon" href="$webroot$res/kiln.png" type="image/x-icon">
+        <link rel="apple-touch-icon" href="$webroot$res/kiln.png">
+        <link rel="stylesheet" href="$webroot$style/base.css">
+        <link rel="stylesheet" href="$webroot$style/archive.css">
+        <link rel="stylesheet" href="$webroot$style/lightbox.css">
+    </head>
+    <body>
+        <div class="header">
+            <h1>Flow</h1>
+        </div>
+        <main>
+$for(posts)$
+<p class="post-date">$posts.date$</p>
+<div class="post" data-tags="$posts.tags$">
+$posts.content$
+</div>
+$if(posts.last)$$else$<hr class="post-divider">
+$endif$
+$endfor$
+        </main>
+        <div class="footnotes">
+            © <span id="current-year"></span> <a href="$webroot$">Flow Example Site</a>
+            | Powered by <a href="https://github.com/xilongyang/kiln">Kiln</a>
+        </div>
+        <script src="$webroot$scripts/index-side-nav.js"></script>
+        <script src="$webroot$scripts/post-collapse.js"></script>
+        <script src="$webroot$scripts/post-tags.js"></script>
+        <script src="$webroot$scripts/media-lightbox.js"></script>
+        <script src="$webroot$scripts/current-year.js"></script>
+    </body>
+</html>

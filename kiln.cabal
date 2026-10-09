@@ -1,25 +1,32 @@
 cabal-version:      2.4
 name:                kiln
-version:             0.1.4
+version:             0.2.0
 synopsis:            Kiln builder
 license:             MIT
 license-file:        LICENSE
 build-type:          Simple
 data-files:
-    template/hello-kiln/**/*.css
-    template/hello-kiln/**/*.html
-    template/hello-kiln/**/*.js
-    template/hello-kiln/**/*.json
-    template/hello-kiln/**/*.md
-    template/hello-kiln/**/*.otf
-    template/hello-kiln/**/*.png
-    template/hello-kiln/**/*.svg
-    template/hello-kiln/**/*.ttf
-    template/hello-kiln/**/*.txt
-    template/hello-kiln/**/*.woff
-    template/hello-kiln/**/*.woff2
-    template/hello-kiln/res/latex-css-1.13.0/LICENSE
-    template/hello-kiln/res/mathjax-4.0.0/LICENSE
+    template/default/**/*.css
+    template/default/**/*.html
+    template/default/**/*.js
+    template/default/**/*.json
+    template/default/**/*.md
+    template/default/**/*.otf
+    template/default/**/*.png
+    template/default/**/*.svg
+    template/default/**/*.ttf
+    template/default/**/*.txt
+    template/default/**/*.woff
+    template/default/**/*.woff2
+    template/default/res/latex-css-1.13.0/LICENSE
+    template/default/res/mathjax-4.0.0/LICENSE
+    template/flow/**/*.css
+    template/flow/**/*.html
+    template/flow/**/*.js
+    template/flow/**/*.jpg
+    template/flow/**/*.json
+    template/flow/**/*.md
+    template/flow/**/*.png
 
 library
     hs-source-dirs:   src

@@ -21,23 +21,26 @@ import System.Environment (lookupEnv, setEnv)
 import System.FilePath (searchPathSeparator, splitSearchPath, takeDirectory)
 import Test.Hspec
 
+postConfigField :: String
+postConfigField = "\"post\":{\"template\":\"post.html\",\"output\":\"post\"},"
+
 configJson :: String
 configJson =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{},\
-  \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"}]}"
+  \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
+  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{}," ++ postConfigField ++
+  "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}"
 
 -- | `configJson`, plus a second configured page (a stand-in for a 404
--- page, named distinctly to prove `kilnBuild` renders every configured
--- page generically, not just one hardcoded as "the index").
+-- page, with a distinct output to prove `kilnBuild` renders every
+-- configured page generically, not just one hardcoded as "the index").
 configJsonWithExtraPage :: String
 configJsonWithExtraPage =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{},\
-  \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"},\
-  \{\"name\":\"not-found\",\"template\":\"404.html\",\"output\":\"404.html\"}]}"
+  \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
+  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{}," ++ postConfigField ++
+  "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"},\
+  \{\"template\":\"404.html\",\"output\":\"404.html\"}]}"
 
 indexTemplate :: String
 indexTemplate =
@@ -92,13 +95,13 @@ fontFileName = "JetBrainsMono-Regular.ttf"
 configJsonWithFont :: String
 configJsonWithFont =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
+  \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
   \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\
-  \\"fonts\":{\"" ++ fontFileName ++ "\":\"Mono\"},\
-  \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"}]}"
+  \\"fonts\":{\"" ++ fontFileName ++ "\":\"Mono\"}," ++ postConfigField ++
+  "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}"
 
 -- | `setUpProject`, plus a real font (borrowed from the shipped
--- hello-kiln template, via the same `Paths_kiln` data-dir lookup `Init`
+-- default template, via the same `Paths_kiln` data-dir lookup `Init`
 -- uses) declared in `kiln-config.json`, so `subsetFonts` has something
 -- to actually subset.
 setUpProjectWithFont :: IO ()
@@ -106,7 +109,7 @@ setUpProjectWithFont = do
   setUpProject
   writeFile "kiln-config.json" configJsonWithFont
   createDirectoryIfMissing True "fonts"
-  fontSrc <- getDataFileName ("template/hello-kiln/res/fonts/" ++ fontFileName)
+  fontSrc <- getDataFileName ("template/default/res/fonts/" ++ fontFileName)
   copyFile fontSrc ("fonts/" ++ fontFileName)
 
 -- | Run `action` with `exe`'s directory removed from @PATH@, so that any
@@ -174,7 +177,7 @@ spec = describe "kilnBuild" $ do
 
         doesDirectoryExist ".temp" `shouldReturn` False
 
-  it "renders every configured page, not just the one named \"index\"" $
+  it "renders every configured page, not just the first one" $
     withTempDir $ \dir ->
       withCurrentDirectory dir $ do
         setUpProject
@@ -210,10 +213,10 @@ spec = describe "kilnBuild" $ do
         setUpProject
         kilnBuild
         writeFile "kiln-config.json"
-          "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-          \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-          \\"cache\":\".cache\"}},\"webroot\":\"/elsewhere/\",\"fonts\":{},\
-          \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"}]}"
+          ("{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
+          \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
+          \\"cache\":\".cache\"}},\"webroot\":\"/elsewhere/\",\"fonts\":{}," ++ postConfigField ++
+          "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}")
         withoutPandoc kilnBuild `shouldThrow` anyIOException
 
   it "warns about, but keeps, an orphaned post; only drops its cache once the output is gone too" $

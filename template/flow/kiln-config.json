@@ -1,0 +1,23 @@
+{
+  "path" : {
+    "in"  : {
+      "src"      : "src",
+      "template" : "template",
+      "fonts"    : "res/fonts"
+    },
+    "out" : {
+      "fonts-subset" : "fonts-subset",
+      "searchdb"     : "searchdb.json",
+      "cache"        : ".cache"
+    }
+  },
+  "webroot" : "/",
+  "toc" : {
+    "enable" : false
+  },
+  "post" : null,
+  "pages" : [
+    { "template" : "index.html", "output" : "index.html" }
+  ],
+  "fonts" : {}
+}

@@ -15,10 +15,11 @@ import Test.Hspec
 validJson :: ByteString
 validJson =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"post\":\"post\",\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb\",\
+  \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb\",\
   \\"cache\":\"cache\"}},\"webroot\":\"/\",\
   \\"fonts\":{\"a.ttf\":\"A\"},\
-  \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"index.html\"}]}"
+  \\"post\":{\"template\":\"post.html\",\"output\":\"post\"},\
+  \\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}"
 
 expectedConfig :: KilnConfig
 expectedConfig =
@@ -26,12 +27,13 @@ expectedConfig =
     { configPath =
         PathConfig
           { pathIn = InPaths "src" "template" "fonts"
-          , pathOut = OutPaths "post" "fonts-subset" "searchdb" "cache"
+          , pathOut = OutPaths "fonts-subset" "searchdb" "cache"
           }
     , configWebroot = "/"
     , configFonts = Map.fromList [("a.ttf", "A")]
     , configToc = TocConfig True 3
-    , configPages = [PageConfig "index" "index.html" "index.html"]
+    , configPost = Just (PostPageConfig "post.html" "post")
+    , configPages = [PageConfig "index.html" "index.html"]
     }
 
 spec :: Spec
@@ -49,6 +51,16 @@ spec = do
       case eitherDecode "{\"path\":{}}" :: Either String KilnConfig of
         Left _ -> pure ()
         Right cfg -> expectationFailure ("expected failure, got " ++ show cfg)
+
+    it "parses \"post\": null as no standalone post pages" $ do
+      let json =
+            "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
+            \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb\",\
+            \\"cache\":\"cache\"}},\"webroot\":\"/\",\
+            \\"fonts\":{},\"post\":null,\"pages\":[]}"
+      case eitherDecode json of
+        Left err -> expectationFailure err
+        Right cfg -> configPost cfg `shouldBe` Nothing
 
   describe "readConfig" $ do
     it "dies when kiln-config.json is missing" $

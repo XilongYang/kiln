@@ -7,6 +7,7 @@ module Kiln.Config
   , OutPaths (..)
   , TocConfig (..)
   , PageConfig (..)
+  , PostPageConfig (..)
   , readConfig
   ) where
 
@@ -23,21 +24,32 @@ data InPaths = InPaths
   } deriving (Show, Eq)
 
 data OutPaths = OutPaths
-  { outPost        :: FilePath
-  , outFontsSubset :: FilePath
+  { outFontsSubset :: FilePath
   , outSearchDb    :: FilePath
   , outCache       :: FilePath
   } deriving (Show, Eq)
 
--- | One page to generate, outside of the per-post pages @kiln build@
--- already renders: its own template (a path under @path.in.template@,
--- alongside @post.html@ and @component/@), and the site-relative path to
--- write it to. `pageName` is just an identifier -- used to key this
--- page's build cache -- not itself part of the output path.
+-- | One page to generate: its own template (a path under
+-- @path.in.template@), and the site-relative path to write it to. A
+-- page's `pageOutput` doubles as its own identity -- two pages can't
+-- share one without one silently overwriting the other's output
+-- regardless of caching, so it's already a safe, unique key for the
+-- page's own build cache; there's no separate name to keep in sync.
 data PageConfig = PageConfig
-  { pageName     :: String
-  , pageTemplate :: FilePath
+  { pageTemplate :: FilePath
   , pageOutput   :: FilePath
+  } deriving (Show, Eq)
+
+-- | The per-post standalone page @kiln build@ renders for every
+-- markdown file in @path.in.src@, if any -- a site like a flat
+-- card-flow feed may not want one at all (see `Kiln.Config.readConfig`'s
+-- caller, which requires this to be stated explicitly as either this or
+-- JSON @null@, never silently defaulted). `postPageOutput` is a
+-- directory; a post with slug @s@ is written to
+-- @postPageOutput </> s <> ".html"@.
+data PostPageConfig = PostPageConfig
+  { postPageTemplate :: FilePath
+  , postPageOutput   :: FilePath
   } deriving (Show, Eq)
 
 data PathConfig = PathConfig
@@ -57,6 +69,7 @@ data KilnConfig = KilnConfig
     -- ^ local font filename (under @path.in.fonts@) -> the @font-family@
     -- name it's declared under in the site's own CSS.
   , configToc     :: TocConfig
+  , configPost    :: Maybe PostPageConfig
   , configPages   :: [PageConfig]
   } deriving (Show, Eq)
 
@@ -70,16 +83,20 @@ instance FromJSON InPaths where
 instance FromJSON OutPaths where
   parseJSON = withObject "out" $ \o ->
     OutPaths
-      <$> o .: "post"
-      <*> o .: "fonts-subset"
+      <$> o .: "fonts-subset"
       <*> o .: "searchdb"
       <*> o .: "cache"
 
 instance FromJSON PageConfig where
   parseJSON = withObject "page" $ \o ->
     PageConfig
-      <$> o .: "name"
-      <*> o .: "template"
+      <$> o .: "template"
+      <*> o .: "output"
+
+instance FromJSON PostPageConfig where
+  parseJSON = withObject "post" $ \o ->
+    PostPageConfig
+      <$> o .: "template"
       <*> o .: "output"
 
 instance FromJSON PathConfig where
@@ -101,6 +118,7 @@ instance FromJSON KilnConfig where
       <*> o .: "webroot"
       <*> o .: "fonts"
       <*> o .:? "toc" .!= TocConfig True 3
+      <*> o .: "post"
       <*> o .: "pages"
 
 configFileName :: FilePath

@@ -4,7 +4,7 @@ import Control.Monad (unless, when)
 import qualified Data.Map.Strict as Map
 import Kiln.Build.Cache (isFileFresh, recordFile)
 import Kiln.Build.PostEntry (PostEntry (..))
-import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PageConfig (..), PathConfig (..))
+import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PageConfig (..), PathConfig (..), PostPageConfig (..))
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.FilePath (takeBaseName, (</>))
 import System.Process (callProcess)
@@ -29,12 +29,13 @@ subsetFonts config entries = do
     inPaths = pathIn (configPath config)
     outPaths = pathOut (configPath config)
     fontsDir = inFonts inPaths
-    postDir = outPost outPaths
     subsetDir = outFontsSubset outPaths
     fontsCacheDir = outCache outPaths </> "fonts"
     localFonts = Map.keys (configFonts config)
-    htmlPaths = map postPath entries ++ map pageOutput (configPages config)
-    postPath e = postDir </> postSlug e ++ ".html"
+    htmlPaths = postPaths ++ map pageOutput (configPages config)
+    postPaths = case configPost config of
+      Just ppc -> [postPageOutput ppc </> postSlug e ++ ".html" | e <- entries]
+      Nothing  -> []
 
     -- | Pages are watched, not produced, by this step, so their cached
     -- snapshot is always refreshed to the page's current state --

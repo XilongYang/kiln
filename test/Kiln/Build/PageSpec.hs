@@ -10,6 +10,7 @@ entry title date slug =
     { postTitle = title
     , postDate = date
     , postSlug = slug
+    , postTags = ""
     , postAbstract = Nothing
     , postContent = "<p>" ++ title ++ " body</p>"
     }
@@ -61,4 +62,14 @@ spec = describe "postListItems" $ do
       [item] -> do
         itemAbstract item `shouldBe` Just "<p>intro</p>"
         itemContent item `shouldBe` "<p>Only Post body</p>"
+      items -> expectationFailure ("expected exactly one item, got " ++ show (length items))
+
+  it "passes an entry's tags straight through, verbatim" $
+    case postListItems "/" [(entry "Only Post" "2024-03-15" "only-post") {postTags = "long,image"}] of
+      [item] -> itemTags item `shouldBe` "long,image"
+      items -> expectationFailure ("expected exactly one item, got " ++ show (length items))
+
+  it "defaults an entry with no tags to an empty string" $
+    case postListItems "/" [entry "Only Post" "2024-03-15" "only-post"] of
+      [item] -> itemTags item `shouldBe` ""
       items -> expectationFailure ("expected exactly one item, got " ++ show (length items))

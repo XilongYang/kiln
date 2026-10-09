@@ -6,7 +6,6 @@
       "fonts"        : "res/fonts"
     },
     "out" : {
-      "post"         : "post",
       "fonts-subset" : "fonts-subset",
       "searchdb"     : "searchdb.json",
       "cache"        : ".cache"
@@ -17,9 +16,10 @@
     "enable" : true,
     "depth"  : 3
   },
+  "post" : { "template" : "post.html", "output" : "post" },
   "pages" : [
-    { "name" : "index", "template" : "index.html", "output" : "index.html" },
-    { "name" : "404",   "template" : "404.html",   "output" : "404.html"   }
+    { "template" : "index.html", "output" : "index.html" },
+    { "template" : "404.html",   "output" : "404.html"   }
   ],
   "fonts" : {
     "JetBrainsMono-Regular.ttf"    : "JetBrains Mono",

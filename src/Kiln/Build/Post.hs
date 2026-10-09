@@ -7,7 +7,7 @@ import Data.List (isPrefixOf, nub, (\\))
 import Kiln.Build.Cache (cacheFile, componentsFingerprint, isFileFresh, isGlobalFresh, recordFile, recordGlobal)
 import Kiln.Build.PostEntry (PostEntry (..), PostFrontmatter (..), frontmatterTemplate, loadFrontmatter, loadPostEntry)
 import Kiln.Str (replaceAll, trim)
-import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..), TocConfig (..))
+import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..), PostPageConfig (..), TocConfig (..))
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
@@ -28,18 +28,18 @@ data PostMeta = PostMeta
   , postToc     :: TocConfig
   }
 
--- | Every filesystem path touched while rendering one post. Grouping these
--- avoids passing a run of same-typed `FilePath`/`String` arguments
--- positionally, where it's easy to pass them in the wrong order.
+-- | Every filesystem path touched while rendering one post, besides its
+-- own standalone page (optional -- see `Kiln.Config.PostPageConfig` --
+-- so handled separately rather than kept here). Grouping these avoids
+-- passing a run of same-typed `FilePath`/`String` arguments positionally,
+-- where it's easy to pass them in the wrong order.
 data PostPaths = PostPaths
   { postSrcPath             :: FilePath -- ^ the post's original markdown
   , postRewrittenPath       :: FilePath -- ^ language-mark-rewritten, abstract-split body fed to pandoc
-  , postPageTemplate        :: FilePath -- ^ the post page template, @post.html@
   , postFrontmatterTemplate :: FilePath -- ^ the frontmatter JSON template, @frontmatter.json.tpl@
   , postFrontmatterJsonPath :: FilePath -- ^ the rendered frontmatter JSON (title/date)
   , postContentHtmlPath     :: FilePath -- ^ the rendered body HTML, for other pages' @posts@ metadata
   , postSearchTextPath      :: FilePath -- ^ the rendered plain text, for the search database
-  , postHtmlOutputPath      :: FilePath -- ^ the rendered post page
   , postTocTemplate         :: FilePath -- ^ the bare @$toc$@ template, @toc.tpl@
   , postTocHtmlPath         :: FilePath -- ^ the rendered standalone toc fragment
   , postStageCachePath      :: FilePath -- ^ cached source mtime/size/hash, under @.cache/stage@
@@ -47,11 +47,11 @@ data PostPaths = PostPaths
   , postSearchCachePath     :: FilePath -- ^ cached search text, under @.cache/search@
   }
 
--- | Render every markdown post in `config`'s source directory through the
--- (already component-substituted) `tempDir </> "post.html"` template into
--- `config`'s post output directory. Returns each post's `PostEntry`
--- (fed into every page's @posts@ metadata, see `Kiln.Build.Page`) paired
--- with its plain-text content (for the search database).
+-- | Render every markdown post in `config`'s source directory -- its own
+-- standalone page too, if `config` configures one (see
+-- `Kiln.Config.PostPageConfig`). Returns each post's `PostEntry` (fed
+-- into every page's @posts@ metadata, see `Kiln.Build.Page`) paired with
+-- its plain-text content (for the search database).
 --
 -- A post is skipped (and its cached outputs reused) when neither its
 -- source nor anything that could affect every post's rendering --
@@ -64,37 +64,40 @@ renderPosts :: KilnConfig -> FilePath -> IO [(PostEntry, String)]
 renderPosts config tempDir = do
   names <- listDirectory srcDir
   let mdNames = filter ((== ".md") . takeExtension) names
-  createDirectoryIfMissing True postDir
   createDirectoryIfMissing True searchItemDir
+  maybe (pure ()) (createDirectoryIfMissing True . postPageOutput) postPageCfg
   writeFile frontmatterTemplatePath frontmatterTemplate
   writeFile tocTemplatePath "$toc$"
-  template <- readFile' (tempDir </> "post.html")
+  postTemplate <- maybe (pure "") (readFile' . (tempDir </>) . postPageTemplate) postPageCfg
   components <- componentsFingerprint tempDir
-  let fingerprint = configWebroot config ++ "\n" ++ show (configToc config) ++ "\n" ++ template ++ "\n" ++ components
+  let fingerprint = configWebroot config ++ "\n" ++ show (configToc config) ++ "\n" ++ postTemplate ++ "\n" ++ components
   globalFresh <- isGlobalFresh globalCachePath fingerprint
   results <- mapM (renderPost config tempDir globalFresh) mdNames
   recordGlobal globalCachePath fingerprint
-  sweepOrphans outPaths (map takeBaseName mdNames)
+  sweepOrphans postPageCfg outPaths (map takeBaseName mdNames)
   pure results
   where
     inPaths = pathIn (configPath config)
     outPaths = pathOut (configPath config)
     srcDir = inSrc inPaths
-    postDir = outPost outPaths
+    postPageCfg = configPost config
     searchItemDir = tempDir </> "search-item"
     frontmatterTemplatePath = tempDir </> "frontmatter.json.tpl"
     tocTemplatePath = tempDir </> "toc.tpl"
     globalCachePath = outCache outPaths </> "global"
 
--- | Warn about any rendered post under `outPaths`'s `outPost` whose
--- source is no longer among `currentSlugs` (left alone, since it may
--- still be linked from elsewhere), and silently drop the `outCache`
--- entry for any post that has neither a source nor a rendered output
--- left -- pure bookkeeping nobody can see, so there's nothing to warn
--- about.
-sweepOrphans :: OutPaths -> [String] -> IO ()
-sweepOrphans outPaths currentSlugs = do
-  postSlugs <- map takeBaseName . filter ((== ".html") . takeExtension) <$> listDirectory postDir
+-- | Warn about any rendered post whose source is no longer among
+-- `currentSlugs` (left alone, since it may still be linked from
+-- elsewhere) -- skipped entirely when `config` has no `PostPageConfig`,
+-- since there's no rendered page to find in the first place -- and
+-- silently drop the `outCache` entry for any post that has neither a
+-- source nor a rendered output left -- pure bookkeeping nobody can see,
+-- so there's nothing to warn about.
+sweepOrphans :: Maybe PostPageConfig -> OutPaths -> [String] -> IO ()
+sweepOrphans postPageCfg outPaths currentSlugs = do
+  postSlugs <- case postPageCfg of
+    Just ppc -> map takeBaseName . filter ((== ".html") . takeExtension) <$> listDirectory (postPageOutput ppc)
+    Nothing  -> pure []
   stageExists <- doesDirectoryExist stageCacheDir
   cachedSlugs <-
     if stageExists
@@ -102,7 +105,7 @@ sweepOrphans outPaths currentSlugs = do
       else pure []
   let sweepSlug slug
         | slug `elem` postSlugs =
-            warn (postDir </> slug ++ ".html" ++ " has no matching source file; leaving it in place")
+            warn (slug ++ ".html has no matching source file; leaving it in place")
         | otherwise =
             mapM_
               removeIfExists
@@ -112,7 +115,6 @@ sweepOrphans outPaths currentSlugs = do
               ]
   mapM_ sweepSlug (nub (postSlugs ++ cachedSlugs) \\ currentSlugs)
   where
-    postDir = outPost outPaths
     stageCacheDir = outCache outPaths </> "stage"
 
 warn :: String -> IO ()
@@ -125,9 +127,9 @@ removeIfExists path = do
 
 renderPost :: KilnConfig -> FilePath -> Bool -> FilePath -> IO (PostEntry, String)
 renderPost config tempDir globalFresh name = do
-  htmlExists <- doesFileExist (postHtmlOutputPath paths)
+  htmlFresh <- maybe (pure True) (doesFileExist . (</> slug ++ ".html") . postPageOutput) postPageCfg
   fresh <-
-    if globalFresh && htmlExists
+    if globalFresh && htmlFresh
       then isFileFresh (postStageCachePath paths) (postSrcPath paths)
       else pure False
   if fresh
@@ -140,8 +142,8 @@ renderPost config tempDir globalFresh name = do
     inPaths = pathIn (configPath config)
     outPaths = pathOut (configPath config)
     srcDir = inSrc inPaths
-    postDir = outPost outPaths
     cacheDir = outCache outPaths
+    postPageCfg = configPost config
     slug = takeBaseName name
     meta =
       PostMeta
@@ -153,12 +155,10 @@ renderPost config tempDir globalFresh name = do
       PostPaths
         { postSrcPath = srcDir </> name
         , postRewrittenPath = tempDir </> name
-        , postPageTemplate = tempDir </> "post.html"
         , postFrontmatterTemplate = tempDir </> "frontmatter.json.tpl"
         , postFrontmatterJsonPath = tempDir </> "frontmatter.json"
         , postContentHtmlPath = tempDir </> slug ++ "-content.html"
         , postSearchTextPath = tempDir </> "search-item" </> slug ++ ".txt"
-        , postHtmlOutputPath = postDir </> slug ++ ".html"
         , postTocTemplate = tempDir </> "toc.tpl"
         , postTocHtmlPath = tempDir </> slug ++ "-toc.html"
         , postStageCachePath = cacheDir </> "stage" </> slug ++ ".src"
@@ -171,7 +171,9 @@ renderPost config tempDir globalFresh name = do
       writeFile (postRewrittenPath paths) bodySrc
       abstractHtml <- traverse (renderAbstractHtml tempDir) abstractSrc
       contentHtml <- renderContentHtml paths
-      renderPostHtml meta paths abstractHtml
+      case postPageCfg of
+        Just ppc -> renderPostHtml ppc tempDir meta paths abstractHtml
+        Nothing  -> pure ()
       renderFrontmatterJson paths
       renderPostSearchText paths
       frontmatter <- loadFrontmatter (postFrontmatterJsonPath paths)
@@ -181,6 +183,7 @@ renderPost config tempDir globalFresh name = do
               { postTitle = fmTitle frontmatter
               , postDate = fmDate frontmatter
               , postSlug = slug
+              , postTags = fmTags frontmatter
               , postAbstract = abstractHtml
               , postContent = contentHtml
               }
@@ -238,13 +241,13 @@ renderContentHtml paths = do
   where
     contentHtmlPath = postContentHtmlPath paths
 
--- | Run the rewritten post body through pandoc using the page template,
--- writing the rendered post page. The table of contents, if enabled, is
--- rendered separately (see `renderTocHtml`) so its @<ul>@s can be
--- rewritten into @<ol>@s before being spliced in as the @toc@ variable;
--- pandoc's own `--toc` flag only ever emits @<ul>@s.
-renderPostHtml :: PostMeta -> PostPaths -> Maybe String -> IO ()
-renderPostHtml meta paths abstractHtml = do
+-- | Run the rewritten post body through pandoc using `ppc`'s page
+-- template, writing the rendered post page. The table of contents, if
+-- enabled, is rendered separately (see `renderTocHtml`) so its @<ul>@s
+-- can be rewritten into @<ol>@s before being spliced in as the @toc@
+-- variable; pandoc's own `--toc` flag only ever emits @<ul>@s.
+renderPostHtml :: PostPageConfig -> FilePath -> PostMeta -> PostPaths -> Maybe String -> IO ()
+renderPostHtml ppc tempDir meta paths abstractHtml = do
   tocFlag <- if tocEnable toc
     then do
       tocHtml <- renderTocHtml meta paths
@@ -255,10 +258,10 @@ renderPostHtml meta paths abstractHtml = do
     ( [ "--quiet"
       , "--standalone"
       , "--mathjax"
-      , "--template=" ++ postPageTemplate paths
+      , "--template=" ++ (tempDir </> postPageTemplate ppc)
       , "--variable=webroot=" ++ postWebroot meta
       , "--variable=slug=" ++ metaSlug meta
-      , "--output=" ++ postHtmlOutputPath paths
+      , "--output=" ++ (postPageOutput ppc </> metaSlug meta ++ ".html")
       , postRewrittenPath paths
       ]
       ++ tocFlag

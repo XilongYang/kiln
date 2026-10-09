@@ -1,0 +1,145 @@
+/* Archive side navigation: month index (scrollable). */
+.archive-nav {
+    display: block;
+    position: fixed;
+    top: 10vh;
+    left: var(--archive-nav-left);
+    width: var(--archive-nav-width);
+    max-height: 80vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+    padding: 0.08rem 0.12rem 0.08rem 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    z-index: 9999;
+}
+
+.archive-nav::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+/* Navigation content rebuilt from visible dates after filtering. */
+.archive-nav-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    align-items: flex-start;
+    margin: 0.28rem 0;
+}
+
+/* Independent jump controls, intentionally outside nav scroll container. */
+.archive-jump {
+    display: inline-flex;
+    position: fixed;
+    left: var(--archive-nav-left);
+    width: var(--archive-nav-width);
+    min-width: 1.5rem;
+    color: var(--muted);
+    line-height: 1;
+    padding: 0.02rem 0.24rem;
+    border-radius: 4px;
+    text-align: left;
+    z-index: 10000;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.archive-jump-top {
+    top: 7.5vh;
+}
+
+.archive-jump-bottom {
+    top: 91vh;
+}
+
+.archive-jump-icon {
+    position: relative;
+    display: inline-block;
+    width: var(--archive-jump-icon-width);
+    height: var(--archive-jump-icon-height);
+}
+
+.archive-jump-icon::before {
+    content: "";
+    position: absolute;
+    left: 1px;
+    border-left: var(--archive-jump-triangle-width) solid transparent;
+    border-right: var(--archive-jump-triangle-width) solid transparent;
+}
+
+.archive-jump-icon::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: var(--archive-jump-icon-width);
+    height: var(--archive-jump-line-height);
+    background: currentColor;
+}
+
+.archive-jump-top .archive-jump-icon::before {
+    top: 0;
+    border-bottom: var(--archive-jump-triangle-height) solid currentColor;
+}
+
+.archive-jump-top .archive-jump-icon::after {
+    top: 9px;
+}
+
+.archive-jump-bottom .archive-jump-icon::before {
+    top: 4px;
+    border-top: var(--archive-jump-triangle-height) solid currentColor;
+}
+
+.archive-jump-bottom .archive-jump-icon::after {
+    top: 1px;
+}
+
+.archive-nav-year {
+    margin-top: 0.45rem;
+    color: var(--muted);
+    font-size: var(--archive-nav-font-size);
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.archive-nav-year:first-child {
+    margin-top: 0;
+}
+
+.archive-nav-month {
+    display: inline-block;
+    min-width: 1.5rem;
+    color: var(--muted);
+    font-size: var(--archive-nav-font-size);
+    line-height: 1.35;
+    padding: 0.02rem 0.24rem;
+    border-radius: 4px;
+}
+
+.archive-nav-month.is-active {
+    background: transparent;
+    color: #d38a8a;
+    font-weight: 700;
+}
+
+@media (max-width: 640px) {
+    .archive-nav {
+        left: auto;
+        right: env(safe-area-inset-right, 0px);
+        padding-left: 0;
+    }
+
+    .archive-jump {
+        left: auto;
+        right: env(safe-area-inset-right, 0px);
+        padding-left: 0;
+    }
+
+    .archive-nav-month {
+        padding-left: 0;
+    }
+}

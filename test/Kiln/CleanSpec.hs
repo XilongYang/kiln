@@ -14,9 +14,10 @@ import Test.Hspec
 configJson :: String
 configJson =
   "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"post\":\"dist/post\",\"fonts-subset\":\"dist/fonts\",\"searchdb\":\"dist/searchdb.json\",\
+  \\"out\":{\"fonts-subset\":\"dist/fonts\",\"searchdb\":\"dist/searchdb.json\",\
   \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\"fonts\":{},\
-  \\"pages\":[{\"name\":\"index\",\"template\":\"index.html\",\"output\":\"dist/index.html\"}]}"
+  \\"post\":{\"template\":\"post.html\",\"output\":\"dist/post\"},\
+  \\"pages\":[{\"template\":\"index.html\",\"output\":\"dist/index.html\"}]}"
 
 outPaths :: [FilePath]
 outPaths =
@@ -48,4 +49,14 @@ spec = describe "kilnClean" $ do
     withTempDir $ \dir ->
       withCurrentDirectory dir $ do
         writeFile "kiln-config.json" configJson
+        kilnClean `shouldReturn` ()
+
+  it "doesn't try to remove a post output directory when \"post\" is null" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        writeFile
+          "kiln-config.json"
+          "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
+          \\"out\":{\"fonts-subset\":\"dist/fonts\",\"searchdb\":\"dist/searchdb.json\",\
+          \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\"fonts\":{},\"post\":null,\"pages\":[]}"
         kilnClean `shouldReturn` ()
