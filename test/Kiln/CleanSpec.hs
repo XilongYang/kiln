@@ -73,3 +73,14 @@ spec = describe "kilnClean" $ do
           \\"target\":{\"searchdb\":\"dist/searchdb.json\",\"cache-dir\":\"dist/.cache\",\"fonts\":null,\
           \\"post\":{\"template\":\"post.html\",\"output-dir\":\"dist/post\"},\"pages\":[]}}"
         kilnClean `shouldReturn` ()
+
+  it "doesn't try to remove a search index when \"searchdb\" is null" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        writeFile
+          "kiln-config.json"
+          "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+          \\"opt\":{\"webroot\":\"/\"},\
+          \\"target\":{\"searchdb\":null,\"cache-dir\":\"dist/.cache\",\"fonts\":null,\
+          \\"post\":{\"template\":\"post.html\",\"output-dir\":\"dist/post\"},\"pages\":[]}}"
+        kilnClean `shouldReturn` ()

@@ -22,11 +22,14 @@ instance ToJSON SearchEntry where
 
 -- | Build the searchdb.json array (title/url/content per post) from each
 -- post's `PostEntry` paired with its plain-text content, and write it to
--- `config`'s search-db output path.
+-- `config`'s search-db output path -- or do nothing if the site has no
+-- search feature to feed (`targetSearchDb` is JSON @null@).
 writeSearchDb :: KilnConfig -> [(PostEntry, String)] -> IO ()
-writeSearchDb config entries = encodeFile dbPath (map toSearchEntry entries)
+writeSearchDb config entries =
+  case targetSearchDb (configTarget config) of
+    Nothing     -> pure ()
+    Just dbPath -> encodeFile dbPath (map toSearchEntry entries)
   where
-    dbPath = targetSearchDb (configTarget config)
     webroot = optWebroot (configOpt config)
     toSearchEntry (entry, content) =
       SearchEntry

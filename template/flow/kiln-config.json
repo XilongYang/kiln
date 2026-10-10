@@ -15,7 +15,7 @@
       { "template" : "index.html", "output" : "index.html" }
     ],
     "post" : null,
-    "searchdb"  : "searchdb.json",
+    "searchdb"  : null,
     "fonts" : null
   }
 }

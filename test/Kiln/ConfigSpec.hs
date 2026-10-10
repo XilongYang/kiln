@@ -27,7 +27,7 @@ expectedConfig =
     , configOpt = OptConfig "/" (TocConfig True 3)
     , configTarget =
         TargetConfig
-          { targetSearchDb = "searchdb"
+          { targetSearchDb = Just "searchdb"
           , targetCacheDir = "cache"
           , targetPost = Just (PostPageConfig "post.html" "post")
           , targetPages = [PageConfig "index.html" "index.html"]
@@ -70,6 +70,16 @@ spec = do
       case eitherDecode json of
         Left err -> expectationFailure err
         Right cfg -> targetFonts (configTarget cfg) `shouldBe` Nothing
+
+    it "parses \"searchdb\": null as no search index to generate" $ do
+      let json =
+            "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+            \\"opt\":{\"webroot\":\"/\"},\
+            \\"target\":{\"searchdb\":null,\"cache-dir\":\"cache\",\
+            \\"fonts\":null,\"post\":null,\"pages\":[]}}"
+      case eitherDecode json of
+        Left err -> expectationFailure err
+        Right cfg -> targetSearchDb (configTarget cfg) `shouldBe` Nothing
 
   describe "readConfig" $ do
     it "dies when kiln-config.json is missing" $

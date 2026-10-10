@@ -238,6 +238,18 @@ spec = describe "kilnBuild" $ do
         doesFileExist ".cache/items/Older_Post.json" `shouldReturn` False
         doesFileExist ".cache/search/Older_Post.txt" `shouldReturn` False
 
+  it "doesn't write a search index when \"searchdb\" is null" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        setUpProject
+        writeFile "kiln-config.json"
+          ("{" ++ inputOptPrefix "/blog/" ++
+          "\"target\":{\"searchdb\":null,\"cache-dir\":\".cache\",\"fonts\":null," ++ postConfigField ++
+          "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}")
+        kilnBuild
+
+        doesFileExist "searchdb.json" `shouldReturn` False
+
   it "serves an unchanged font subset from cache, without needing pyftsubset again" $
     withTempDir $ \dir ->
       withCurrentDirectory dir $ do

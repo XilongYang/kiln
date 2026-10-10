@@ -15,17 +15,12 @@ kilnClean = do
   let target = configTarget config
   mapM_
     removePath
-    ( fixedOutPaths target
+    ( [targetCacheDir target]
+        ++ maybe [] (: []) (targetSearchDb target)
         ++ maybe [] ((: []) . fontsSubsetDir) (targetFonts target)
         ++ maybe [] ((: []) . postPageOutputDir) (targetPost target)
         ++ map pageOutput (targetPages target)
     )
-
-fixedOutPaths :: TargetConfig -> [FilePath]
-fixedOutPaths target =
-  [ targetSearchDb target
-  , targetCacheDir target
-  ]
 
 removePath :: FilePath -> IO ()
 removePath path = do

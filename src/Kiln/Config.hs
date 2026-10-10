@@ -69,7 +69,10 @@ data TocConfig = TocConfig
 
 -- | Everything kiln generates and `kiln clean` removes.
 data TargetConfig = TargetConfig
-  { targetSearchDb :: FilePath
+  { targetSearchDb :: Maybe FilePath
+    -- ^ Output path for the generated search index JSON, or JSON @null@
+    -- if the site has no search feature to feed -- same convention as
+    -- `targetPost`/`targetFonts`. See `Kiln.Build.SearchDb.writeSearchDb`.
   , targetCacheDir :: FilePath
   , targetPost     :: Maybe PostPageConfig
   , targetPages    :: [PageConfig]
