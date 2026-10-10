@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:                kiln
-version:             0.2.2
+version:             0.2.3
 synopsis:            Kiln builder
 license:             MIT
 license-file:        LICENSE
@@ -63,10 +63,11 @@ test-suite kiln-test
                       , Kiln.InitSpec
                       , Kiln.StrSpec
                       , Kiln.Build.PageSpec
+                      , Kiln.Build.CacheSpec
                       , Kiln.BuildSpec
                       , Kiln.TestUtil
                       , Paths_kiln
     autogen-modules:    Paths_kiln
-    build-depends:      base >=4 && <5, kiln, hspec, aeson, bytestring, directory, filepath, containers
+    build-depends:      base >=4 && <5, kiln, hspec, aeson, bytestring, directory, filepath, containers, time
     build-tool-depends: hspec-discover:hspec-discover
     default-language:  GHC2024
