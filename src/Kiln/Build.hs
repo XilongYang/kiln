@@ -4,7 +4,7 @@ import Kiln.Build.FontSubset (subsetFonts)
 import Kiln.Build.Page (writePage)
 import Kiln.Build.Post (renderPosts)
 import Kiln.Build.SearchDb (writeSearchDb)
-import Kiln.Config (InPaths (..), KilnConfig (..), PathConfig (..), readConfig)
+import Kiln.Config (InputConfig (..), KilnConfig (..), TargetConfig (..), readConfig)
 import Kiln.FileTree (copyTree, withTempDir)
 import System.IO (hPutStrLn, stdout)
 
@@ -17,8 +17,7 @@ logMsg = hPutStrLn stdout
 kilnBuild :: IO ()
 kilnBuild = do
   config <- readConfig
-  let inPaths = pathIn (configPath config)
-      templateDir = inTemplate inPaths
+  let templateDir = inputTemplateDir (configInput config)
 
   withTempDir tempDirName $ \dir -> do
     logMsg "Copying template..."
@@ -27,7 +26,7 @@ kilnBuild = do
     results <- renderPosts config dir
     let entries = map fst results
     logMsg "Writing pages..."
-    mapM_ (writePage config dir entries) (configPages config)
+    mapM_ (writePage config dir entries) (targetPages (configTarget config))
     logMsg "Writing search database..."
     writeSearchDb config results
     logMsg "Subsetting fonts..."

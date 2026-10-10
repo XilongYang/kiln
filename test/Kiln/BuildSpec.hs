@@ -21,26 +21,29 @@ import System.Environment (lookupEnv, setEnv)
 import System.FilePath (searchPathSeparator, splitSearchPath, takeDirectory)
 import Test.Hspec
 
+inputOptPrefix :: String -> String
+inputOptPrefix webroot =
+  "\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+  \\"opt\":{\"webroot\":\"" ++ webroot ++ "\"},"
+
 postConfigField :: String
-postConfigField = "\"post\":{\"template\":\"post.html\",\"output\":\"post\"},"
+postConfigField = "\"post\":{\"template\":\"post.html\",\"output-dir\":\"post\"},"
 
 configJson :: String
 configJson =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-  \\"out\":{\"searchdb\":\"searchdb.json\",\
-  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":null," ++ postConfigField ++
-  "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}"
+  "{" ++ inputOptPrefix "/blog/" ++
+  "\"target\":{\"searchdb\":\"searchdb.json\",\"cache-dir\":\".cache\",\"fonts\":null," ++ postConfigField ++
+  "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}"
 
 -- | `configJson`, plus a second configured page (a stand-in for a 404
 -- page, with a distinct output to prove `kilnBuild` renders every
 -- configured page generically, not just one hardcoded as "the index").
 configJsonWithExtraPage :: String
 configJsonWithExtraPage =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-  \\"out\":{\"searchdb\":\"searchdb.json\",\
-  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":null," ++ postConfigField ++
+  "{" ++ inputOptPrefix "/blog/" ++
+  "\"target\":{\"searchdb\":\"searchdb.json\",\"cache-dir\":\".cache\",\"fonts\":null," ++ postConfigField ++
   "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"},\
-  \{\"template\":\"404.html\",\"output\":\"404.html\"}]}"
+  \{\"template\":\"404.html\",\"output\":\"404.html\"}]}}"
 
 indexTemplate :: String
 indexTemplate =
@@ -94,11 +97,10 @@ fontFileName = "JetBrainsMono-Regular.ttf"
 
 configJsonWithFont :: String
 configJsonWithFont =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-  \\"out\":{\"searchdb\":\"searchdb.json\",\
-  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\
-  \\"fonts\":{\"subset-path\":\"fonts-subset\",\"sources\":[\"fonts/" ++ fontFileName ++ "\"]}," ++ postConfigField ++
-  "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}"
+  "{" ++ inputOptPrefix "/blog/" ++
+  "\"target\":{\"searchdb\":\"searchdb.json\",\"cache-dir\":\".cache\",\
+  \\"fonts\":{\"subset-dir\":\"fonts-subset\",\"sources\":[\"fonts/" ++ fontFileName ++ "\"]}," ++ postConfigField ++
+  "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}"
 
 -- | `setUpProject`, plus a real font (borrowed from the shipped
 -- default template, via the same `Paths_kiln` data-dir lookup `Init`
@@ -213,10 +215,9 @@ spec = describe "kilnBuild" $ do
         setUpProject
         kilnBuild
         writeFile "kiln-config.json"
-          ("{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-          \\"out\":{\"searchdb\":\"searchdb.json\",\
-          \\"cache\":\".cache\"}},\"webroot\":\"/elsewhere/\",\"fonts\":null," ++ postConfigField ++
-          "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}")
+          ("{" ++ inputOptPrefix "/elsewhere/" ++
+          "\"target\":{\"searchdb\":\"searchdb.json\",\"cache-dir\":\".cache\",\"fonts\":null," ++ postConfigField ++
+          "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}")
         withoutPandoc kilnBuild `shouldThrow` anyIOException
 
   it "warns about, but keeps, an orphaned post; only drops its cache once the output is gone too" $

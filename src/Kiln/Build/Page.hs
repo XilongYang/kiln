@@ -7,7 +7,7 @@ import Data.List (sortBy)
 import Data.Ord (Down (..), comparing)
 import Kiln.Build.Cache (componentsFingerprint, isGlobalFresh, recordGlobal)
 import Kiln.Build.PostEntry (PostEntry (..), postUrl)
-import Kiln.Config (KilnConfig (..), OutPaths (..), PageConfig (..), PathConfig (..))
+import Kiln.Config (KilnConfig (..), OptConfig (..), PageConfig (..), TargetConfig (..))
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.FilePath (takeDirectory, (</>))
 import System.IO (readFile')
@@ -117,8 +117,7 @@ writePage config dir entries page = do
         ]
       recordGlobal fingerprintCachePath fingerprint
   where
-    outPaths = pathOut (configPath config)
-    webroot = configWebroot config
+    webroot = optWebroot (configOpt config)
     outputPath = pageOutput page
     templatePath = dir </> pageTemplate page
     -- `outputPath` is already a safe, unique key (see `PageConfig`'s own
@@ -128,4 +127,4 @@ writePage config dir entries page = do
     -- unrelated page that merely shares a basename.
     emptyInputPath = dir </> "pages" </> (outputPath ++ ".md")
     metadataPath = dir </> "pages" </> (outputPath ++ "-metadata.json")
-    fingerprintCachePath = outCache outPaths </> "pages" </> (outputPath ++ ".cache")
+    fingerprintCachePath = targetCacheDir (configTarget config) </> "pages" </> (outputPath ++ ".cache")

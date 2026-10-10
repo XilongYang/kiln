@@ -4,7 +4,7 @@ module Kiln.Build.SearchDb (writeSearchDb) where
 
 import Data.Aeson (ToJSON (..), encodeFile, object, (.=))
 import Kiln.Build.PostEntry (PostEntry (..), postUrl)
-import Kiln.Config (KilnConfig (..), OutPaths (..), PathConfig (..))
+import Kiln.Config (KilnConfig (..), OptConfig (..), TargetConfig (..))
 
 data SearchEntry = SearchEntry
   { searchTitle   :: String
@@ -26,9 +26,8 @@ instance ToJSON SearchEntry where
 writeSearchDb :: KilnConfig -> [(PostEntry, String)] -> IO ()
 writeSearchDb config entries = encodeFile dbPath (map toSearchEntry entries)
   where
-    outPaths = pathOut (configPath config)
-    dbPath = outSearchDb outPaths
-    webroot = configWebroot config
+    dbPath = targetSearchDb (configTarget config)
+    webroot = optWebroot (configOpt config)
     toSearchEntry (entry, content) =
       SearchEntry
         { searchTitle = postTitle entry

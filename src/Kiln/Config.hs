@@ -2,9 +2,9 @@
 
 module Kiln.Config
   ( KilnConfig (..)
-  , PathConfig (..)
-  , InPaths (..)
-  , OutPaths (..)
+  , InputConfig (..)
+  , OptConfig (..)
+  , TargetConfig (..)
   , FontsConfig (..)
   , TocConfig (..)
   , PageConfig (..)
@@ -17,27 +17,30 @@ import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:), (.:?
 import System.Directory (doesFileExist)
 import System.Exit (die)
 
-data InPaths = InPaths
-  { inSrc      :: FilePath
-  , inTemplate :: FilePath
+-- | The read-only directories kiln finds its own source material in --
+-- never written to, never cleaned.
+data InputConfig = InputConfig
+  { inputSrcDir      :: FilePath
+  , inputTemplateDir :: FilePath
   } deriving (Show, Eq)
 
-data OutPaths = OutPaths
-  { outSearchDb :: FilePath
-  , outCache    :: FilePath
+-- | Site-wide behavior, as opposed to filesystem locations.
+data OptConfig = OptConfig
+  { optWebroot :: FilePath
+  , optToc     :: TocConfig
   } deriving (Show, Eq)
 
--- | Where to write subset fonts (`fontsSubsetPath`), and the font files
--- (full paths) to subset into them. A site with no local fonts to
--- subset states this as JSON @null@ instead, same as `configPost` --
--- see `Kiln.Build.FontSubset.subsetFonts`.
+-- | Where to write subset fonts (`fontsSubsetDir`), and the font files
+-- (full paths) to subset into it. A site with no local fonts to subset
+-- states this as JSON @null@ instead, same as `targetPost` -- see
+-- `Kiln.Build.FontSubset.subsetFonts`.
 data FontsConfig = FontsConfig
-  { fontsSubsetPath :: FilePath
-  , fontsSources    :: [FilePath]
+  { fontsSubsetDir :: FilePath
+  , fontsSources   :: [FilePath]
   } deriving (Show, Eq)
 
 -- | One page to generate: its own template (a path under
--- @path.in.template@), and the site-relative path to write it to. A
+-- `inputTemplateDir`), and the site-relative path to write it to. A
 -- page's `pageOutput` doubles as its own identity -- two pages can't
 -- share one without one silently overwriting the other's output
 -- regardless of caching, so it's already a safe, unique key for the
@@ -48,52 +51,53 @@ data PageConfig = PageConfig
   } deriving (Show, Eq)
 
 -- | The per-post standalone page @kiln build@ renders for every
--- markdown file in @path.in.src@, if any -- a site like a flat
+-- markdown file in `inputSrcDir`, if any -- a site like a flat
 -- card-flow feed may not want one at all (see `Kiln.Config.readConfig`'s
 -- caller, which requires this to be stated explicitly as either this or
--- JSON @null@, never silently defaulted). `postPageOutput` is a
+-- JSON @null@, never silently defaulted). `postPageOutputDir` is a
 -- directory; a post with slug @s@ is written to
--- @postPageOutput </> s <> ".html"@.
+-- @postPageOutputDir </> s <> ".html"@.
 data PostPageConfig = PostPageConfig
-  { postPageTemplate :: FilePath
-  , postPageOutput   :: FilePath
-  } deriving (Show, Eq)
-
-data PathConfig = PathConfig
-  { pathIn  :: InPaths
-  , pathOut :: OutPaths
+  { postPageTemplate  :: FilePath
+  , postPageOutputDir :: FilePath
   } deriving (Show, Eq)
 
 data TocConfig = TocConfig
-  { tocEnable          :: Bool
-  , tocDepth           :: Int
+  { tocEnable :: Bool
+  , tocDepth  :: Int
+  } deriving (Show, Eq)
+
+-- | Everything kiln generates and `kiln clean` removes.
+data TargetConfig = TargetConfig
+  { targetSearchDb :: FilePath
+  , targetCacheDir :: FilePath
+  , targetPost     :: Maybe PostPageConfig
+  , targetPages    :: [PageConfig]
+  , targetFonts    :: Maybe FontsConfig
   } deriving (Show, Eq)
 
 data KilnConfig = KilnConfig
-  { configPath    :: PathConfig
-  , configWebroot :: FilePath
-  , configFonts   :: Maybe FontsConfig
-  , configToc     :: TocConfig
-  , configPost    :: Maybe PostPageConfig
-  , configPages   :: [PageConfig]
+  { configInput  :: InputConfig
+  , configOpt    :: OptConfig
+  , configTarget :: TargetConfig
   } deriving (Show, Eq)
 
-instance FromJSON InPaths where
-  parseJSON = withObject "in" $ \o ->
-    InPaths
-      <$> o .: "src"
-      <*> o .: "template"
+instance FromJSON InputConfig where
+  parseJSON = withObject "input" $ \o ->
+    InputConfig
+      <$> o .: "src-dir"
+      <*> o .: "template-dir"
 
-instance FromJSON OutPaths where
-  parseJSON = withObject "out" $ \o ->
-    OutPaths
-      <$> o .: "searchdb"
-      <*> o .: "cache"
+instance FromJSON OptConfig where
+  parseJSON = withObject "opt" $ \o ->
+    OptConfig
+      <$> o .: "webroot"
+      <*> o .:? "toc" .!= TocConfig True 3
 
 instance FromJSON FontsConfig where
   parseJSON = withObject "fonts" $ \o ->
     FontsConfig
-      <$> o .: "subset-path"
+      <$> o .: "subset-dir"
       <*> o .: "sources"
 
 instance FromJSON PageConfig where
@@ -106,13 +110,7 @@ instance FromJSON PostPageConfig where
   parseJSON = withObject "post" $ \o ->
     PostPageConfig
       <$> o .: "template"
-      <*> o .: "output"
-
-instance FromJSON PathConfig where
-  parseJSON = withObject "path" $ \o ->
-    PathConfig
-      <$> o .: "in"
-      <*> o .: "out"
+      <*> o .: "output-dir"
 
 instance FromJSON TocConfig where
   parseJSON = withObject "toc" $ \o ->
@@ -120,15 +118,21 @@ instance FromJSON TocConfig where
       <$> o .:? "enable" .!= True
       <*> o .:? "depth" .!= 3
 
+instance FromJSON TargetConfig where
+  parseJSON = withObject "target" $ \o ->
+    TargetConfig
+      <$> o .: "searchdb"
+      <*> o .: "cache-dir"
+      <*> o .: "post"
+      <*> o .: "pages"
+      <*> o .: "fonts"
+
 instance FromJSON KilnConfig where
   parseJSON = withObject "kiln-config" $ \o ->
     KilnConfig
-      <$> o .: "path"
-      <*> o .: "webroot"
-      <*> o .: "fonts"
-      <*> o .:? "toc" .!= TocConfig True 3
-      <*> o .: "post"
-      <*> o .: "pages"
+      <$> o .: "input"
+      <*> o .: "opt"
+      <*> o .: "target"
 
 configFileName :: FilePath
 configFileName = "kiln-config.json"

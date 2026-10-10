@@ -13,12 +13,12 @@ import Test.Hspec
 
 configJson :: String
 configJson =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-  \\"out\":{\"searchdb\":\"dist/searchdb.json\",\
-  \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\
-  \\"fonts\":{\"subset-path\":\"dist/fonts\",\"sources\":[]},\
-  \\"post\":{\"template\":\"post.html\",\"output\":\"dist/post\"},\
-  \\"pages\":[{\"template\":\"index.html\",\"output\":\"dist/index.html\"}]}"
+  "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+  \\"opt\":{\"webroot\":\"/\"},\
+  \\"target\":{\"searchdb\":\"dist/searchdb.json\",\"cache-dir\":\"dist/.cache\",\
+  \\"fonts\":{\"subset-dir\":\"dist/fonts\",\"sources\":[]},\
+  \\"post\":{\"template\":\"post.html\",\"output-dir\":\"dist/post\"},\
+  \\"pages\":[{\"template\":\"index.html\",\"output\":\"dist/index.html\"}]}}"
 
 outPaths :: [FilePath]
 outPaths =
@@ -57,10 +57,10 @@ spec = describe "kilnClean" $ do
       withCurrentDirectory dir $ do
         writeFile
           "kiln-config.json"
-          "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-          \\"out\":{\"searchdb\":\"dist/searchdb.json\",\
-          \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\
-          \\"fonts\":{\"subset-path\":\"dist/fonts\",\"sources\":[]},\"post\":null,\"pages\":[]}"
+          "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+          \\"opt\":{\"webroot\":\"/\"},\
+          \\"target\":{\"searchdb\":\"dist/searchdb.json\",\"cache-dir\":\"dist/.cache\",\
+          \\"fonts\":{\"subset-dir\":\"dist/fonts\",\"sources\":[]},\"post\":null,\"pages\":[]}}"
         kilnClean `shouldReturn` ()
 
   it "doesn't try to remove a fonts subset directory when \"fonts\" is null" $
@@ -68,8 +68,8 @@ spec = describe "kilnClean" $ do
       withCurrentDirectory dir $ do
         writeFile
           "kiln-config.json"
-          "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-          \\"out\":{\"searchdb\":\"dist/searchdb.json\",\
-          \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\"fonts\":null,\
-          \\"post\":{\"template\":\"post.html\",\"output\":\"dist/post\"},\"pages\":[]}"
+          "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+          \\"opt\":{\"webroot\":\"/\"},\
+          \\"target\":{\"searchdb\":\"dist/searchdb.json\",\"cache-dir\":\"dist/.cache\",\"fonts\":null,\
+          \\"post\":{\"template\":\"post.html\",\"output-dir\":\"dist/post\"},\"pages\":[]}}"
         kilnClean `shouldReturn` ()

@@ -1,21 +1,21 @@
 {
-  "path" : {
-    "in"  : {
-      "src"      : "src",
-      "template" : "template"
-    },
-    "out" : {
-      "searchdb" : "searchdb.json",
-      "cache"    : ".cache"
+  "input" : {
+    "src-dir"      : "src",
+    "template-dir" : "template"
+  },
+  "opt" : {
+    "webroot" : "/",
+    "toc" : {
+      "enable" : false
     }
   },
-  "webroot" : "/",
-  "toc" : {
-    "enable" : false
-  },
-  "post" : null,
-  "pages" : [
-    { "template" : "index.html", "output" : "index.html" }
-  ],
-  "fonts" : null
+  "target" : {
+    "cache-dir" : ".cache",
+    "pages" : [
+      { "template" : "index.html", "output" : "index.html" }
+    ],
+    "post" : null,
+    "searchdb"  : "searchdb.json",
+    "fonts" : null
+  }
 }

@@ -7,7 +7,7 @@ import Data.List (isPrefixOf, nub, (\\))
 import Kiln.Build.Cache (cacheFile, componentsFingerprint, isFileFresh, isGlobalFresh, recordFile, recordGlobal)
 import Kiln.Build.PostEntry (PostEntry (..), PostFrontmatter (..), frontmatterTemplate, loadFrontmatter, loadPostEntry)
 import Kiln.Str (replaceAll, trim)
-import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PathConfig (..), PostPageConfig (..), TocConfig (..))
+import Kiln.Config (InputConfig (..), KilnConfig (..), OptConfig (..), PostPageConfig (..), TargetConfig (..), TocConfig (..))
 import System.Directory
   ( createDirectoryIfMissing
   , doesDirectoryExist
@@ -65,38 +65,37 @@ renderPosts config tempDir = do
   names <- listDirectory srcDir
   let mdNames = filter ((== ".md") . takeExtension) names
   createDirectoryIfMissing True searchItemDir
-  maybe (pure ()) (createDirectoryIfMissing True . postPageOutput) postPageCfg
+  maybe (pure ()) (createDirectoryIfMissing True . postPageOutputDir) postPageCfg
   writeFile frontmatterTemplatePath frontmatterTemplate
   writeFile tocTemplatePath "$toc$"
   postTemplate <- maybe (pure "") (readFile' . (tempDir </>) . postPageTemplate) postPageCfg
   components <- componentsFingerprint tempDir
-  let fingerprint = configWebroot config ++ "\n" ++ show (configToc config) ++ "\n" ++ postTemplate ++ "\n" ++ components
+  let fingerprint = optWebroot (configOpt config) ++ "\n" ++ show (optToc (configOpt config)) ++ "\n" ++ postTemplate ++ "\n" ++ components
   globalFresh <- isGlobalFresh globalCachePath fingerprint
   results <- mapM (renderPost config tempDir globalFresh) mdNames
   recordGlobal globalCachePath fingerprint
-  sweepOrphans postPageCfg outPaths (map takeBaseName mdNames)
+  sweepOrphans postPageCfg cacheDir (map takeBaseName mdNames)
   pure results
   where
-    inPaths = pathIn (configPath config)
-    outPaths = pathOut (configPath config)
-    srcDir = inSrc inPaths
-    postPageCfg = configPost config
+    srcDir = inputSrcDir (configInput config)
+    cacheDir = targetCacheDir (configTarget config)
+    postPageCfg = targetPost (configTarget config)
     searchItemDir = tempDir </> "search-item"
     frontmatterTemplatePath = tempDir </> "frontmatter.json.tpl"
     tocTemplatePath = tempDir </> "toc.tpl"
-    globalCachePath = outCache outPaths </> "global"
+    globalCachePath = cacheDir </> "global"
 
 -- | Warn about any rendered post whose source is no longer among
 -- `currentSlugs` (left alone, since it may still be linked from
 -- elsewhere) -- skipped entirely when `config` has no `PostPageConfig`,
 -- since there's no rendered page to find in the first place -- and
--- silently drop the `outCache` entry for any post that has neither a
+-- silently drop the cache entry for any post that has neither a
 -- source nor a rendered output left -- pure bookkeeping nobody can see,
 -- so there's nothing to warn about.
-sweepOrphans :: Maybe PostPageConfig -> OutPaths -> [String] -> IO ()
-sweepOrphans postPageCfg outPaths currentSlugs = do
+sweepOrphans :: Maybe PostPageConfig -> FilePath -> [String] -> IO ()
+sweepOrphans postPageCfg cacheDir currentSlugs = do
   postSlugs <- case postPageCfg of
-    Just ppc -> map takeBaseName . filter ((== ".html") . takeExtension) <$> listDirectory (postPageOutput ppc)
+    Just ppc -> map takeBaseName . filter ((== ".html") . takeExtension) <$> listDirectory (postPageOutputDir ppc)
     Nothing  -> pure []
   stageExists <- doesDirectoryExist stageCacheDir
   cachedSlugs <-
@@ -110,12 +109,12 @@ sweepOrphans postPageCfg outPaths currentSlugs = do
             mapM_
               removeIfExists
               [ stageCacheDir </> slug ++ ".src"
-              , outCache outPaths </> "items" </> slug ++ ".json"
-              , outCache outPaths </> "search" </> slug ++ ".txt"
+              , cacheDir </> "items" </> slug ++ ".json"
+              , cacheDir </> "search" </> slug ++ ".txt"
               ]
   mapM_ sweepSlug (nub (postSlugs ++ cachedSlugs) \\ currentSlugs)
   where
-    stageCacheDir = outCache outPaths </> "stage"
+    stageCacheDir = cacheDir </> "stage"
 
 warn :: String -> IO ()
 warn = hPutStrLn stdout . ("Warning: " ++)
@@ -127,7 +126,7 @@ removeIfExists path = do
 
 renderPost :: KilnConfig -> FilePath -> Bool -> FilePath -> IO (PostEntry, String)
 renderPost config tempDir globalFresh name = do
-  htmlFresh <- maybe (pure True) (doesFileExist . (</> slug ++ ".html") . postPageOutput) postPageCfg
+  htmlFresh <- maybe (pure True) (doesFileExist . (</> slug ++ ".html") . postPageOutputDir) postPageCfg
   fresh <-
     if globalFresh && htmlFresh
       then isFileFresh (postStageCachePath paths) (postSrcPath paths)
@@ -139,17 +138,15 @@ renderPost config tempDir globalFresh name = do
       pure (entry, content)
     else rebuild
   where
-    inPaths = pathIn (configPath config)
-    outPaths = pathOut (configPath config)
-    srcDir = inSrc inPaths
-    cacheDir = outCache outPaths
-    postPageCfg = configPost config
+    srcDir = inputSrcDir (configInput config)
+    cacheDir = targetCacheDir (configTarget config)
+    postPageCfg = targetPost (configTarget config)
     slug = takeBaseName name
     meta =
       PostMeta
         { metaSlug = slug
-        , postWebroot = configWebroot config
-        , postToc = configToc config
+        , postWebroot = optWebroot (configOpt config)
+        , postToc = optToc (configOpt config)
         }
     paths =
       PostPaths
@@ -261,7 +258,7 @@ renderPostHtml ppc tempDir meta paths abstractHtml = do
       , "--template=" ++ (tempDir </> postPageTemplate ppc)
       , "--variable=webroot=" ++ postWebroot meta
       , "--variable=slug=" ++ metaSlug meta
-      , "--output=" ++ (postPageOutput ppc </> metaSlug meta ++ ".html")
+      , "--output=" ++ (postPageOutputDir ppc </> metaSlug meta ++ ".html")
       , postRewrittenPath paths
       ]
       ++ tocFlag

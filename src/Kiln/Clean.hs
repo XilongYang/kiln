@@ -1,7 +1,7 @@
 module Kiln.Clean (kilnClean) where
 
 import Control.Monad (when)
-import Kiln.Config (FontsConfig (..), KilnConfig (..), OutPaths (..), PageConfig (..), PathConfig (..), PostPageConfig (..), readConfig)
+import Kiln.Config (FontsConfig (..), KilnConfig (..), PageConfig (..), PostPageConfig (..), TargetConfig (..), readConfig)
 import System.Directory
   ( doesDirectoryExist
   , doesFileExist
@@ -12,18 +12,19 @@ import System.Directory
 kilnClean :: IO ()
 kilnClean = do
   config <- readConfig
+  let target = configTarget config
   mapM_
     removePath
-    ( fixedOutPaths (pathOut (configPath config))
-        ++ maybe [] ((: []) . fontsSubsetPath) (configFonts config)
-        ++ maybe [] ((: []) . postPageOutput) (configPost config)
-        ++ map pageOutput (configPages config)
+    ( fixedOutPaths target
+        ++ maybe [] ((: []) . fontsSubsetDir) (targetFonts target)
+        ++ maybe [] ((: []) . postPageOutputDir) (targetPost target)
+        ++ map pageOutput (targetPages target)
     )
 
-fixedOutPaths :: OutPaths -> [FilePath]
-fixedOutPaths out =
-  [ outSearchDb out
-  , outCache out
+fixedOutPaths :: TargetConfig -> [FilePath]
+fixedOutPaths target =
+  [ targetSearchDb target
+  , targetCacheDir target
   ]
 
 removePath :: FilePath -> IO ()

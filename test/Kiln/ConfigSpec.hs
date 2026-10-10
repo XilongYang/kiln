@@ -13,26 +13,26 @@ import Test.Hspec
 
 validJson :: ByteString
 validJson =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-  \\"out\":{\"searchdb\":\"searchdb\",\
-  \\"cache\":\"cache\"}},\"webroot\":\"/\",\
-  \\"fonts\":{\"subset-path\":\"fonts-subset\",\"sources\":[\"fonts/a.ttf\"]},\
-  \\"post\":{\"template\":\"post.html\",\"output\":\"post\"},\
-  \\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}"
+  "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+  \\"opt\":{\"webroot\":\"/\",\"toc\":{\"enable\":true,\"depth\":3}},\
+  \\"target\":{\"searchdb\":\"searchdb\",\"cache-dir\":\"cache\",\
+  \\"fonts\":{\"subset-dir\":\"fonts-subset\",\"sources\":[\"fonts/a.ttf\"]},\
+  \\"post\":{\"template\":\"post.html\",\"output-dir\":\"post\"},\
+  \\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}"
 
 expectedConfig :: KilnConfig
 expectedConfig =
   KilnConfig
-    { configPath =
-        PathConfig
-          { pathIn = InPaths "src" "template"
-          , pathOut = OutPaths "searchdb" "cache"
+    { configInput = InputConfig "src" "template"
+    , configOpt = OptConfig "/" (TocConfig True 3)
+    , configTarget =
+        TargetConfig
+          { targetSearchDb = "searchdb"
+          , targetCacheDir = "cache"
+          , targetPost = Just (PostPageConfig "post.html" "post")
+          , targetPages = [PageConfig "index.html" "index.html"]
+          , targetFonts = Just (FontsConfig "fonts-subset" ["fonts/a.ttf"])
           }
-    , configWebroot = "/"
-    , configFonts = Just (FontsConfig "fonts-subset" ["fonts/a.ttf"])
-    , configToc = TocConfig True 3
-    , configPost = Just (PostPageConfig "post.html" "post")
-    , configPages = [PageConfig "index.html" "index.html"]
     }
 
 spec :: Spec
@@ -42,34 +42,34 @@ spec = do
       case eitherDecode validJson of
         Left err -> expectationFailure err
         Right cfg -> do
-          inSrc (pathIn (configPath cfg)) `shouldBe` "src"
-          outCache (pathOut (configPath cfg)) `shouldBe` "cache"
-          configWebroot cfg `shouldBe` "/"
+          inputSrcDir (configInput cfg) `shouldBe` "src"
+          targetCacheDir (configTarget cfg) `shouldBe` "cache"
+          optWebroot (configOpt cfg) `shouldBe` "/"
 
     it "rejects a config missing required fields" $ do
-      case eitherDecode "{\"path\":{}}" :: Either String KilnConfig of
+      case eitherDecode "{\"input\":{}}" :: Either String KilnConfig of
         Left _ -> pure ()
         Right cfg -> expectationFailure ("expected failure, got " ++ show cfg)
 
     it "parses \"post\": null as no standalone post pages" $ do
       let json =
-            "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-            \\"out\":{\"searchdb\":\"searchdb\",\
-            \\"cache\":\"cache\"}},\"webroot\":\"/\",\
-            \\"fonts\":null,\"post\":null,\"pages\":[]}"
+            "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+            \\"opt\":{\"webroot\":\"/\"},\
+            \\"target\":{\"searchdb\":\"searchdb\",\"cache-dir\":\"cache\",\
+            \\"fonts\":null,\"post\":null,\"pages\":[]}}"
       case eitherDecode json of
         Left err -> expectationFailure err
-        Right cfg -> configPost cfg `shouldBe` Nothing
+        Right cfg -> targetPost (configTarget cfg) `shouldBe` Nothing
 
     it "parses \"fonts\": null as no local fonts to subset" $ do
       let json =
-            "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
-            \\"out\":{\"searchdb\":\"searchdb\",\
-            \\"cache\":\"cache\"}},\"webroot\":\"/\",\
-            \\"fonts\":null,\"post\":null,\"pages\":[]}"
+            "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+            \\"opt\":{\"webroot\":\"/\"},\
+            \\"target\":{\"searchdb\":\"searchdb\",\"cache-dir\":\"cache\",\
+            \\"fonts\":null,\"post\":null,\"pages\":[]}}"
       case eitherDecode json of
         Left err -> expectationFailure err
-        Right cfg -> configFonts cfg `shouldBe` Nothing
+        Right cfg -> targetFonts (configTarget cfg) `shouldBe` Nothing
 
   describe "readConfig" $ do
     it "dies when kiln-config.json is missing" $

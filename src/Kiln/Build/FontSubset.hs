@@ -3,14 +3,14 @@ module Kiln.Build.FontSubset (subsetFonts) where
 import Control.Monad (unless, when)
 import Kiln.Build.Cache (isFileFresh, recordFile)
 import Kiln.Build.PostEntry (PostEntry (..))
-import Kiln.Config (FontsConfig (..), KilnConfig (..), OutPaths (..), PageConfig (..), PathConfig (..), PostPageConfig (..))
+import Kiln.Config (FontsConfig (..), KilnConfig (..), PageConfig (..), PostPageConfig (..), TargetConfig (..))
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.FilePath (takeBaseName, (</>))
 import System.Process (callProcess)
 
 -- | Subset every font listed in `config`'s `fonts.sources` down to just
 -- the characters the whole site's rendered HTML actually uses, writing
--- each to a predictable @<fonts.subset-path>/<font file base name>.woff2@
+-- each to a predictable @<fonts.subset-dir>/<font file base name>.woff2@
 -- path. style/fonts.css (hand-maintained, untouched by this) declares the
 -- matching @font-face rules directly against those paths.
 --
@@ -23,19 +23,21 @@ import System.Process (callProcess)
 -- last build (tracked via `Kiln.Build.Cache`, the same way as a post's
 -- source) -- or when its previous output is simply missing.
 subsetFonts :: KilnConfig -> [PostEntry] -> IO ()
-subsetFonts config entries = mapM_ go (configFonts config)
+subsetFonts config entries = mapM_ go (targetFonts target)
   where
+    target = configTarget config
+
     go fontsConfig
       | null (fontsSources fontsConfig) = pure ()
       | otherwise = do
-          createDirectoryIfMissing True (fontsSubsetPath fontsConfig)
+          createDirectoryIfMissing True (fontsSubsetDir fontsConfig)
           pagesFresh <- and <$> mapM checkPage htmlPaths
           mapM_ (trySubset fontsConfig pagesFresh) (fontsSources fontsConfig)
 
-    fontsCacheDir = outCache (pathOut (configPath config)) </> "fonts"
-    htmlPaths = postPaths ++ map pageOutput (configPages config)
-    postPaths = case configPost config of
-      Just ppc -> [postPageOutput ppc </> postSlug e ++ ".html" | e <- entries]
+    fontsCacheDir = targetCacheDir target </> "fonts"
+    htmlPaths = postPaths ++ map pageOutput (targetPages target)
+    postPaths = case targetPost target of
+      Just ppc -> [postPageOutputDir ppc </> postSlug e ++ ".html" | e <- entries]
       Nothing  -> []
 
     -- | Pages are watched, not produced, by this step, so their cached
@@ -48,7 +50,7 @@ subsetFonts config entries = mapM_ go (configFonts config)
       pure fresh
 
     trySubset fontsConfig pagesFresh fontPath = do
-      let woffPath = fontsSubsetPath fontsConfig </> (takeBaseName fontPath ++ ".woff2")
+      let woffPath = fontsSubsetDir fontsConfig </> (takeBaseName fontPath ++ ".woff2")
           fontCachePath = fontsCacheDir </> "files" </> takeBaseName fontPath ++ ".src"
       fontExists <- doesFileExist fontPath
       when fontExists $ do
