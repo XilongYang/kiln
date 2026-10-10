@@ -24,7 +24,11 @@ jobs:
             "$kiln" init "$template"
             "$kiln" build
             test -f index.html
-            test -f searchdb.json
+            if [ "$template" = default ]; then
+              test -f searchdb.json
+            else
+              test ! -f searchdb.json
+            fi
             "$kiln" clean
             cd "$OLDPWD"
           done
