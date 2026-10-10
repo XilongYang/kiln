@@ -7,6 +7,8 @@ A minimal static blog generator written in Haskell, distributed as a Nix flake.
 - `kiln init [default|flow]` — scaffold one of the bundled templates into the current (empty) directory: `default` is a blog, `flow` is a card-flow feed; `kiln init` with no argument scaffolds `default`
 - `kiln build` — render Markdown posts and every configured page (see `pages` below) with pandoc, generate the search index, and subset the configured fonts down to the characters actually used on the site (`pyftsubset`); posts, pages, and font subsets are cached under `target.cache-dir`, so a rebuild skips anything whose inputs haven't changed. A post removed from `input.src-dir` is warned about but its already-rendered page is left in place; only once that rendered page is also gone does `kiln build` drop its cache entry
 - `kiln clean` — remove build output, including the cache (so the next `kiln build` is a full rebuild)
+- `kiln help` — print usage
+- `kiln version` — print the running build's version
 - running `kiln` with no arguments is equivalent to `kiln build`
 
 ## Installation & usage

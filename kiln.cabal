@@ -50,6 +50,8 @@ library
 executable kiln
     main-is:          Main.hs
     hs-source-dirs:   app
+    other-modules:    Paths_kiln
+    autogen-modules:  Paths_kiln
     build-depends:    base >=4 && <5, kiln
     default-language: GHC2024
     ghc-options:      -O2

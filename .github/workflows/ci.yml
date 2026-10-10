@@ -15,6 +15,12 @@ jobs:
       - name: Build kiln (runs the cabal test suite via the Nix check phase)
         run: nix build .#kiln -L
 
+      - name: Smoke-test help + version
+        run: |
+          kiln="$PWD/result/bin/kiln"
+          "$kiln" help | grep -q "Usage: kiln"
+          "$kiln" version | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'
+
       - name: Smoke-test init + build with the built binary
         run: |
           kiln="$PWD/result/bin/kiln"
