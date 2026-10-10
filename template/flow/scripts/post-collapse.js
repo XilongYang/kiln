@@ -9,6 +9,25 @@ window.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        // Measured before any DOM surgery below, while `post` still holds
+        // its original markup -- this is the height collapsing is actually
+        // deciding about. Flattening `fullText` into one running paragraph
+        // can read as short even when the original is tall (e.g. a poem
+        // with one short line per `<p>`, each carrying its own paragraph
+        // margin), so the flattened preview's own overflow is not a
+        // reliable stand-in for "is the real post long". Media is hidden
+        // for this measurement only: a single image/video's min-height
+        // alone can exceed the 5-line budget, which would collapse posts
+        // that have barely any text just because they carry one picture.
+        var media = post.querySelectorAll(".post-image, .post-video, .post-media-grid");
+        media.forEach(function (el) {
+            el.style.display = "none";
+        });
+        var originalHeight = post.scrollHeight;
+        media.forEach(function (el) {
+            el.style.display = "";
+        });
+
         var fullContent = document.createElement("div");
         fullContent.className = "post-full-content";
         while (post.firstChild) {
@@ -20,13 +39,10 @@ window.addEventListener("DOMContentLoaded", function () {
         preview.textContent = fullText;
         post.appendChild(preview);
 
-        // `.post-preview`'s CSS line-clamp caps it at a fixed number of
-        // rendered lines -- comparing scrollHeight/clientHeight here (rather
-        // than guessing from character count) is what actually tells us
-        // whether `fullText` overflowed that clamp, since the same
-        // character count can render as very different line counts
-        // depending on font, viewport width, and CJK vs. Latin script.
-        var overflowing = preview.scrollHeight > preview.clientHeight + 1;
+        var previewStyle = getComputedStyle(preview);
+        var lineHeight = parseFloat(previewStyle.lineHeight) || 0;
+        var clampLines = parseInt(previewStyle.webkitLineClamp, 10) || 5;
+        var overflowing = originalHeight > lineHeight * clampLines + 1;
 
         if (!overflowing) {
             // Not collapsing: restore the original flat structure instead

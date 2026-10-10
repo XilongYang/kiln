@@ -335,6 +335,14 @@ main {
     overflow: hidden;
 }
 
+/* `.post-preview`'s own `display` outranks the UA `[hidden]{display:none}`
+   rule (author stylesheet beats UA stylesheet regardless of specificity),
+   so `post-collapse.js` setting `preview.hidden = true` would otherwise be
+   silently ignored and leave the summary showing alongside the full post. */
+.post-preview[hidden] {
+    display: none;
+}
+
 .post-date {
     color: var(--muted);
     font-size: 0.92rem;
