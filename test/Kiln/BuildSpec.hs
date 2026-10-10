@@ -26,9 +26,9 @@ postConfigField = "\"post\":{\"template\":\"post.html\",\"output\":\"post\"},"
 
 configJson :: String
 configJson =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{}," ++ postConfigField ++
+  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+  \\"out\":{\"searchdb\":\"searchdb.json\",\
+  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":null," ++ postConfigField ++
   "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}"
 
 -- | `configJson`, plus a second configured page (a stand-in for a 404
@@ -36,9 +36,9 @@ configJson =
 -- configured page generically, not just one hardcoded as "the index").
 configJsonWithExtraPage :: String
 configJsonWithExtraPage =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":{}," ++ postConfigField ++
+  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+  \\"out\":{\"searchdb\":\"searchdb.json\",\
+  \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\"fonts\":null," ++ postConfigField ++
   "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"},\
   \{\"template\":\"404.html\",\"output\":\"404.html\"}]}"
 
@@ -94,10 +94,10 @@ fontFileName = "JetBrainsMono-Regular.ttf"
 
 configJsonWithFont :: String
 configJsonWithFont =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
+  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+  \\"out\":{\"searchdb\":\"searchdb.json\",\
   \\"cache\":\".cache\"}},\"webroot\":\"/blog/\",\
-  \\"fonts\":{\"" ++ fontFileName ++ "\":\"Mono\"}," ++ postConfigField ++
+  \\"fonts\":{\"subset-path\":\"fonts-subset\",\"sources\":[\"fonts/" ++ fontFileName ++ "\"]}," ++ postConfigField ++
   "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}"
 
 -- | `setUpProject`, plus a real font (borrowed from the shipped
@@ -213,9 +213,9 @@ spec = describe "kilnBuild" $ do
         setUpProject
         kilnBuild
         writeFile "kiln-config.json"
-          ("{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-          \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb.json\",\
-          \\"cache\":\".cache\"}},\"webroot\":\"/elsewhere/\",\"fonts\":{}," ++ postConfigField ++
+          ("{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+          \\"out\":{\"searchdb\":\"searchdb.json\",\
+          \\"cache\":\".cache\"}},\"webroot\":\"/elsewhere/\",\"fonts\":null," ++ postConfigField ++
           "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}")
         withoutPandoc kilnBuild `shouldThrow` anyIOException
 

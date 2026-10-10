@@ -34,11 +34,9 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
   "path": {
     "in": {
       "src": "src",
-      "template": "template",
-      "fonts": "res/fonts"
+      "template": "template"
     },
     "out": {
-      "fonts-subset": "fonts-subset",
       "searchdb": "searchdb.json",
       "cache": ".cache"
     }
@@ -54,17 +52,18 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
     { "template": "404.html", "output": "404.html" }
   ],
   "fonts": {
-    "JetBrainsMono-Regular.ttf": "JetBrains Mono",
-    "MaterialIcons.woff2": "Material Icons",
-    "SourceHanSerifCN-Regular.otf": "Source Han Serif CN"
+    "subset-path": "fonts-subset",
+    "sources": [
+      "res/fonts/JetBrainsMono-Regular.ttf",
+      "res/fonts/MaterialIcons.woff2",
+      "res/fonts/SourceHanSerifCN-Regular.otf"
+    ]
   }
 }
 ```
 
 - `path.in.src` — directory of Markdown source files to render as posts
 - `path.in.template` — directory of HTML component templates used to assemble pages
-- `path.in.fonts` — directory containing the full font files to be subset
-- `path.out.fonts-subset` — output directory for the subset `.woff2` fonts
 - `path.out.searchdb` — output path for the generated search index JSON
 - `path.out.cache` — directory used to track rendered posts', pages', and subset fonts' inputs, so unchanged ones are skipped on the next build; delete it (or run `kiln clean`) to force a full rebuild
 - `webroot` — the site's root path, used when generating absolute links
@@ -72,7 +71,7 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
 - `toc.depth` — depth of the table of contents pandoc generates for each post (optional, default `3`)
 - `post` — the standalone page rendered for every markdown file in `path.in.src`, or JSON `null` to skip it entirely (every post is still available to `pages`' `$for(posts)$`, just with no page of its own -- see `flow`'s `kiln-config.json`). When not `null`: `template` is a path under `path.in.template`, and `output` is the directory each post's `<slug>.html` is written into. This key must always be present -- either an object or explicit `null`, never omitted -- so a config always states its choice rather than relying on an implicit default
 - `pages` — every non-post page to generate: `template` is a path under `path.in.template` (rendered through pandoc the same way `post`'s template is), and `output` is where to write it -- also this page's own identity, since two pages can't share an output path anyway (that's already a hard correctness requirement, independent of caching). Every page template gets a `webroot` variable and a `posts` metadata list (newest post first) it can lay out itself with pandoc's own `$for(posts)$`; each post in that list has `title`, `date`, `monthDay`, `url`, `tags` (the post's frontmatter `tags`, verbatim -- empty if it didn't set one), `abstract` (rendered HTML, or null if the post has no `<!--more-->` marker), `content` (the post's full rendered body HTML), `year`, `newYear`, `lastOfYear` (precomputed so a template can open/close a per-year wrapper, like `default`'s `index.html` does, without any stateful looping of its own), and `last` (true only for the very last post overall, e.g. for a flat chronological feed that wants a separator between posts but not a trailing one, like `flow`'s `index.html`)
-- `fonts` — maps each font file name (relative to `path.in.fonts`) to the `font-family` name it is declared under in the site's own CSS, so kiln knows which font to subset for which family
+- `fonts` — the local fonts to subset down to the characters actually used on the site, or JSON `null` if the site has none (like `flow`'s `kiln-config.json`). When not `null`: `subset-path` is the output directory for the subset `.woff2` fonts, and `sources` lists the font files (full paths) to subset into it
 
 ## Project layout
 

@@ -13,9 +13,10 @@ import Test.Hspec
 
 configJson :: String
 configJson =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"fonts-subset\":\"dist/fonts\",\"searchdb\":\"dist/searchdb.json\",\
-  \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\"fonts\":{},\
+  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+  \\"out\":{\"searchdb\":\"dist/searchdb.json\",\
+  \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\
+  \\"fonts\":{\"subset-path\":\"dist/fonts\",\"sources\":[]},\
   \\"post\":{\"template\":\"post.html\",\"output\":\"dist/post\"},\
   \\"pages\":[{\"template\":\"index.html\",\"output\":\"dist/index.html\"}]}"
 
@@ -56,7 +57,19 @@ spec = describe "kilnClean" $ do
       withCurrentDirectory dir $ do
         writeFile
           "kiln-config.json"
-          "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-          \\"out\":{\"fonts-subset\":\"dist/fonts\",\"searchdb\":\"dist/searchdb.json\",\
-          \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\"fonts\":{},\"post\":null,\"pages\":[]}"
+          "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+          \\"out\":{\"searchdb\":\"dist/searchdb.json\",\
+          \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\
+          \\"fonts\":{\"subset-path\":\"dist/fonts\",\"sources\":[]},\"post\":null,\"pages\":[]}"
+        kilnClean `shouldReturn` ()
+
+  it "doesn't try to remove a fonts subset directory when \"fonts\" is null" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        writeFile
+          "kiln-config.json"
+          "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+          \\"out\":{\"searchdb\":\"dist/searchdb.json\",\
+          \\"cache\":\"dist/.cache\"}},\"webroot\":\"/\",\"fonts\":null,\
+          \\"post\":{\"template\":\"post.html\",\"output\":\"dist/post\"},\"pages\":[]}"
         kilnClean `shouldReturn` ()

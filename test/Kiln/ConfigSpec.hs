@@ -5,7 +5,6 @@ module Kiln.ConfigSpec (spec) where
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.Map.Strict as Map
 import Kiln.Config
 import Kiln.TestUtil (withTempDir)
 import System.Directory (withCurrentDirectory)
@@ -14,10 +13,10 @@ import Test.Hspec
 
 validJson :: ByteString
 validJson =
-  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-  \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb\",\
+  "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+  \\"out\":{\"searchdb\":\"searchdb\",\
   \\"cache\":\"cache\"}},\"webroot\":\"/\",\
-  \\"fonts\":{\"a.ttf\":\"A\"},\
+  \\"fonts\":{\"subset-path\":\"fonts-subset\",\"sources\":[\"fonts/a.ttf\"]},\
   \\"post\":{\"template\":\"post.html\",\"output\":\"post\"},\
   \\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}"
 
@@ -26,11 +25,11 @@ expectedConfig =
   KilnConfig
     { configPath =
         PathConfig
-          { pathIn = InPaths "src" "template" "fonts"
-          , pathOut = OutPaths "fonts-subset" "searchdb" "cache"
+          { pathIn = InPaths "src" "template"
+          , pathOut = OutPaths "searchdb" "cache"
           }
     , configWebroot = "/"
-    , configFonts = Map.fromList [("a.ttf", "A")]
+    , configFonts = Just (FontsConfig "fonts-subset" ["fonts/a.ttf"])
     , configToc = TocConfig True 3
     , configPost = Just (PostPageConfig "post.html" "post")
     , configPages = [PageConfig "index.html" "index.html"]
@@ -54,13 +53,23 @@ spec = do
 
     it "parses \"post\": null as no standalone post pages" $ do
       let json =
-            "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\",\"fonts\":\"fonts\"},\
-            \\"out\":{\"fonts-subset\":\"fonts-subset\",\"searchdb\":\"searchdb\",\
+            "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+            \\"out\":{\"searchdb\":\"searchdb\",\
             \\"cache\":\"cache\"}},\"webroot\":\"/\",\
-            \\"fonts\":{},\"post\":null,\"pages\":[]}"
+            \\"fonts\":null,\"post\":null,\"pages\":[]}"
       case eitherDecode json of
         Left err -> expectationFailure err
         Right cfg -> configPost cfg `shouldBe` Nothing
+
+    it "parses \"fonts\": null as no local fonts to subset" $ do
+      let json =
+            "{\"path\":{\"in\":{\"src\":\"src\",\"template\":\"template\"},\
+            \\"out\":{\"searchdb\":\"searchdb\",\
+            \\"cache\":\"cache\"}},\"webroot\":\"/\",\
+            \\"fonts\":null,\"post\":null,\"pages\":[]}"
+      case eitherDecode json of
+        Left err -> expectationFailure err
+        Right cfg -> configFonts cfg `shouldBe` Nothing
 
   describe "readConfig" $ do
     it "dies when kiln-config.json is missing" $

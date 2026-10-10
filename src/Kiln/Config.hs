@@ -5,6 +5,7 @@ module Kiln.Config
   , PathConfig (..)
   , InPaths (..)
   , OutPaths (..)
+  , FontsConfig (..)
   , TocConfig (..)
   , PageConfig (..)
   , PostPageConfig (..)
@@ -13,20 +14,26 @@ module Kiln.Config
 
 import Control.Monad (unless)
 import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:), (.:?), (.!=))
-import Data.Map.Strict (Map)
 import System.Directory (doesFileExist)
 import System.Exit (die)
 
 data InPaths = InPaths
   { inSrc      :: FilePath
   , inTemplate :: FilePath
-  , inFonts    :: FilePath
   } deriving (Show, Eq)
 
 data OutPaths = OutPaths
-  { outFontsSubset :: FilePath
-  , outSearchDb    :: FilePath
-  , outCache       :: FilePath
+  { outSearchDb :: FilePath
+  , outCache    :: FilePath
+  } deriving (Show, Eq)
+
+-- | Where to write subset fonts (`fontsSubsetPath`), and the font files
+-- (full paths) to subset into them. A site with no local fonts to
+-- subset states this as JSON @null@ instead, same as `configPost` --
+-- see `Kiln.Build.FontSubset.subsetFonts`.
+data FontsConfig = FontsConfig
+  { fontsSubsetPath :: FilePath
+  , fontsSources    :: [FilePath]
   } deriving (Show, Eq)
 
 -- | One page to generate: its own template (a path under
@@ -65,9 +72,7 @@ data TocConfig = TocConfig
 data KilnConfig = KilnConfig
   { configPath    :: PathConfig
   , configWebroot :: FilePath
-  , configFonts   :: Map String String
-    -- ^ local font filename (under @path.in.fonts@) -> the @font-family@
-    -- name it's declared under in the site's own CSS.
+  , configFonts   :: Maybe FontsConfig
   , configToc     :: TocConfig
   , configPost    :: Maybe PostPageConfig
   , configPages   :: [PageConfig]
@@ -78,14 +83,18 @@ instance FromJSON InPaths where
     InPaths
       <$> o .: "src"
       <*> o .: "template"
-      <*> o .: "fonts"
 
 instance FromJSON OutPaths where
   parseJSON = withObject "out" $ \o ->
     OutPaths
-      <$> o .: "fonts-subset"
-      <*> o .: "searchdb"
+      <$> o .: "searchdb"
       <*> o .: "cache"
+
+instance FromJSON FontsConfig where
+  parseJSON = withObject "fonts" $ \o ->
+    FontsConfig
+      <$> o .: "subset-path"
+      <*> o .: "sources"
 
 instance FromJSON PageConfig where
   parseJSON = withObject "page" $ \o ->

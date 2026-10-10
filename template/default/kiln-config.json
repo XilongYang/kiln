@@ -1,14 +1,12 @@
 {
   "path" : {
     "in"  : {
-      "src"          : "src",
-      "template"     : "template",
-      "fonts"        : "res/fonts"
+      "src"      : "src",
+      "template" : "template"
     },
     "out" : {
-      "fonts-subset" : "fonts-subset",
-      "searchdb"     : "searchdb.json",
-      "cache"        : ".cache"
+      "searchdb" : "searchdb.json",
+      "cache"    : ".cache"
     }
   },
   "webroot" : "/",
@@ -22,8 +20,11 @@
     { "template" : "404.html",   "output" : "404.html"   }
   ],
   "fonts" : {
-    "JetBrainsMono-Regular.ttf"    : "JetBrains Mono",
-    "MaterialIcons.woff2"          : "Material Icons",
-    "SourceHanSerifCN-Regular.otf" : "Source Han Serif CN"
+    "subset-path" : "fonts-subset",
+    "sources" : [
+      "res/fonts/JetBrainsMono-Regular.ttf",
+      "res/fonts/MaterialIcons.woff2",
+      "res/fonts/SourceHanSerifCN-Regular.otf"
+    ]
   }
 }

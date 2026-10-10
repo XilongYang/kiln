@@ -1,19 +1,21 @@
 module Kiln.Build.FontSubset (subsetFonts) where
 
 import Control.Monad (unless, when)
-import qualified Data.Map.Strict as Map
 import Kiln.Build.Cache (isFileFresh, recordFile)
 import Kiln.Build.PostEntry (PostEntry (..))
-import Kiln.Config (InPaths (..), KilnConfig (..), OutPaths (..), PageConfig (..), PathConfig (..), PostPageConfig (..))
+import Kiln.Config (FontsConfig (..), KilnConfig (..), OutPaths (..), PageConfig (..), PathConfig (..), PostPageConfig (..))
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.FilePath (takeBaseName, (</>))
 import System.Process (callProcess)
 
--- | Subset every font declared in `config`'s `fonts` map down to just the
--- characters the whole site's rendered HTML actually uses, writing each
--- to a predictable @fonts-subset/<font file base name>.woff2@ path.
--- style/fonts.css (hand-maintained, untouched by this) declares the
+-- | Subset every font listed in `config`'s `fonts.sources` down to just
+-- the characters the whole site's rendered HTML actually uses, writing
+-- each to a predictable @<fonts.subset-path>/<font file base name>.woff2@
+-- path. style/fonts.css (hand-maintained, untouched by this) declares the
 -- matching @font-face rules directly against those paths.
+--
+-- A site with no local fonts to subset states `fonts` as JSON @null@;
+-- nothing is subset and the subset directory is never created.
 --
 -- `pyftsubset` scans every rendered page (`htmlPaths`) to determine a
 -- font's required characters, so a font only needs re-subsetting when
@@ -21,17 +23,16 @@ import System.Process (callProcess)
 -- last build (tracked via `Kiln.Build.Cache`, the same way as a post's
 -- source) -- or when its previous output is simply missing.
 subsetFonts :: KilnConfig -> [PostEntry] -> IO ()
-subsetFonts config entries = do
-  createDirectoryIfMissing True subsetDir
-  pagesFresh <- and <$> mapM checkPage htmlPaths
-  mapM_ (trySubset pagesFresh) localFonts
+subsetFonts config entries = mapM_ go (configFonts config)
   where
-    inPaths = pathIn (configPath config)
-    outPaths = pathOut (configPath config)
-    fontsDir = inFonts inPaths
-    subsetDir = outFontsSubset outPaths
-    fontsCacheDir = outCache outPaths </> "fonts"
-    localFonts = Map.keys (configFonts config)
+    go fontsConfig
+      | null (fontsSources fontsConfig) = pure ()
+      | otherwise = do
+          createDirectoryIfMissing True (fontsSubsetPath fontsConfig)
+          pagesFresh <- and <$> mapM checkPage htmlPaths
+          mapM_ (trySubset fontsConfig pagesFresh) (fontsSources fontsConfig)
+
+    fontsCacheDir = outCache (pathOut (configPath config)) </> "fonts"
     htmlPaths = postPaths ++ map pageOutput (configPages config)
     postPaths = case configPost config of
       Just ppc -> [postPageOutput ppc </> postSlug e ++ ".html" | e <- entries]
@@ -46,10 +47,9 @@ subsetFonts config entries = do
       recordFile cachePath path
       pure fresh
 
-    trySubset pagesFresh fileName = do
-      let fontPath = fontsDir </> fileName
-          woffPath = subsetDir </> (takeBaseName fileName ++ ".woff2")
-          fontCachePath = fontsCacheDir </> "files" </> takeBaseName fileName ++ ".src"
+    trySubset fontsConfig pagesFresh fontPath = do
+      let woffPath = fontsSubsetPath fontsConfig </> (takeBaseName fontPath ++ ".woff2")
+          fontCachePath = fontsCacheDir </> "files" </> takeBaseName fontPath ++ ".src"
       fontExists <- doesFileExist fontPath
       when fontExists $ do
         fontFresh <- isFileFresh fontCachePath fontPath

@@ -2,13 +2,11 @@
   "path" : {
     "in"  : {
       "src"      : "src",
-      "template" : "template",
-      "fonts"    : "res/fonts"
+      "template" : "template"
     },
     "out" : {
-      "fonts-subset" : "fonts-subset",
-      "searchdb"     : "searchdb.json",
-      "cache"        : ".cache"
+      "searchdb" : "searchdb.json",
+      "cache"    : ".cache"
     }
   },
   "webroot" : "/",
@@ -19,5 +17,5 @@
   "pages" : [
     { "template" : "index.html", "output" : "index.html" }
   ],
-  "fonts" : {}
+  "fonts" : null
 }
