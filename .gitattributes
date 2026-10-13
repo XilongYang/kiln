@@ -1,1 +1,2 @@
-template/hello-kiln/res/** linguist-vendored -diff
+template/default/res/** linguist-vendored -diff
+template/flow/res/** linguist-vendored -diff

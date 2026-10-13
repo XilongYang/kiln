@@ -6,9 +6,12 @@
   "opt" : {
     "webroot" : "/",
     "toc" : {
-      "enable" : true,
-      "depth"  : 3
-    }
+      "enable"  : true,
+      "depth"   : 3,
+      "ordered" : true
+    },
+    "prism" : true,
+    "math"  : true
   },
   "target" : {
     "cache-dir" : ".cache",

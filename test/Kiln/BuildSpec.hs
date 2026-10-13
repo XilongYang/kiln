@@ -75,7 +75,7 @@ postMd :: String -> String -> String -> String
 postMd title date body =
   "---\ntitle: " ++ title ++ "\ndate: " ++ date ++ "\n---\n\n" ++ body
 
-data SearchEntry = SearchEntry {seTitle :: String, seUrl :: String, seContent :: String}
+data SearchEntry = SearchEntry {seTitle :: String, seUrl :: Maybe String, seContent :: String}
 
 instance FromJSON SearchEntry where
   parseJSON = withObject "search-entry" $ \o ->
@@ -174,10 +174,14 @@ spec = describe "kilnBuild" $ do
         case find ((== "Newer Post") . seTitle) searchDb of
           Nothing -> expectationFailure "searchdb.json is missing the \"Newer Post\" entry"
           Just e -> do
-            seUrl e `shouldBe` "/blog/post/Newer_Post.html"
+            seUrl e `shouldBe` Just "/blog/post/Newer_Post.html"
             seContent e `shouldSatisfy` ("Newer body." `isInfixOf`)
 
+        -- The build's scratch space lives under the cache dir, inside the
+        -- boundary the config declares, and does not outlive the build.
         doesDirectoryExist ".temp" `shouldReturn` False
+        doesDirectoryExist ".cache/work" `shouldReturn` False
+        doesDirectoryExist ".cache" `shouldReturn` True
 
   it "renders every configured page, not just the first one" $
     withTempDir $ \dir ->

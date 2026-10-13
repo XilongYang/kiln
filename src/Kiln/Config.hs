@@ -24,10 +24,25 @@ data InputConfig = InputConfig
   , inputTemplateDir :: FilePath
   } deriving (Show, Eq)
 
--- | Site-wide behavior, as opposed to filesystem locations.
+-- | Site-wide behavior, as opposed to filesystem locations. Every field
+-- here is optional with a default, unlike `TargetConfig`'s: a missing
+-- `opt` key is a site that hasn't got an opinion, whereas a missing
+-- `target` key is a site that hasn't said where something goes.
 data OptConfig = OptConfig
   { optWebroot :: FilePath
   , optToc     :: TocConfig
+  , optPrism   :: Bool
+    -- ^ whether a fenced code block's language mark is rewritten into
+    -- the pandoc attribute form Prism's line-numbers/match-braces
+    -- plugins key off of (see
+    -- `Kiln.Build.Markdown.rewriteLanguageMarks`). Defaults to true,
+    -- matching the bundled @default@ template, which loads Prism; a
+    -- template that highlights differently, or not at all (like
+    -- @flow@), turns it off and gets pandoc's own fence handling.
+  , optMath    :: Bool
+    -- ^ whether post pages are rendered with pandoc's @--mathjax@.
+    -- Defaults to true, matching the bundled @default@ template, which
+    -- loads MathJax; a template with no math (like @flow@) turns it off.
   } deriving (Show, Eq)
 
 -- | Where to write subset fonts (`fontsSubsetDir`), and the font files
@@ -56,15 +71,30 @@ data PageConfig = PageConfig
 -- caller, which requires this to be stated explicitly as either this or
 -- JSON @null@, never silently defaulted). `postPageOutputDir` is a
 -- directory; a post with slug @s@ is written to
--- @postPageOutputDir </> s <> ".html"@.
+-- @postPageOutputDir </> s <> ".html"@, and published at the matching
+-- URL -- see `Kiln.Build.Env.postUrl`, which derives the link from this
+-- rather than assuming a directory name.
 data PostPageConfig = PostPageConfig
   { postPageTemplate  :: FilePath
   , postPageOutputDir :: FilePath
   } deriving (Show, Eq)
 
 data TocConfig = TocConfig
-  { tocEnable :: Bool
-  , tocDepth  :: Int
+  { tocEnable  :: Bool
+  , tocDepth   :: Int
+  , tocOrdered :: Bool
+    -- ^ whether the rendered table of contents' @<ul>@s are rewritten
+    -- into @<ol>@s (see `Kiln.Build.Markdown.olify`).
+    --
+    -- Not a styling choice a stylesheet could make for itself: latex.css,
+    -- which the bundled @default@ template loads, numbers a nested toc
+    -- from CSS counters keyed on @nav ol@, and those rules don't match a
+    -- @<ul>@ at all however it's styled. So this is the same kind of
+    -- setting as `optPrism` and `optMath` -- the markup shape some
+    -- library the template loads needs -- and it lives under `toc`
+    -- because that's where someone changing the table of contents looks,
+    -- whether or not a given field happens to reach pandoc as an
+    -- argument. Defaults to true, matching @default@.
   } deriving (Show, Eq)
 
 -- | Everything kiln generates and `kiln clean` removes.
@@ -85,6 +115,9 @@ data KilnConfig = KilnConfig
   , configTarget :: TargetConfig
   } deriving (Show, Eq)
 
+defaultToc :: TocConfig
+defaultToc = TocConfig True 3 True
+
 instance FromJSON InputConfig where
   parseJSON = withObject "input" $ \o ->
     InputConfig
@@ -95,7 +128,9 @@ instance FromJSON OptConfig where
   parseJSON = withObject "opt" $ \o ->
     OptConfig
       <$> o .: "webroot"
-      <*> o .:? "toc" .!= TocConfig True 3
+      <*> o .:? "toc" .!= defaultToc
+      <*> o .:? "prism" .!= True
+      <*> o .:? "math" .!= True
 
 instance FromJSON FontsConfig where
   parseJSON = withObject "fonts" $ \o ->
@@ -118,8 +153,9 @@ instance FromJSON PostPageConfig where
 instance FromJSON TocConfig where
   parseJSON = withObject "toc" $ \o ->
     TocConfig
-      <$> o .:? "enable" .!= True
-      <*> o .:? "depth" .!= 3
+      <$> o .:? "enable" .!= tocEnable defaultToc
+      <*> o .:? "depth" .!= tocDepth defaultToc
+      <*> o .:? "ordered" .!= tocOrdered defaultToc
 
 instance FromJSON TargetConfig where
   parseJSON = withObject "target" $ \o ->

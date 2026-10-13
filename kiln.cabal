@@ -36,6 +36,8 @@ library
                     , Kiln.Build
                     , Kiln.FileTree
                     , Kiln.Str
+                    , Kiln.Build.Env
+                    , Kiln.Build.Markdown
                     , Kiln.Build.Page
                     , Kiln.Build.Post
                     , Kiln.Build.PostEntry
@@ -45,6 +47,7 @@ library
     other-modules:    Paths_kiln
     autogen-modules:  Paths_kiln
     build-depends:    base >=4 && <5, directory, filepath, aeson, process, containers, time
+                    , bytestring, text, cryptohash-sha256, base16-bytestring
     default-language: GHC2024
 
 executable kiln
@@ -64,6 +67,9 @@ test-suite kiln-test
                       , Kiln.CleanSpec
                       , Kiln.InitSpec
                       , Kiln.StrSpec
+                      , Kiln.Build.EnvSpec
+                      , Kiln.Build.MarkdownSpec
+                      , Kiln.Build.PostEntrySpec
                       , Kiln.Build.PageSpec
                       , Kiln.Build.CacheSpec
                       , Kiln.BuildSpec

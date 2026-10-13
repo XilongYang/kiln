@@ -24,7 +24,7 @@ expectedConfig :: KilnConfig
 expectedConfig =
   KilnConfig
     { configInput = InputConfig "src" "template"
-    , configOpt = OptConfig "/" (TocConfig True 3)
+    , configOpt = OptConfig "/" (TocConfig True 3 True) True True
     , configTarget =
         TargetConfig
           { targetSearchDb = Just "searchdb"
@@ -70,6 +70,27 @@ spec = do
       case eitherDecode json of
         Left err -> expectationFailure err
         Right cfg -> targetFonts (configTarget cfg) `shouldBe` Nothing
+
+    it "defaults every optional \"opt\" setting to the bundled default template's behavior" $ do
+      let json =
+            "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+            \\"opt\":{\"webroot\":\"/\"},\
+            \\"target\":{\"searchdb\":null,\"cache-dir\":\"cache\",\
+            \\"fonts\":null,\"post\":null,\"pages\":[]}}"
+      case eitherDecode json of
+        Left err -> expectationFailure err
+        Right cfg -> configOpt cfg `shouldBe` OptConfig "/" (TocConfig True 3 True) True True
+
+    it "parses the \"opt\" settings a template turns off" $ do
+      let json =
+            "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+            \\"opt\":{\"webroot\":\"/\",\"toc\":{\"enable\":false},\
+            \\"prism\":false,\"math\":false},\
+            \\"target\":{\"searchdb\":null,\"cache-dir\":\"cache\",\
+            \\"fonts\":null,\"post\":null,\"pages\":[]}}"
+      case eitherDecode json of
+        Left err -> expectationFailure err
+        Right cfg -> configOpt cfg `shouldBe` OptConfig "/" (TocConfig False 3 True) False False
 
     it "parses \"searchdb\": null as no search index to generate" $ do
       let json =

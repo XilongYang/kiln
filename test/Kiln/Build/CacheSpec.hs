@@ -14,6 +14,7 @@ import System.Directory
   ( createDirectoryIfMissing
   , doesFileExist
   , getModificationTime
+  , removeFile
   , setModificationTime
   , withCurrentDirectory
   )
@@ -94,10 +95,50 @@ spec = do
         withCurrentDirectory dir $
           componentsFingerprint "." `shouldReturn` ""
 
-    it "concatenates every component file's contents, sorted by name regardless of creation order" $
+    it "is the same whatever order the components were created in" $
       withTempDir $ \dir ->
         withCurrentDirectory dir $ do
           createDirectoryIfMissing True "component"
           writeFile "component/b.html" "B"
           writeFile "component/a.html" "A"
-          componentsFingerprint "." `shouldReturn` "AB"
+          one <- componentsFingerprint "."
+          writeFile "component/a.html" "A" -- rewritten, later mtime
+          two <- componentsFingerprint "."
+          two `shouldBe` one
+
+    it "changes when a component's content changes" $
+      withTempDir $ \dir ->
+        withCurrentDirectory dir $ do
+          createDirectoryIfMissing True "component"
+          writeFile "component/a.html" "A"
+          earlier <- componentsFingerprint "."
+          writeFile "component/a.html" "A!"
+          later <- componentsFingerprint "."
+          later `shouldNotBe` earlier
+
+    -- Plain concatenation left the boundaries between files invisible,
+    -- so this edit produced an identical fingerprint -- and every page
+    -- kept its cache and its stale output, even though the two partials
+    -- are spliced at different places in the template.
+    it "distinguishes a block moved from one component's tail to the next's head" $
+      withTempDir $ \dir ->
+        withCurrentDirectory dir $ do
+          createDirectoryIfMissing True "component"
+          writeFile "component/a.html" "ALPHA|MOVED"
+          writeFile "component/b.html" "BETA"
+          earlier <- componentsFingerprint "."
+          writeFile "component/a.html" "ALPHA"
+          writeFile "component/b.html" "|MOVEDBETA"
+          later <- componentsFingerprint "."
+          later `shouldNotBe` earlier
+
+    it "distinguishes a component renamed without any content change" $
+      withTempDir $ \dir ->
+        withCurrentDirectory dir $ do
+          createDirectoryIfMissing True "component"
+          writeFile "component/a.html" "SAME"
+          earlier <- componentsFingerprint "."
+          removeFile "component/a.html"
+          writeFile "component/c.html" "SAME"
+          later <- componentsFingerprint "."
+          later `shouldNotBe` earlier

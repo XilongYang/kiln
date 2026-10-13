@@ -6,8 +6,9 @@ import Data.Aeson (ToJSON (..), encodeFile, object, (.=))
 import Data.List (sortBy)
 import Data.Ord (Down (..), comparing)
 import Kiln.Build.Cache (componentsFingerprint, isGlobalFresh, recordGlobal)
-import Kiln.Build.PostEntry (PostEntry (..), postUrl)
-import Kiln.Config (KilnConfig (..), OptConfig (..), PageConfig (..), TargetConfig (..))
+import Kiln.Build.Env (BuildEnv (..), cachePath, logMsg, postUrl, withContext, workPath)
+import Kiln.Build.PostEntry (PostEntry (..))
+import Kiln.Config (PageConfig (..))
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.FilePath (takeDirectory, (</>))
 import System.IO (readFile')
@@ -26,7 +27,11 @@ data PostListItem = PostListItem
   { itemTitle      :: String
   , itemDate       :: String
   , itemMonthDay   :: String
-  , itemUrl        :: String
+  , itemUrl        :: Maybe String
+    -- ^ `Nothing` -- JSON @null@, so a template's @$if(posts.url)$@ sees
+    -- it as unset -- when the site renders no standalone post pages at
+    -- all, because then there is no page to link to. See
+    -- `Kiln.Build.Env.postUrl`.
   , itemTags       :: String
   , itemAbstract   :: Maybe String
   , itemContent    :: String
@@ -58,8 +63,8 @@ instance ToJSON PostListItem where
 -- "grouped by year" list (like the homepage's) purely from
 -- `$if(posts.newYear)$`/`$if(posts.lastOfYear)$`, with no help from
 -- Haskell beyond this precomputed grouping.
-postListItems :: String -> [PostEntry] -> [PostListItem]
-postListItems webroot entries = go Nothing (map withYear sorted)
+postListItems :: BuildEnv -> [PostEntry] -> [PostListItem]
+postListItems env entries = go Nothing (map withYear sorted)
   where
     sorted = sortBy (comparing (Down . postDate)) entries
     withYear e = (e, take 4 (postDate e))
@@ -69,7 +74,7 @@ postListItems webroot entries = go Nothing (map withYear sorted)
         { itemTitle = postTitle e
         , itemDate = postDate e
         , itemMonthDay = drop 5 (postDate e)
-        , itemUrl = postUrl webroot e
+        , itemUrl = postUrl env (postSlug e)
         , itemTags = postTags e
         , itemAbstract = postAbstract e
         , itemContent = postContent e
@@ -84,47 +89,54 @@ postListItems webroot entries = go Nothing (map withYear sorted)
           (_, y) : _ -> Just y
           []         -> Nothing
 
--- | Render `page`'s template (found at `dir </> pageTemplate page`)
+-- | Render `page`'s template (found in the build's template copy)
 -- through pandoc into `pageOutput page`, filling in its `$webroot$`
 -- variable and a @posts@ metadata list (every post, newest first, as
 -- `postListItems` shapes it) a template can lay out itself via
 -- `$for(posts)$`, and resolving any `${ component/*() }` partials it
--- references. Skipped, reusing the existing output, when neither the
--- template, any component it could reference, the site's webroot, nor
--- the post list itself has changed since the last build.
-writePage :: KilnConfig -> FilePath -> [PostEntry] -> PageConfig -> IO ()
-writePage config dir entries page = do
+-- references.
+--
+-- Skipped, reusing the existing output, when neither the template, any
+-- component it could reference, the site's webroot, kiln's own version,
+-- nor the post list itself has changed since the last build. The post
+-- list enters the fingerprint whole, so editing one post rebuilds every
+-- page -- which is the honest cost of handing every page every post
+-- through `$for(posts)$`, since any of them may be laid out from any
+-- part of it.
+writePage :: BuildEnv -> [PostEntry] -> PageConfig -> IO ()
+writePage env entries page = withContext ("while building " ++ outputPath) $ do
   template <- readFile' templatePath
-  components <- componentsFingerprint dir
+  components <- componentsFingerprint (envTemplateDir env)
   outputExists <- doesFileExist outputPath
-  let fingerprint = webroot ++ "\n" ++ template ++ "\n" ++ components ++ "\n" ++ show entries
+  let fingerprint =
+        unlines [envTools env, envWebroot env, template, components, show entries]
   fresh <- isGlobalFresh fingerprintCachePath fingerprint
   if fresh && outputExists
     then pure ()
     else do
+      logMsg ("  " ++ outputPath)
       createDirectoryIfMissing True (takeDirectory outputPath)
       createDirectoryIfMissing True (takeDirectory metadataPath)
-      encodeFile metadataPath (object ["posts" .= postListItems webroot entries])
+      encodeFile metadataPath (object ["posts" .= postListItems env entries])
       writeFile emptyInputPath ""
       callProcess
         "pandoc"
         [ "--quiet"
         , "--template=" ++ templatePath
-        , "--variable=webroot=" ++ webroot
+        , "--variable=webroot=" ++ envWebroot env
         , "--metadata-file=" ++ metadataPath
         , "--output=" ++ outputPath
         , emptyInputPath
         ]
       recordGlobal fingerprintCachePath fingerprint
   where
-    webroot = optWebroot (configOpt config)
     outputPath = pageOutput page
-    templatePath = dir </> pageTemplate page
+    templatePath = envTemplateDir env </> pageTemplate page
     -- `outputPath` is already a safe, unique key (see `PageConfig`'s own
-    -- doc comment) -- mirror its own directory structure under the temp
+    -- doc comment) -- mirror its own directory structure under the work
     -- dir / cache dir rather than inventing a separate flat name, so
     -- nested outputs (e.g. "about/index.html") can't collide with an
     -- unrelated page that merely shares a basename.
-    emptyInputPath = dir </> "pages" </> (outputPath ++ ".md")
-    metadataPath = dir </> "pages" </> (outputPath ++ "-metadata.json")
-    fingerprintCachePath = targetCacheDir (configTarget config) </> "pages" </> (outputPath ++ ".cache")
+    emptyInputPath = workPath env ["page", outputPath ++ ".md"]
+    metadataPath = workPath env ["page", outputPath ++ "-metadata.json"]
+    fingerprintCachePath = cachePath env ["pages", outputPath ++ ".cache"]

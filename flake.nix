@@ -19,7 +19,6 @@
             nativeCheckInputs = (old.nativeCheckInputs or [ ]) ++ [ pkgs.pandoc pythonWithFontTools ];
           });
           runtimeDeps = with pkgs; [
-            coreutils
             pandoc
             pythonWithFontTools
           ];

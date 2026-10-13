@@ -26,8 +26,10 @@ copyEntry src dst name = do
   if isDir
     then copyTree srcPath dstPath
     else do
-      -- copyFile also copies the source's permissions; if the source
-      -- (e.g. a Nix store path) is read-only, make sure the copy isn't.
+      -- copyFile also copies the source's permissions, and the one
+      -- caller (`Kiln.Init`, scaffolding a template out of this
+      -- package's data dir) reads from the Nix store, where everything
+      -- is read-only. Make sure the copy isn't.
       copyFile srcPath dstPath
       permissions <- getPermissions dstPath
       setPermissions dstPath (setOwnerWritable True permissions)
@@ -37,6 +39,10 @@ copyEntry src dst name = do
 
 -- | Make `path` a fresh empty directory for the duration of the action,
 -- removing any stale contents first and cleaning up afterwards.
+--
+-- Unconditionally destructive, both ends: point it only at a directory
+-- kiln itself owns. Its caller passes `Kiln.Build.Env.envWorkDir`, which
+-- lives under the configured cache directory for exactly that reason.
 withTempDir :: FilePath -> (FilePath -> IO a) -> IO a
 withTempDir path = bracket acquire (const (removeDirectoryRecursive path))
   where

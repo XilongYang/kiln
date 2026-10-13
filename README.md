@@ -8,7 +8,7 @@ The two bundled templates, `default` (a classic per-post blog with search and a 
 
 - `kiln init [default|flow]` — scaffold one of the bundled templates into the current (empty) directory; `kiln init` with no argument scaffolds `default`
 - `kiln build` — render Markdown posts and every configured page with pandoc, generate a search index, and subset any configured fonts down to the characters actually used on the site (`pyftsubset`); posts, pages, and font subsets are cached under `target.cache-dir`, so a rebuild skips anything whose inputs haven't changed. A post removed from `input.src-dir` is warned about but its already-rendered page is left in place; only once that rendered page is also gone does `kiln build` drop its cache entry
-- `kiln clean` — remove build output, including the cache (so the next `kiln build` is a full rebuild)
+- `kiln clean` — remove the files `kiln build` generated, including the cache (so the next `kiln build` is a full rebuild). Only files kiln recorded building are removed, never a configured directory wholesale — so an output directory shared with hand-written files, or set to the project root itself, loses only kiln's own output; a directory left empty afterwards is removed too
 - `kiln help` — print usage
 - `kiln version` — print the running build's version
 - running `kiln` with no arguments is equivalent to `kiln build`
@@ -25,7 +25,7 @@ nix run github:XilongYang/kiln -- build
 # or add the flake's overlay / packages.kiln to your own configuration
 ```
 
-Runtime dependencies (`pandoc`, `fonttools`/`pyftsubset`, `brotli`, `coreutils`'s `b2sum` for build caching) are wrapped into the executable via the flake's `wrapProgram`, so nothing extra needs to be installed.
+Runtime dependencies (`pandoc`, `fonttools`/`pyftsubset`, `brotli`) are wrapped into the executable via the flake's `wrapProgram`, so nothing extra needs to be installed.
 
 For development, `nix develop` opens a shell with `cabal-install`, HLS, and the same runtime dependencies.
 
@@ -35,7 +35,8 @@ A page or post template is a plain [pandoc template](https://pandoc.org/MANUAL.h
 
 Every page template gets a `$webroot$` variable and a `posts` metadata list (every post, newest first) to lay out itself with `$for(posts)$`. Each entry has:
 
-- `title`, `date` ("YYYY-MM-DD"), `monthDay`, `url`
+- `title`, `date` ("YYYY-MM-DD"), `monthDay`
+- `url` — where the post is published, derived from `target.post.output-dir`, or `null` when `target.post` is `null` and the post therefore has no page of its own (so `$if(posts.url)$` is the way to ask)
 - `tags` — the post's frontmatter `tags`, verbatim (empty string if unset)
 - `abstract` — rendered HTML up to the post's `<!--more-->` marker, or `null` if it has none
 - `content` — the post's full rendered body HTML
@@ -58,8 +59,11 @@ A standalone post page (if `target.post` isn't `null`) additionally gets `$title
     "webroot": "/",
     "toc": {
       "enable": true,
-      "depth": 3
-    }
+      "depth": 3,
+      "ordered": true
+    },
+    "prism": true,
+    "math": true
   },
   "target": {
     "cache-dir": ".cache",
@@ -85,27 +89,32 @@ Three top-level groups: `input` (where kiln reads its source material from — n
 
 **`input`** — read-only source directories:
 
-- `src-dir` — directory of Markdown source files to render as posts
+- `src-dir` — directory of Markdown source files to render as posts. Read non-recursively: a subdirectory in here holds no posts, and kiln says so rather than passing over it silently
 - `template-dir` — directory of HTML templates used to assemble pages (see [Writing templates](#writing-templates))
 
 **`opt`** — site-wide behavior:
 
-- `webroot` — the site's root path, used when generating absolute links
-- `toc.enable` — whether pandoc generates a table of contents for each post (optional, default `true`)
-- `toc.depth` — depth of that table of contents (optional, default `3`)
+Every key here is optional except `webroot`, and every default matches what the bundled `default` template needs — so a site resembling it can leave them all out, and one that doesn't (like `flow`) turns off what it isn't using.
+
+- `webroot` — the site's root path, used when generating absolute links. Whether it's written with a trailing slash makes no difference (`/blog` and `/blog/` behave the same)
+- `toc.enable` — whether pandoc generates a table of contents for each post (default `true`)
+- `toc.depth` — depth of that table of contents (default `3`)
+- `toc.ordered` — whether that table of contents is rewritten into an ordered (`<ol>`) list; pandoc's `--toc` only ever emits `<ul>`, and [latex.css](https://latex.css/) numbers a nested toc from CSS counters keyed on `nav ol`, which never match a `<ul>` (default `true`)
+- `prism` — whether a fenced code block's language mark is rewritten into the pandoc attributes [Prism](https://prismjs.com/)'s line-numbers and match-braces plugins key off of (default `true`). A fence that already carries its own pandoc attributes, and any fence quoted inside a longer one, is left exactly as written either way
+- `math` — whether post pages are rendered with pandoc's `--mathjax` (default `true`)
 
 **`target`** — everything generated, every key either a value or an explicit JSON `null` (never silently defaulted, so a config always states its choice):
 
-- `cache-dir` — directory tracking rendered posts', pages', and subset fonts' inputs, so unchanged ones are skipped on the next build; delete it (or run `kiln clean`) to force a full rebuild
+- `cache-dir` — directory tracking rendered posts', pages', and subset fonts' inputs, so unchanged ones are skipped on the next build; delete it (or run `kiln clean`) to force a full rebuild. The scratch space one build needs also lives in here, so it falls inside the boundary this config declares. kiln's own version is part of what's tracked, so upgrading kiln invalidates what the old one rendered
 - `pages` — every non-post page to generate: `template` is a path under `input.template-dir`, and `output` is where to write it — also this page's own identity, since two pages can't share an output path without one silently overwriting the other
-- `post` — the standalone page rendered for every markdown file in `input.src-dir`, or `null` to skip it entirely (every post is still available to `pages`' `$for(posts)$`, just with no page of its own — like `flow`'s). When not `null`: `template` is a path under `input.template-dir`, and `output-dir` is the directory each post's `<slug>.html` is written into
+- `post` — the standalone page rendered for every markdown file in `input.src-dir`, or `null` to skip it entirely (every post is still available to `pages`' `$for(posts)$`, just with no page of its own, and with a `null` `url` — like `flow`'s). When not `null`: `template` is a path under `input.template-dir`, and `output-dir` is the directory each post's `<slug>.html` is written into, and also the directory its `url` points into
 - `searchdb` — output path for the generated search index JSON, or `null` if the site has no search feature to feed (like `flow`'s)
 - `fonts` — the local fonts to subset down to the characters actually used on the site, or `null` if the site has none (like `flow`'s). When not `null`: `subset-dir` is the output directory for the subset `.woff2` fonts, and `sources` lists the font files (full paths) to subset into it
 
 ## Project layout
 
 - `app/` — executable entry point, dispatches the `init`/`build`/`clean`/`help`/`version` subcommands
-- `src/Kiln/` — core logic (`Init`, `Config`, `Clean`, `Build`, `Str`, and the `Build.*` modules for post rendering, pages, the search database, font subsetting, and the incremental build cache)
+- `src/Kiln/` — core logic (`Init`, `Config`, `Clean`, `Build`, `Str`, and the `Build.*` modules: `Env` for one build's resolved settings and derived paths, `Markdown` for the pure source transforms, plus post rendering, pages, the search database, font subsetting, and the incremental build cache)
 - `template/default/`, `template/flow/` — the site templates `kiln init` can scaffold
 - `test/` — hspec test suite
 

@@ -1,34 +1,25 @@
 module Kiln.Build (kilnBuild) where
 
+import Kiln.Build.Env (BuildEnv (..), logMsg, mkBuildEnv)
 import Kiln.Build.FontSubset (subsetFonts)
 import Kiln.Build.Page (writePage)
 import Kiln.Build.Post (renderPosts)
 import Kiln.Build.SearchDb (writeSearchDb)
-import Kiln.Config (InputConfig (..), KilnConfig (..), TargetConfig (..), readConfig)
-import Kiln.FileTree (copyTree, withTempDir)
-import System.IO (hPutStrLn, stdout)
-
-tempDirName :: FilePath
-tempDirName = ".temp"
-
-logMsg :: String -> IO ()
-logMsg = hPutStrLn stdout
+import Kiln.Config (readConfig)
+import Kiln.FileTree (withTempDir)
 
 kilnBuild :: IO ()
 kilnBuild = do
-  config <- readConfig
-  let templateDir = inputTemplateDir (configInput config)
+  env <- mkBuildEnv <$> readConfig
 
-  withTempDir tempDirName $ \dir -> do
-    logMsg "Copying template..."
-    copyTree templateDir dir
+  withTempDir (envWorkDir env) $ \_ -> do
     logMsg "Rendering posts..."
-    results <- renderPosts config dir
+    results <- renderPosts env
     let entries = map fst results
     logMsg "Writing pages..."
-    mapM_ (writePage config dir entries) (targetPages (configTarget config))
+    mapM_ (writePage env entries) (envPages env)
     logMsg "Writing search database..."
-    writeSearchDb config results
+    writeSearchDb env results
     logMsg "Subsetting fonts..."
-    subsetFonts config entries
+    subsetFonts env entries
     logMsg "Build complete."
