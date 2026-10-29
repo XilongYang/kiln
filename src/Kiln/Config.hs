@@ -30,6 +30,15 @@ data InputConfig = InputConfig
 -- `target` key is a site that hasn't said where something goes.
 data OptConfig = OptConfig
   { optWebroot :: FilePath
+  , optSiteUrl :: String
+    -- ^ the site's own origin (@"https:\/\/example.com"@), with no
+    -- trailing slash required -- the one thing a site built entirely
+    -- from `optWebroot`-relative links never had to know, and the one
+    -- thing a feed cannot do without: an entry's @\<link\>@ and @\<id\>@
+    -- are read on someone else's domain, where a root-relative path
+    -- resolves against the reader, not the site. Defaults to empty,
+    -- which leaves every URL exactly as relative as it is today -- so a
+    -- site generating no feed never has to state it.
   , optToc     :: TocConfig
   , optPrism   :: Bool
     -- ^ whether a fenced code block's language mark is rewritten into
@@ -61,8 +70,21 @@ data FontsConfig = FontsConfig
 -- regardless of caching, so it's already a safe, unique key for the
 -- page's own build cache; there's no separate name to keep in sync.
 data PageConfig = PageConfig
-  { pageTemplate :: FilePath
-  , pageOutput   :: FilePath
+  { pageTemplate     :: FilePath
+  , pageOutput       :: FilePath
+  , pageAbsoluteUrls :: Bool
+    -- ^ whether this page's @posts@ list is handed to the template with
+    -- every URL made absolute against `optSiteUrl` -- the post links
+    -- themselves, and the ones inside each post's rendered HTML (see
+    -- `Kiln.Build.Page.absoluteItems`).
+    --
+    -- A property of the page rather than of the content, because it's a
+    -- property of where the page is read: an HTML page is read on the
+    -- site, where a root-relative link is exactly right, while a feed is
+    -- read inside an aggregator, where the same link points at the
+    -- aggregator. So this is one setting per page instead of a second,
+    -- absolute copy of every URL-bearing field for every template to
+    -- choose between. Defaults to false.
   } deriving (Show, Eq)
 
 -- | The per-post standalone page @kiln build@ renders for every
@@ -128,6 +150,7 @@ instance FromJSON OptConfig where
   parseJSON = withObject "opt" $ \o ->
     OptConfig
       <$> o .: "webroot"
+      <*> o .:? "site-url" .!= ""
       <*> o .:? "toc" .!= defaultToc
       <*> o .:? "prism" .!= True
       <*> o .:? "math" .!= True
@@ -143,6 +166,7 @@ instance FromJSON PageConfig where
     PageConfig
       <$> o .: "template"
       <*> o .: "output"
+      <*> o .:? "absolute-urls" .!= False
 
 instance FromJSON PostPageConfig where
   parseJSON = withObject "post" $ \o ->

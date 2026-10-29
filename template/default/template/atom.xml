@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  An Atom 1.0 feed, and as far as kiln is concerned just another page: an
+  ordinary entry in target.pages, laid out from the same posts list every
+  other template gets, cached and cleaned like any other output. Its page
+  sets "absolute-urls": true, which is the one thing a feed needs that an
+  on-site page does not, since a feed is read on someone else's domain.
+  Titles and bodies go in CDATA so no amount of markup in them can
+  produce XML that does not parse.
+-->
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <title>Kiln Example Site</title>
+    <subtitle>Plain text, long-term archives, and quiet publishing.</subtitle>
+    <id>$site-url$$webroot$</id>
+    <link rel="alternate" type="text/html" href="$site-url$$webroot$" />
+    <link rel="self" type="application/atom+xml" href="$site-url$$webroot$atom.xml" />
+    <author>
+        <name>Kiln Example Site</name>
+    </author>
+    <generator>kiln</generator>
+    <!-- The feed's own timestamp is the newest post's: posts is sorted
+         newest first, so that is the one marked first. Posts carry a date
+         and no time, so every timestamp here is that date at midnight. -->
+$for(posts)$$if(posts.first)$    <updated>$posts.date$T00:00:00Z</updated>
+$endif$$endfor$
+$for(posts)$
+    <entry>
+        <title type="html"><![CDATA[$posts.title$]]></title>
+        <id>$posts.url$</id>
+        <link rel="alternate" type="text/html" href="$posts.url$" />
+        <updated>$posts.date$T00:00:00Z</updated>
+        <content type="html"><![CDATA[$posts.content$]]></content>
+    </entry>
+$endfor$
+</feed>

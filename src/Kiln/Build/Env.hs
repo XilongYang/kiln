@@ -16,6 +16,8 @@ module Kiln.Build.Env
   , postOutputPath
   , postUrl
   , webrootPrefix
+  , siteRoot
+  , absoluteUrl
   , cachePath
   , workPath
   , withContext
@@ -44,6 +46,7 @@ data BuildEnv = BuildEnv
   { envSrcDir      :: FilePath
   , envTemplateDir :: FilePath
   , envWebroot     :: String
+  , envSiteUrl     :: String
   , envToc         :: TocConfig
   , envPrism       :: Bool
   , envMath        :: Bool
@@ -78,6 +81,7 @@ mkBuildEnv config =
     { envSrcDir      = inputSrcDir input
     , envTemplateDir = inputTemplateDir input
     , envWebroot     = optWebroot opt
+    , envSiteUrl     = optSiteUrl opt
     , envToc         = optToc opt
     , envPrism       = optPrism opt
     , envMath        = optMath opt
@@ -125,6 +129,27 @@ webrootPrefix :: String -> String
 webrootPrefix webroot
   | null webroot = ""
   | otherwise    = dropWhileEnd (== '/') webroot ++ "/"
+
+-- | The site's own origin with no trailing slash, so it joins onto a
+-- site-relative path (which `webrootPrefix` has already given a leading
+-- one) with exactly one @\/@ between them however the config spelled it.
+-- Empty when the site hasn't declared one.
+siteRoot :: BuildEnv -> String
+siteRoot = dropWhileEnd (== '/') . envSiteUrl
+
+-- | A site-relative path (a `postUrl`, or a URL out of a post's rendered
+-- HTML) as an absolute one.
+--
+-- A site that declared no `Kiln.Config.optSiteUrl` gets `path` back
+-- untouched: there is no honest absolute form to produce, and a feed
+-- full of root-relative links is at least a feed whose links work for
+-- anyone reading it on the site itself.
+absoluteUrl :: BuildEnv -> String -> String
+absoluteUrl env path
+  | null root = path
+  | otherwise = root ++ "/" ++ dropWhile (== '/') path
+  where
+    root = siteRoot env
 
 -- | An output directory as a URL prefix: ending in @\/@, or empty when
 -- it names the site root itself, so posts written beside @index.html@

@@ -24,13 +24,13 @@ expectedConfig :: KilnConfig
 expectedConfig =
   KilnConfig
     { configInput = InputConfig "src" "template"
-    , configOpt = OptConfig "/" (TocConfig True 3 True) True True
+    , configOpt = OptConfig "/" "" (TocConfig True 3 True) True True
     , configTarget =
         TargetConfig
           { targetSearchDb = Just "searchdb"
           , targetCacheDir = "cache"
           , targetPost = Just (PostPageConfig "post.html" "post")
-          , targetPages = [PageConfig "index.html" "index.html"]
+          , targetPages = [PageConfig "index.html" "index.html" False]
           , targetFonts = Just (FontsConfig "fonts-subset" ["fonts/a.ttf"])
           }
     }
@@ -79,7 +79,7 @@ spec = do
             \\"fonts\":null,\"post\":null,\"pages\":[]}}"
       case eitherDecode json of
         Left err -> expectationFailure err
-        Right cfg -> configOpt cfg `shouldBe` OptConfig "/" (TocConfig True 3 True) True True
+        Right cfg -> configOpt cfg `shouldBe` OptConfig "/" "" (TocConfig True 3 True) True True
 
     it "parses the \"opt\" settings a template turns off" $ do
       let json =
@@ -90,7 +90,30 @@ spec = do
             \\"fonts\":null,\"post\":null,\"pages\":[]}}"
       case eitherDecode json of
         Left err -> expectationFailure err
-        Right cfg -> configOpt cfg `shouldBe` OptConfig "/" (TocConfig False 3 True) False False
+        Right cfg -> configOpt cfg `shouldBe` OptConfig "/" "" (TocConfig False 3 True) False False
+
+    it "parses the site's own origin, which only a feed needs" $ do
+      let json =
+            "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+            \\"opt\":{\"webroot\":\"/\",\"site-url\":\"https://example.com\"},\
+            \\"target\":{\"searchdb\":null,\"cache-dir\":\"cache\",\
+            \\"fonts\":null,\"post\":null,\"pages\":[]}}"
+      case eitherDecode json of
+        Left err -> expectationFailure err
+        Right cfg -> optSiteUrl (configOpt cfg) `shouldBe` "https://example.com"
+
+    it "parses a page asking for absolute urls, and defaults the rest to site-relative ones" $ do
+      let json =
+            "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+            \\"opt\":{\"webroot\":\"/\"},\
+            \\"target\":{\"searchdb\":null,\"cache-dir\":\"cache\",\
+            \\"fonts\":null,\"post\":null,\
+            \\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"},\
+            \{\"template\":\"atom.xml\",\"output\":\"atom.xml\",\"absolute-urls\":true}]}}"
+      case eitherDecode json of
+        Left err -> expectationFailure err
+        Right cfg ->
+          map pageAbsoluteUrls (targetPages (configTarget cfg)) `shouldBe` [False, True]
 
     it "parses \"searchdb\": null as no search index to generate" $ do
       let json =

@@ -22,9 +22,18 @@ import System.FilePath (searchPathSeparator, splitSearchPath, takeDirectory)
 import Test.Hspec
 
 inputOptPrefix :: String -> String
-inputOptPrefix webroot =
+inputOptPrefix webroot = inputOptFields ("\"webroot\":\"" ++ webroot ++ "\"")
+
+-- | `inputOptPrefix`, plus the site's own origin -- the one setting a
+-- feed page needs and an on-site page never did.
+inputOptWithOrigin :: String -> String -> String
+inputOptWithOrigin webroot siteUrl =
+  inputOptFields ("\"webroot\":\"" ++ webroot ++ "\",\"site-url\":\"" ++ siteUrl ++ "\"")
+
+inputOptFields :: String -> String
+inputOptFields opts =
   "\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
-  \\"opt\":{\"webroot\":\"" ++ webroot ++ "\"},"
+  \\"opt\":{" ++ opts ++ "},"
 
 postConfigField :: String
 postConfigField = "\"post\":{\"template\":\"post.html\",\"output-dir\":\"post\"},"
@@ -64,6 +73,39 @@ postTemplate =
 
 navbarComponent :: String
 navbarComponent = "<nav><a href=\"$webroot$\">THE-NAVBAR</a></nav>"
+
+-- | A feed template, in the one shape that distinguishes a feed from
+-- every other page: the post urls and the urls inside the post bodies
+-- both have to be absolute.
+feedTemplate :: String
+feedTemplate =
+  "<feed>\n\
+  \$for(posts)$\n\
+  \<entry><id>$posts.url$</id><content>$posts.content$</content></entry>\n\
+  \$endfor$\n\
+  \</feed>"
+
+-- | `configJson`, plus a feed page beside the index -- the feed asking
+-- for absolute urls and the index not, in one build, so that the setting
+-- is proven to be the page's own rather than the site's.
+configJsonWithFeed :: String
+configJsonWithFeed =
+  "{" ++ inputOptWithOrigin "/blog/" "https://example.com" ++
+  "\"target\":{\"searchdb\":null,\"cache-dir\":\".cache\",\"fonts\":null," ++ postConfigField ++
+  "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"},\
+  \{\"template\":\"atom.xml\",\"output\":\"atom.xml\",\"absolute-urls\":true}]}}"
+
+-- | `setUpProject`, with a feed configured and a post whose body
+-- carries the urls a feed has to rewrite: one root-relative, one
+-- already absolute.
+setUpProjectWithFeed :: IO ()
+setUpProjectWithFeed = do
+  setUpProject
+  writeFile "kiln-config.json" configJsonWithFeed
+  writeFile "template/atom.xml" feedTemplate
+  writeFile "src/Newer_Post.md"
+    (postMd "Newer Post" "2024-05-01"
+      "![](/res/a.png)\n\n[pandoc](https://pandoc.org)")
 
 notFoundTemplate :: String
 notFoundTemplate =
@@ -253,6 +295,37 @@ spec = describe "kilnBuild" $ do
         kilnBuild
 
         doesFileExist "searchdb.json" `shouldReturn` False
+
+  it "renders a feed page with absolute urls, leaving the same build's index relative" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        setUpProjectWithFeed
+        kilnBuild
+
+        feed <- readFile "atom.xml"
+        feed `shouldSatisfy` ("<id>https://example.com/blog/post/Newer_Post.html</id>" `isInfixOf`)
+        -- The post body's own urls: the root-relative one joined onto the
+        -- origin, the external one left exactly as the post wrote it.
+        feed `shouldSatisfy` ("src=\"https://example.com/res/a.png\"" `isInfixOf`)
+        feed `shouldSatisfy` ("href=\"https://pandoc.org\"" `isInfixOf`)
+        feed `shouldSatisfy` ("src=\"/res/a.png\"" `notIsInfixOf`)
+
+        -- Same posts, same build, a page that didn't ask: still relative.
+        indexHtml <- readFile "index.html"
+        indexHtml `shouldSatisfy` ("href=\"/blog/post/Newer_Post.html\"" `isInfixOf`)
+        indexHtml `shouldSatisfy` ("src=\"/res/a.png\"" `isInfixOf`)
+        indexHtml `shouldSatisfy` ("https://example.com" `notIsInfixOf`)
+
+  it "re-renders a feed whose site-url changed, with nothing else touched" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        setUpProjectWithFeed
+        kilnBuild
+        writeFile "kiln-config.json"
+          ("{" ++ inputOptWithOrigin "/blog/" "https://elsewhere.example" ++
+          "\"target\":{\"searchdb\":null,\"cache-dir\":\".cache\",\"fonts\":null," ++ postConfigField ++
+          "\"pages\":[{\"template\":\"atom.xml\",\"output\":\"atom.xml\",\"absolute-urls\":true}]}}")
+        withoutPandoc kilnBuild `shouldThrow` anyIOException
 
   it "serves an unchanged font subset from cache, without needing pyftsubset again" $
     withTempDir $ \dir ->

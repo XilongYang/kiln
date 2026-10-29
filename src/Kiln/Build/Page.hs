@@ -1,12 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Kiln.Build.Page (PostListItem (..), postListItems, writePage) where
+module Kiln.Build.Page (PostListItem (..), postListItems, absoluteItems, writePage) where
 
 import Data.Aeson (ToJSON (..), encodeFile, object, (.=))
 import Data.List (sortBy)
+import Data.Maybe (isNothing)
 import Data.Ord (Down (..), comparing)
 import Kiln.Build.Cache (componentsFingerprint, isGlobalFresh, recordGlobal)
-import Kiln.Build.Env (BuildEnv (..), cachePath, logMsg, postUrl, withContext, workPath)
+import Kiln.Build.Env
+  ( BuildEnv (..)
+  , absoluteUrl
+  , cachePath
+  , logMsg
+  , postUrl
+  , siteRoot
+  , withContext
+  , workPath
+  )
+import Kiln.Build.Markdown (absolutizeUrls)
 import Kiln.Build.PostEntry (PostEntry (..))
 import Kiln.Config (PageConfig (..))
 import System.Directory (createDirectoryIfMissing, doesFileExist)
@@ -21,8 +32,10 @@ import System.Process (callProcess)
 -- (`itemNewYear`) or last (`itemLastOfYear`) post of its year in
 -- `postListItems`' sort order (so a template can open/close a per-year
 -- wrapper without any stateful looping of its own), and whether it's the
--- very last post overall (`itemLast`, e.g. for a flat chronological list
--- that wants a separator between posts but not a trailing one).
+-- very first or last post overall (`itemFirst`, e.g. for a feed's own
+-- @\<updated\>@, which is the newest post's date; `itemLast`, e.g. for a
+-- flat chronological list that wants a separator between posts but not a
+-- trailing one).
 data PostListItem = PostListItem
   { itemTitle      :: String
   , itemDate       :: String
@@ -38,6 +51,7 @@ data PostListItem = PostListItem
   , itemYear       :: String
   , itemNewYear    :: Bool
   , itemLastOfYear :: Bool
+  , itemFirst      :: Bool
   , itemLast       :: Bool
   } deriving (Show, Eq)
 
@@ -54,6 +68,7 @@ instance ToJSON PostListItem where
       , "year" .= itemYear i
       , "newYear" .= itemNewYear i
       , "lastOfYear" .= itemLastOfYear i
+      , "first" .= itemFirst i
       , "last" .= itemLast i
       ]
 
@@ -81,6 +96,7 @@ postListItems env entries = go Nothing (map withYear sorted)
         , itemYear = year
         , itemNewYear = prevYear /= Just year
         , itemLastOfYear = nextYear /= Just year
+        , itemFirst = isNothing prevYear -- no post preceded this one
         , itemLast = null rest
         }
         : go (Just year) rest
@@ -89,16 +105,44 @@ postListItems env entries = go Nothing (map withYear sorted)
           (_, y) : _ -> Just y
           []         -> Nothing
 
+-- | Re-point every URL in `items` at the site's own origin: each post's
+-- own `itemUrl`, and the links and media inside its rendered
+-- `itemAbstract`/`itemContent` (see
+-- `Kiln.Build.Markdown.absolutizeUrls`).
+--
+-- Applied to the pages that ask for it (`Kiln.Config.pageAbsoluteUrls`),
+-- which in practice means the feeds: a feed is read inside an
+-- aggregator, so @\/res\/img.png@ -- correct on every page of the site
+-- itself -- resolves against the aggregator's domain and the image
+-- simply doesn't load. The post's own page is the base every one of
+-- those URLs is resolved against, which is why this runs on the item
+-- list rather than on the post as it's rendered: it's the page's
+-- question, not the post's.
+absoluteItems :: BuildEnv -> [PostListItem] -> [PostListItem]
+absoluteItems env = map absolutize
+  where
+    absolutize item =
+      item
+        { itemUrl = pageUrl
+        , itemAbstract = rewrite <$> itemAbstract item
+        , itemContent = rewrite (itemContent item)
+        }
+      where
+        pageUrl = absoluteUrl env <$> itemUrl item
+        rewrite = absolutizeUrls (absoluteUrl env) pageUrl
+
 -- | Render `page`'s template (found in the build's template copy)
--- through pandoc into `pageOutput page`, filling in its `$webroot$`
--- variable and a @posts@ metadata list (every post, newest first, as
--- `postListItems` shapes it) a template can lay out itself via
+-- through pandoc into `pageOutput page`, filling in its `$webroot$` and
+-- `$site-url$` variables and a @posts@ metadata list (every post, newest
+-- first, as `postListItems` shapes it -- with every URL made absolute if
+-- the page asked for that) a template can lay out itself via
 -- `$for(posts)$`, and resolving any `${ component/*() }` partials it
 -- references.
 --
 -- Skipped, reusing the existing output, when neither the template, any
--- component it could reference, the site's webroot, kiln's own version,
--- nor the post list itself has changed since the last build. The post
+-- component it could reference, the site's webroot or origin, the page's
+-- own URL style, kiln's own version, nor the post list itself has
+-- changed since the last build. The post
 -- list enters the fingerprint whole, so editing one post rebuilds every
 -- page -- which is the honest cost of handing every page every post
 -- through `$for(posts)$`, since any of them may be laid out from any
@@ -109,7 +153,15 @@ writePage env entries page = withContext ("while building " ++ outputPath) $ do
   components <- componentsFingerprint (envTemplateDir env)
   outputExists <- doesFileExist outputPath
   let fingerprint =
-        unlines [envTools env, envWebroot env, template, components, show entries]
+        unlines
+          [ envTools env
+          , envWebroot env
+          , siteRoot env
+          , show (pageAbsoluteUrls page)
+          , template
+          , components
+          , show entries
+          ]
   fresh <- isGlobalFresh fingerprintCachePath fingerprint
   if fresh && outputExists
     then pure ()
@@ -117,13 +169,14 @@ writePage env entries page = withContext ("while building " ++ outputPath) $ do
       logMsg ("  " ++ outputPath)
       createDirectoryIfMissing True (takeDirectory outputPath)
       createDirectoryIfMissing True (takeDirectory metadataPath)
-      encodeFile metadataPath (object ["posts" .= postListItems env entries])
+      encodeFile metadataPath (object ["posts" .= items])
       writeFile emptyInputPath ""
       callProcess
         "pandoc"
         [ "--quiet"
         , "--template=" ++ templatePath
         , "--variable=webroot=" ++ envWebroot env
+        , "--variable=site-url=" ++ siteRoot env
         , "--metadata-file=" ++ metadataPath
         , "--output=" ++ outputPath
         , emptyInputPath
@@ -132,6 +185,9 @@ writePage env entries page = withContext ("while building " ++ outputPath) $ do
   where
     outputPath = pageOutput page
     templatePath = envTemplateDir env </> pageTemplate page
+    items
+      | pageAbsoluteUrls page = absoluteItems env (postListItems env entries)
+      | otherwise             = postListItems env entries
     -- `outputPath` is already a safe, unique key (see `PageConfig`'s own
     -- doc comment) -- mirror its own directory structure under the work
     -- dir / cache dir rather than inventing a separate flat name, so

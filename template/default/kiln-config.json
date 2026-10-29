@@ -4,7 +4,8 @@
     "template-dir" : "template"
   },
   "opt" : {
-    "webroot" : "/",
+    "webroot"  : "/",
+    "site-url" : "https://example.com",
     "toc" : {
       "enable"  : true,
       "depth"   : 3,
@@ -17,7 +18,8 @@
     "cache-dir" : ".cache",
     "pages" : [
       { "template" : "index.html", "output" : "index.html" },
-      { "template" : "404.html",   "output" : "404.html"   }
+      { "template" : "404.html",   "output" : "404.html"   },
+      { "template" : "atom.xml",   "output" : "atom.xml", "absolute-urls" : true }
     ],
     "post" : { "template" : "post.html", "output-dir" : "post" },
     "searchdb"  : "searchdb.json",

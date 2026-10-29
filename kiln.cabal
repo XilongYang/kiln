@@ -18,6 +18,7 @@ data-files:
     template/default/**/*.txt
     template/default/**/*.woff
     template/default/**/*.woff2
+    template/default/**/*.xml
     template/default/res/latex-css-1.13.0/LICENSE
     template/default/res/mathjax-4.0.0/LICENSE
     template/flow/**/*.css

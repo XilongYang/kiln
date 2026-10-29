@@ -17,16 +17,18 @@ withTempDir action = do
   FileTree.withTempDir path action
 
 -- | A `BuildEnv` for the pure parts of the builder, built directly
--- rather than through `Kiln.Build.Env.mkBuildEnv` -- the latter probes
--- pandoc for its version, which a test of a pure function has no reason
--- to need. Only the webroot and the post page config vary across the
--- tests that use it; everything else is a placeholder.
+-- rather than through `Kiln.Build.Env.mkBuildEnv`, which reads a whole
+-- `Kiln.Config.KilnConfig` a test of a pure function has no reason to
+-- assemble. Only the webroot and the post page config vary across the
+-- tests that use it; everything else is a placeholder a test needing
+-- something else (an `envSiteUrl`, say) overrides by record update.
 testEnv :: String -> Maybe PostPageConfig -> BuildEnv
 testEnv webroot post =
   BuildEnv
     { envSrcDir = "src"
     , envTemplateDir = "template"
     , envWebroot = webroot
+    , envSiteUrl = ""
     , envToc = TocConfig True 3 True
     , envPrism = True
     , envMath = True
