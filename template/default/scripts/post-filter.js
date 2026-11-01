@@ -32,13 +32,18 @@ function toggleInput() {
     if(filterIcon.classList.contains("icon-active")) {
         filterIcon.classList.add("icon")
         filterIcon.classList.remove("icon-active")
+        filterIcon.setAttribute("aria-expanded", "false")
         input.style.display = "none"
         input.innerHTML = ""
         refreshFilter()
     } else {
         filterIcon.classList.add("icon-active")
         filterIcon.classList.remove("icon")
+        filterIcon.setAttribute("aria-expanded", "true")
         input.style.display = "inline-block"
+        // Reached by Enter or Space now, so hand over the caret instead of
+        // leaving focus on the button.
+        input.focus()
     }
 }
 
@@ -99,15 +104,15 @@ function refreshFilter() {
 
 function clearErrorMsg() {
     var input = document.getElementById("post-filter-input")
-    var errs = input.getElementsByClassName('error')
-    for (var err of errs) {
-        var msgs = err.getElementsByClassName('error-msg')
-        for (var msg of msgs) {
-            err.removeChild(msg)
-        }
+    // Nothing to strip: leave the DOM alone so the caret keeps its position.
+    if (input.getElementsByClassName('error').length == 0) {
+        return
     }
-    var exp = input.innerText.replace("\n", "")
-    input.innerHTML = exp
+    for (var msg of Array.from(input.getElementsByClassName('error-msg'))) {
+        msg.remove()
+    }
+    input.innerHTML = input.innerText.replace(/\n/g, "")
+    moveCursorToEnd(input)
 }
 
 export {toggleInput, inputFilter, refreshFilter, clearErrorMsg}

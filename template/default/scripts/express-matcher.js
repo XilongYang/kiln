@@ -1,46 +1,36 @@
+// Boolean search expressions over substrings: expressionValidate checks one
+// ("OK", or an ErrorInfo with the bad index), expressionParse compiles it to a
+// decision graph, expressionMatch walks that graph against a string.
+//
+// A bare term matches when the string contains it; "&" and "|" have equal
+// precedence and run strictly left to right ("a|b&c" means "(a|b)&c"), "~"
+// negates what follows, parentheses group, "\" escapes an operator. Parsing
+// assumes the expression already passed validation.
+
 // State Transfer
+// Rows are the current state, columns the class of the character just read.
 const ST = {
-    INIT   : 0,
-    NORMAL : 1,
-    AND_OR : 2,
-    NOT    : 3,
-    PL     : 4,
-    PR     : 5,
-    ESC    : 6
+    SPACE : 0, NORMAL: 1, AND_OR: 2, NOT: 3, PL: 4, PR: 5, ESC: 6, END: 7
 };
 
+// A cell holding one of these strings is a rejection; a number is a next state.
 const OPT_MISS      = "Operator Missing"
 const OPT_DUPL      = "Duplicate Operator"
 const EMP_FIELD     = "Empty Field"
 const INVALID_ESC   = "Invalid Escape"
 const UNMATCH_P     = "Unmatched Parenthesis"
 
-//             [init   , normal     , and or   , not      , left parenthesis, right parenthesis, escape   ]
-const init   = [ST.INIT, ST.NORMAL  , EMP_FIELD, ST.NOT   , ST.PL           , ST.PR            , ST.ESC   ]
-const normal = [ST.INIT, ST.NORMAL  , ST.AND_OR, OPT_MISS , OPT_MISS        , ST.PR            , ST.ESC   ]
-const andOr  = [ST.INIT, ST.NORMAL  , OPT_DUPL , ST.NOT   , ST.PL           , EMP_FIELD        , ST.ESC   ]
-const not    = [ST.INIT, ST.NORMAL  , EMP_FIELD, ST.NOT   , ST.PL           , EMP_FIELD        , ST.ESC   ]
-const pl     = [ST.INIT, ST.NORMAL  , EMP_FIELD, ST.NOT   , ST.PL           , EMP_FIELD        , ST.ESC   ]
-const pr     = [ST.INIT, OPT_MISS   , ST.AND_OR, OPT_MISS , OPT_MISS        , ST.PR            , ST.ESC   ]
-const esc    = [ST.INIT, INVALID_ESC, ST.NORMAL, ST.NORMAL, ST.NORMAL       , ST.NORMAL        , ST.NORMAL]
-
-class Ptr {
-    value
-    constructor(value) {
-        this.value = value
-    }
-}
-
-class MatchNode {
-    exp
-    successNext
-    failureNext
-    constructor() {
-        this.exp = ""
-        this.successNext = new Ptr(new Ptr(true))
-        this.failureNext = new Ptr(new Ptr(false))
-    }
-}
+// The space column maps each state back to itself, so spaces never terminate a
+// term -- except in esc, which accepts only & | ~ ( ) \. The end column answers
+// whether the expression may stop in that state.
+//             [space       , normal     , and or   , not      , left parenthesis, right parenthesis, escape   , end        ]
+const space  = [ST.SPACE    , ST.NORMAL  , EMP_FIELD, ST.NOT   , ST.PL           , ST.PR            , ST.ESC   , ST.END     ]
+const normal = [ST.NORMAL   , ST.NORMAL  , ST.AND_OR, OPT_MISS , OPT_MISS        , ST.PR            , ST.ESC   , ST.END     ]
+const andOr  = [ST.AND_OR   , ST.NORMAL  , OPT_DUPL , ST.NOT   , ST.PL           , EMP_FIELD        , ST.ESC   , EMP_FIELD  ]
+const not    = [ST.NOT      , ST.NORMAL  , EMP_FIELD, ST.NOT   , ST.PL           , EMP_FIELD        , ST.ESC   , EMP_FIELD  ]
+const pl     = [ST.PL       , ST.NORMAL  , EMP_FIELD, ST.NOT   , ST.PL           , EMP_FIELD        , ST.ESC   , ST.END     ]
+const pr     = [ST.PR       , OPT_MISS   , ST.AND_OR, OPT_MISS , OPT_MISS        , ST.PR            , OPT_MISS , ST.END     ]
+const esc    = [INVALID_ESC , INVALID_ESC, ST.NORMAL, ST.NORMAL, ST.NORMAL       , ST.NORMAL        , ST.NORMAL, INVALID_ESC]
 
 class ErrorInfo {
     exp
@@ -54,14 +44,14 @@ class ErrorInfo {
 }
 
 function expressionValidate(exp) {
-    var states = [init, normal, andOr, not, pl, pr, esc]
-    var curST = ST.INIT
-
+    // Indexed by curST, so row order must match the ST values; ST.END has no row.
+    var states = [space, normal, andOr, not, pl, pr, esc]
+    var curST = ST.SPACE
     var openParenthesisIndex = []
 
     for (var i = 0; i < exp.length; ++i) {
         var c = exp[i]
-        var result = "null"
+        var result
 
         switch (c) {
             case "&":
@@ -73,6 +63,7 @@ function expressionValidate(exp) {
                 break
             case "(":
                 result = states[curST][ST.PL]
+                // An escaped "(" is a literal and must not count as nesting.
                 if (curST != ST.ESC) {
                     openParenthesisIndex.push(i)
                 }
@@ -87,7 +78,7 @@ function expressionValidate(exp) {
                 result = states[curST][ST.ESC]
                 break
             case " ":
-                result = curST
+                result = states[curST][ST.SPACE]
                 break
             default:
                 result = states[curST][ST.NORMAL]
@@ -100,12 +91,10 @@ function expressionValidate(exp) {
         curST = result
     }
 
-    if (curST == ST.AND_OR || curST == ST.NOT) {
-        return new ErrorInfo(exp, exp.length - 1, EMP_FIELD)
-    }
-
-    if (curST == ST.ESC) {
-        return new ErrorInfo(exp, exp.length - 1, INVALID_ESC)
+    // i == exp.length here, so i - 1 blames the last character.
+    result = states[curST][ST.END]
+    if (typeof(result) == "string") {
+        return new ErrorInfo(exp, i - 1, result)
     }
 
     if (openParenthesisIndex.length > 0) {
@@ -115,92 +104,151 @@ function expressionValidate(exp) {
     return "OK"
 }
 
+// A one-slot mutable cell. Every exit that should end up in the same place gets
+// the same Ptr, so once shared it may only be redirected through its `.value` --
+// reassigning the field pointing at it would move that one exit alone.
+class Ptr {
+    value
+    constructor(value) {
+        this.value = value
+    }
+}
+
+// While parsing, successNext/failureNext are Ptr chains bottoming out at a
+// MatchNode or a boolean; expressionCompress collapses each chain to that end.
+class MatchNode {
+    exp
+    successNext
+    failureNext
+    constructor() {
+        this.exp = ""
+        this.successNext = new Ptr(new Ptr(true))
+        this.failureNext = new Ptr(new Ptr(false))
+    }
+}
+
+// One parenthesis level under construction:
+//   t / f: the Ptr shared by every still-unbound success / failure exit, so
+//          writing t.value redirects all of them at once
+//   last : the node a following &, | or ~ applies to
+//   head : entry node; a nested one is discarded at ")" once copied outward
+class SubExpression {
+    head
+    last
+    t
+    f
+    constructor() {
+        this.head = new MatchNode()
+        this.last = this.head
+        this.t    = this.head.successNext
+        this.f    = this.head.failureNext
+    }
+}
+
 function expressionParse(exp) {
     var stack      = []
-    var head       = new MatchNode()
-    var cur        = head
+    var curExp     = new SubExpression()
 
     for (var i = 0; i < exp.length; ++i) {
         var c = exp[i]
+        var next
         switch (c) {
             case "&":
-                var next = new MatchNode()
-                if (cur.successNext.value.value == true) {
-                    next.failureNext = cur.failureNext
-                    next.successNext.value = cur.successNext.value
-                    cur.successNext.value = new Ptr(next)
-                } else {
-                    next.failureNext = cur.successNext
-                    next.successNext.value = cur.failureNext.value
-                    cur.failureNext.value = new Ptr(next)
-                }
-                cur = next
+                // Short-circuit wiring: the new node joins the level's failure
+                // exit and takes over its pending success target.
+                next = new MatchNode()
+                next.failureNext = curExp.f
+                next.successNext.value = curExp.t.value
+                curExp.t.value = new Ptr(next)
+                curExp.t = next.successNext
+                curExp.last = next
                 break;
             case "|":
-                var next = new MatchNode()
-                if (cur.successNext.value.value == true) {
-                    next.successNext = cur.successNext
-                    next.failureNext.value = cur.failureNext.value
-                    cur.failureNext.value = new Ptr(next)
-                } else {
-                    next.successNext = cur.failureNext
-                    next.failureNext.value = cur.successNext.value
-                    cur.successNext.value = new Ptr(next)
-                }
-                cur = next
+                // Mirror of "&": failures fall through to the next alternative.
+                next = new MatchNode()
+                next.successNext = curExp.t
+                next.failureNext.value = curExp.f.value
+                curExp.f.value = new Ptr(next)
+                curExp.f = next.failureNext
+                curExp.last = next
                 break
             case "~":
-                var temp = cur.failureNext
-                cur.failureNext = cur.successNext
-                cur.successNext = temp
+                // Swaps the fields, not the Ptrs, so curExp.t / curExp.f still
+                // reference the right cells.
+                [curExp.last.successNext, curExp.last.failureNext]
+                = [curExp.last.failureNext, curExp.last.successNext]
                 break
             case "(":
-                stack.push([head, cur])
-                head = new MatchNode()
-                cur = head
+                stack.push(curExp)
+                curExp = new SubExpression()
                 break
             case ")":
-                var target = stack.pop()
-                var head0  = target[0]
-                var cur0   = target[1]
+                var exp0   = stack.pop()
 
-                cur.failureNext.value = cur0.failureNext.value
-                cur.successNext.value = cur0.successNext.value
+                // Read before overwrite. A preceding "~" swapped these exits,
+                // which is how a whole group gets negated.
+                curExp.t.value = exp0.last.successNext
+                curExp.f.value = exp0.last.failureNext
 
-                cur0.failureNext = head.failureNext
-                cur0.successNext = head.successNext
-                cur0.exp = head.exp
+                // Predecessors already point at exp0.last, so copy into it.
+                exp0.last.exp = curExp.head.exp
+                exp0.last.successNext = curExp.head.successNext
+                exp0.last.failureNext = curExp.head.failureNext
 
-                head = head0
+                exp0.last = curExp.last
+                curExp = exp0
                 break
             case "\\":
                 i++;
-                cur.exp += exp[i]
+                curExp.last.exp += exp[i]
                 break
             default:
-                cur.exp += c
+                curExp.last.exp += c
         }
     }
 
-    return head
+    return expressionCompress(curExp.head)
 }
 
-function expressionMatch(matchTree, str) {
-    var isSuccess = str.includes(matchTree.exp.trim())
+// Turns every exit into a direct MatchNode or boolean reference. Shared exits
+// make this a DAG rather than a tree, hence the visited set.
+function expressionCompress(matchTree) {
+    var visited = new Set([matchTree])
+    var nextNode = [matchTree]
 
-    if (isSuccess) {
-        var next = matchTree.successNext.value.value
-        if (typeof(next) == 'boolean') {
-            return next;
+    const compress = p => {
+        while(p instanceof Ptr) p = p.value
+        if (p instanceof MatchNode && !visited.has(p)) {
+            nextNode.push(p)
+            visited.add(p)
         }
-        return expressionMatch(next, str)
+        return p
     }
 
-    var next = matchTree.failureNext.value.value
+    while (nextNode.length > 0) {
+        const cur = nextNode.shift()
+        cur.successNext = compress(cur.successNext)
+        cur.failureNext = compress(cur.failureNext)
+    }
+
+    return matchTree
+}
+
+// `hits`, when given, collects the terms that tested true along the path taken.
+// Short-circuiting keeps untested terms out, but a negated term may still land
+// there -- it is a highlighting hint, not a record of why the match succeeded.
+function expressionMatch(matchTree, str, hits) {
+    // Parsing keeps spaces, so trim only drops operator padding; inner ones count.
+    var exp = matchTree.exp.trim()
+    var isSuccess = str.includes(exp)
+    if (isSuccess && hits != undefined && exp != "") {
+        hits.push(exp)
+    }
+    var next = isSuccess ? matchTree.successNext : matchTree.failureNext
     if (typeof(next) == 'boolean') {
         return next;
     }
-    return expressionMatch(next, str)
+    return expressionMatch(next, str, hits)
 }
 
 

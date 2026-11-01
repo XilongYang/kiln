@@ -33,17 +33,17 @@ For development, `nix develop` opens a shell with `cabal-install`, HLS, and the 
 
 A page or post template is a plain [pandoc template](https://pandoc.org/MANUAL.html#templates) — `$if$`/`$for$`/variable interpolation all work exactly as pandoc defines them, and kiln adds nothing of its own on top. Reusable fragments (navbars, a search panel, footers, …) are ordinary [pandoc partials](https://pandoc.org/MANUAL.html#partials): put them under `component/` inside `input.template-dir` and reference them as `${ component/name() }`. Kiln watches the whole `component/` directory as part of a page's or post's build cache, so editing a partial correctly invalidates everything that references it.
 
-Every page template gets a `$webroot$` variable, a `$site-url$` variable (`opt.site-url`, with no trailing slash), and a `posts` metadata list (every post, newest first) to lay out itself with `$for(posts)$`. Each entry has:
+Every template in `target.pages` gets a `$webroot$` variable, a `$site-url$` variable (`opt.site-url`, with no trailing slash), and a `posts` metadata list (every post, newest first) to lay out itself with `$for(posts)$`. Each entry has:
 
 - `title`, `date` ("YYYY-MM-DD"), `monthDay`
 - `url` — where the post is published, derived from `target.post.output-dir`, or `null` when `target.post` is `null` and the post therefore has no page of its own (so `$if(posts.url)$` is the way to ask)
-- `tags` — the post's frontmatter `tags`, verbatim (empty string if unset)
+- `tags` — the post's frontmatter `tags`, comma-joined: both spellings a post might use, the bare string `tags: long,image` and the YAML list `tags: [long, image]`, come out as the same `long,image` (empty string if unset)
 - `abstract` — rendered HTML up to the post's `<!--more-->` marker, or `null` if it has none
 - `content` — the post's full rendered body HTML
 - `year`, `newYear`, `lastOfYear` — precomputed so a template can open/close a per-year wrapper (like `default`'s `index.html`) without any stateful looping of its own
 - `first`, `last` — true only for the newest and the oldest post overall: `last` for a flat feed that wants a separator between posts but not a trailing one (like `flow`'s `index.html`), `first` for a timestamp that means "the site's own", like a feed's `<updated>`
 
-A standalone post page (if `target.post` isn't `null`) additionally gets `$title$`, `$date$`, `$slug$`, `$body$`, and `$toc$` (if `opt.toc.enable`).
+A standalone post page (if `target.post` isn't `null`) is rendered from one post's own markdown rather than from the `posts` list, so its template gets a different set: `$webroot$`, `$slug$`, `$body$`, `$abstract$` (the rendered HTML up to the post's `<!--more-->` marker, unset if it has none), `$toc$` (if `opt.toc.enable`), and whatever the post's frontmatter declares, straight from pandoc's own metadata — `$title$` and `$date$`, and anything else the post sets (`$author$`, which `default`'s `post.html` uses, or a `$tags$` list). No `$site-url$` and no `posts`: a post page is read on the site itself, and it is one post.
 
 ### Feeds
 
@@ -55,7 +55,7 @@ The one thing a feed needs that an on-site page doesn't is absolute URLs, becaus
 { "template": "atom.xml", "output": "atom.xml", "absolute-urls": true }
 ```
 
-which, for that page only, resolves every URL in its `posts` list against `opt.site-url`: each post's `url`, and the links and media inside its `abstract`/`content` — including the document-relative ones (`../res/img.png`) and the bare fragments pandoc generates for footnotes (`#fn1`), which are resolved against the post's own page. URLs that already carry a scheme are left alone, and so is anything outside an HTML tag, so a post quoting markup in a code block keeps what it quoted.
+which, for that page only, resolves every URL in its `posts` list against `opt.site-url`: each post's `url`, and the links and media inside its `abstract`/`content` — including the document-relative ones (`../res/img.png`) and the bare fragments pandoc generates for footnotes (`#fn1`), which are resolved against the post's own page. What gets rewritten is the `href`, `src` and `poster` attributes; a URL that already carries a scheme, or a protocol-relative `//cdn/…`, is left alone, and so is a hand-written `srcset` (its comma-and-descriptor syntax holds several URLs at once, so it's kept verbatim rather than half-parsed). Nothing outside an HTML tag is touched at all, so a post quoting markup in a code block keeps what it quoted.
 
 Two things worth knowing when writing a feed template of your own: wrap titles and bodies in `<![CDATA[...]]>` so no amount of markup in a post can produce XML that doesn't parse, and remember that a post's `date` carries no time, so an Atom timestamp is `$posts.date$T00:00:00Z`.
 
@@ -131,7 +131,7 @@ Every key here is optional except `webroot`, and every default matches what the 
 ## Project layout
 
 - `app/` — executable entry point, dispatches the `init`/`build`/`clean`/`help`/`version` subcommands
-- `src/Kiln/` — core logic (`Init`, `Config`, `Clean`, `Build`, `Str`, and the `Build.*` modules: `Env` for one build's resolved settings and derived paths, `Markdown` for the pure transforms of a post's source and of pandoc's rendered output, plus post rendering, pages, the search database, font subsetting, and the incremental build cache)
+- `src/Kiln/` — core logic (`Init`, `Config`, `Clean`, `Build`, `Str`, `FileTree` for the tree copy `kiln init` scaffolds with and the scratch directory a build works in, and the `Build.*` modules: `Env` for one build's resolved settings and derived paths, `Markdown` for the pure transforms of a post's source and of pandoc's rendered output, `PostEntry` for a post's frontmatter and rendered HTML, plus post rendering, pages, the search database, font subsetting, and the incremental build cache)
 - `template/default/`, `template/flow/` — the site templates `kiln init` can scaffold
 - `test/` — hspec test suite
 

@@ -16,7 +16,9 @@
         <nav role="navigation" class="toc">
             <h2>
                 Contents
-                <i class="material-icons icon" id="toc-control">remove</i>
+                <button type="button" class="icon icon-button" id="toc-control" aria-label="Toggle contents" aria-expanded="true" aria-controls="toc-items">
+                    <i class="material-icons" id="toc-control-icon" aria-hidden="true">remove</i>
+                </button>
             </h2>
             <div id="toc-items" style="display: inherit;">
                 $toc$

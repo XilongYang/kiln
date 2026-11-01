@@ -53,6 +53,27 @@ code[class*=language-], pre[class*=language-] {
     cursor: pointer;
 }
 
+/* Icons are <button> so they can be tabbed to and fired with Enter or Space.
+   This strips the native chrome: the .material-icons glyph inside keeps its own
+   size, and color is inherited so .icon:hover and .icon-active still reach it. */
+.icon-button {
+    display: inline-block;
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    font: inherit;
+    line-height: 1;
+}
+
+/* Same ring latex.css gives a focused link, so tabbing through the icons shows
+   where you are instead of relying on the browser default. */
+.icon-button:focus-visible, #search-close:focus-visible {
+    outline-offset: 2px;
+    outline: 2px solid var(--link-focus-outline);
+}
+
 .icon:hover {
     color: #ee5555;
     transition: all 0.5s;

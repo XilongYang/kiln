@@ -1,12 +1,12 @@
 <div id="search-panel" tabindex="0">
     <div id="search-bar">
-        <i class="material-icons" id="search-hint">search</i>
-        <input type="text" id="search-box">
-        <button id="search-close">
-            <i class="material-icons icon">close</i>
+        <i class="material-icons" id="search-hint" aria-hidden="true">search</i>
+        <input type="text" id="search-box" aria-label="Search posts" placeholder="Input to search posts, opts: &amp; | ~ ()">
+        <button type="button" id="search-close" aria-label="Close search">
+            <i class="material-icons icon" aria-hidden="true">close</i>
         </button>
     </div>
     <div id="search-result">
-        <div id="search-loading" class="material-icons">autorenew</div>
+        <div id="search-loading" class="material-icons" aria-hidden="true">autorenew</div>
     </div>
 </div>

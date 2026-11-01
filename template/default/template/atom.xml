@@ -29,7 +29,12 @@ $for(posts)$
         <id>$posts.url$</id>
         <link rel="alternate" type="text/html" href="$posts.url$" />
         <updated>$posts.date$T00:00:00Z</updated>
-        <content type="html"><![CDATA[$posts.content$]]></content>
+        <!-- Every post here opens with an abstract, which is what
+             `abstract` holds and what `content` therefore starts after.
+             A feed carries the whole article, so it needs both, in the
+             order the page itself shows them. -->
+        <content type="html"><![CDATA[$posts.abstract$
+$posts.content$]]></content>
     </entry>
 $endfor$
 </feed>
