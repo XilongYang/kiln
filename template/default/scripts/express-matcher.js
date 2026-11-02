@@ -217,7 +217,14 @@ function expressionCompress(matchTree) {
     var nextNode = [matchTree]
 
     const compress = p => {
+        var path = p
         while(p instanceof Ptr) p = p.value
+        while(path instanceof Ptr) {
+            var next = path.value
+            path.value = p
+            path = next
+        }
+
         if (p instanceof MatchNode && !visited.has(p)) {
             nextNode.push(p)
             visited.add(p)
@@ -225,8 +232,10 @@ function expressionCompress(matchTree) {
         return p
     }
 
-    while (nextNode.length > 0) {
-        const cur = nextNode.shift()
+    for (var i = 0; i < nextNode.length; ++i) {
+        const cur = nextNode[i]
+        // Parsing keeps spaces, so trim only drops operator padding; inner ones count.
+        cur.exp = cur.exp.trim()
         cur.successNext = compress(cur.successNext)
         cur.failureNext = compress(cur.failureNext)
     }
@@ -238,19 +247,16 @@ function expressionCompress(matchTree) {
 // Short-circuiting keeps untested terms out, but a negated term may still land
 // there -- it is a highlighting hint, not a record of why the match succeeded.
 function expressionMatch(matchTree, str, hits) {
-    // Parsing keeps spaces, so trim only drops operator padding; inner ones count.
-    var exp = matchTree.exp.trim()
-    var isSuccess = str.includes(exp)
-    if (isSuccess && hits != undefined && exp != "") {
-        hits.push(exp)
+    var next = matchTree
+    while (typeof(next) != 'boolean') {
+        var exp = next.exp
+        var isSuccess = str.includes(exp)
+        if (isSuccess && hits != undefined && exp != "") {
+            hits.push(exp)
+        }
+        next = isSuccess ? next.successNext : next.failureNext
     }
-    var next = isSuccess ? matchTree.successNext : matchTree.failureNext
-    if (typeof(next) == 'boolean') {
-        return next;
-    }
-    return expressionMatch(next, str, hits)
+    return next
 }
-
-
 
 export {expressionValidate, expressionParse, expressionMatch}

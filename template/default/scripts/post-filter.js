@@ -3,15 +3,45 @@ import {expressionValidate, expressionParse, expressionMatch} from './express-ma
 // ============= Private Method =================
 
 
+// What the user typed. The error tooltip is a child of the input, hidden by CSS
+// alone, so its text is skipped here rather than read back as part of the
+// expression -- refreshFilter runs once more while the error is still shown. A
+// contenteditable also keeps a NBSP where a plain space would not survive as
+// markup, so fold those back.
+function inputText(input) {
+    var text = ""
+    for (var node of input.childNodes) {
+        if (node.nodeType != Node.ELEMENT_NODE) {
+            text += node.textContent
+        } else if (!node.classList.contains('error-msg')) {
+            text += inputText(node)
+        }
+    }
+    return text.replace(/\n/g, "").replace(/\u00a0/g, " ")
+}
+
+// Built as nodes rather than as a string: the expression is shown back to the
+// user inside the input it came from, so anything that looks like a tag has to
+// stay text. "C++ & vector<int> &" lost its <int> when this was innerHTML.
 function showErrorMsg(msg, exp, index) {
-    var errorMsg = "Error: " + msg
-    var errorSymbol = exp[index] == ' ' ? '&nbsp;' : exp[index]
-    var htmlMsg = exp.slice(0, index)
-                + "<span class='error'>" + errorSymbol
-                + "<span class='error-msg'>" + errorMsg + "</span>"
-                + "</span>"
-                + "<span class = 'invalid-expression'>" + exp.slice(index + 1) + "</span>"
-    document.getElementById("post-filter-input").innerHTML = htmlMsg
+    var errorMsg = document.createElement('span')
+    errorMsg.className = 'error-msg'
+    errorMsg.textContent = "Error: " + msg
+
+    var error = document.createElement('span')
+    error.className = 'error'
+    // A bare space would collapse away, leaving nothing to highlight.
+    error.textContent = exp[index] == ' ' ? '\u00a0' : exp[index]
+    error.appendChild(errorMsg)
+
+    var invalid = document.createElement('span')
+    invalid.className = 'invalid-expression'
+    invalid.textContent = exp.slice(index + 1)
+
+    var input = document.getElementById("post-filter-input")
+    input.textContent = exp.slice(0, index)
+    input.appendChild(error)
+    input.appendChild(invalid)
 }
 
 function moveCursorToEnd(target) {
@@ -66,7 +96,7 @@ function inputFilter(e) {
 
 function refreshFilter() {
     var input = document.getElementById("post-filter-input")
-    var exp = input.innerText.replace("\n", "").trim()
+    var exp = inputText(input).trim()
     if (exp == "") {
         input.innerHTML = ""
         var postYears = document.getElementsByClassName('post-year-wrapper')
@@ -111,7 +141,8 @@ function clearErrorMsg() {
     for (var msg of Array.from(input.getElementsByClassName('error-msg'))) {
         msg.remove()
     }
-    input.innerHTML = input.innerText.replace(/\n/g, "")
+    // Assigned as text, so the expression comes back exactly as it was typed.
+    input.textContent = inputText(input)
     moveCursorToEnd(input)
 }
 
