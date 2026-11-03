@@ -1,7 +1,12 @@
-import {expressionValidate, expressionParse, expressionMatch} from './express-matcher.js'
+import {expressionMatch} from './express-matcher.js'
+import {bindExpressionInput} from './express-input.js'
 
 var isLoading = true
 var db = []
+
+// Set once the search box is bound; lets closePanel and the db loader drive the
+// box outside of its own events.
+var searchInput = {commit: () => {}, refresh: () => {}}
 
 // Characters of context kept on each side of a hit, and the cap on a snippet
 // that has no hit to center on.
@@ -45,7 +50,7 @@ function openPanel() {
     var scrollBarWidth = window.innerWidth - document.documentElement.clientWidth
     document.documentElement.style.paddingRight = scrollBarWidth + 'px'
 
-    document.getElementById("search-box").value = ""
+    document.getElementById("search-box").textContent = ""
     document.body.style.overflow = "hidden"
     var panel = document.getElementById("search-panel")
     panel.style.display = "flex"
@@ -60,6 +65,11 @@ function openPanel() {
             if (loading != null) {
                 loading.style.display = "none"
             }
+            // An expression committed while the db was still empty matched
+            // nothing; list it again now that there is something to match. A
+            // refresh rather than a commit, so a db that lands mid-typing does
+            // not report an error over a half-typed expression.
+            searchInput.refresh()
         })
     }
 }
@@ -71,8 +81,10 @@ function closePanel() {
     var panel = document.getElementById("search-panel")
     panel.style.display = "none"
     panel.removeEventListener('keydown', keyboardCatch)
-    document.getElementById("search-box").value = ""
-    document.getElementById("search-result").innerHTML = ""
+    document.getElementById("search-box").textContent = ""
+    // Commit the emptied box rather than clearing the results directly: it also
+    // forgets the expression, so reopening and retyping the same one still runs.
+    searchInput.commit()
 
     // The panel took focus on open; hand it back so a keyboard user resumes at
     // the icon instead of at the top of the document.
@@ -107,20 +119,6 @@ function show(post, content) {
     result.appendChild(contentDiv)
 
     document.getElementById("search-result").appendChild(result)
-}
-
-function showErrorMsg(info) {
-    var errorSymbol = info.exp[info.index] == ' ' ? '&nbsp;' : escapeHtml(info.exp[info.index])
-    var htmlMsg = "<div class='search-error-msg'>Error: " + escapeHtml(info.msg) + "</div>"
-                + escapeHtml(info.exp.slice(0, info.index))
-                + "<span class='error'>" + errorSymbol + "</span>"
-                + "<span class='invalid-expression'>" + escapeHtml(info.exp.slice(info.index + 1)) + "</span>"
-
-    var error = document.createElement('div')
-    error.classList = "search-error"
-    error.innerHTML = htmlMsg
-
-    document.getElementById("search-result").appendChild(error)
 }
 
 // A snippet is one line, so a line break and the indentation hugging it collapse
@@ -195,20 +193,12 @@ function snippet(content, terms) {
     return head + parts.join('...') + tail
 }
 
-function search() {
+// A null tree means an empty box: there is nothing to list.
+function showResults(matchTree) {
     document.getElementById("search-result").innerHTML = ''
-    var exp = document.getElementById("search-box").value.trim()
-    if (exp == '') {
+    if (matchTree == null) {
         return
     }
-
-    var validateResult = expressionValidate(exp)
-    if (validateResult != "OK") {
-        showErrorMsg(validateResult)
-        return
-    }
-
-    var matchTree = expressionParse(exp)
     for (var post of db) {
         var hits = []
         if (expressionMatch(matchTree, post.content, hits)) {
@@ -217,4 +207,8 @@ function search() {
     }
 }
 
-export {closePanel, openPanel, search}
+function bindSearchInput(box) {
+    searchInput = bindExpressionInput(box, showResults)
+}
+
+export {closePanel, openPanel, bindSearchInput}

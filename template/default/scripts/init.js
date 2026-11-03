@@ -2,8 +2,8 @@ import {refreshDarkMode, switchDarkMode} from "./darkmode.js"
 import {getCurrentYear} from "./datetime.js"
 import {switchTocMode} from "./toc.js"
 import {backTop, goBottom} from "./navigator.js"
-import {closePanel, openPanel, search} from "./search.js"
-import {clearErrorMsg, inputFilter, refreshFilter, toggleInput} from "./post-filter.js"
+import {bindSearchInput, closePanel, openPanel} from "./search.js"
+import {bindFilterInput, toggleInput} from "./post-filter.js"
 
 refreshDarkMode()
 
@@ -44,7 +44,7 @@ if (closeSearchButton != null) {
 
 var searchBox = document.getElementById("search-box")
 if (searchBox != null) {
-    searchBox.addEventListener('input', search)
+    bindSearchInput(searchBox)
 }
 
 var antiFlash = document.getElementById("anti-flash")
@@ -58,9 +58,6 @@ if (postFilter != null) {
 
     var postFilterInput = document.getElementById("post-filter-input")
     if (postFilterInput != null) {
-        postFilterInput.addEventListener('keypress', inputFilter)
-        postFilterInput.addEventListener('input', inputFilter)
-        postFilterInput.addEventListener('focus', clearErrorMsg)
-        postFilterInput.addEventListener('focusout', refreshFilter)
+        bindFilterInput(postFilterInput)
     }
 }

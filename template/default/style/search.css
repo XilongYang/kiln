@@ -15,7 +15,7 @@
 
 #search-bar {
     width: 100%;
-    height: 2rem;
+    min-height: 2rem;
     display: flex;
     align-items: center;
     background-color: color-mix(in srgb, var(--body-bg-color) 90%, black 10%);
@@ -37,16 +37,22 @@
 
 #search-box {
     width: 0px;
-    height: 100%;
     flex: 98;
     border-style: none;
     background:none;
     outline: 0;
-    color: var(--body-color)
+    color: var(--body-color);
+    /* A contenteditable: a long expression wraps and the bar grows with it.
+       Clipping instead would cut off the error tooltip, which hangs above the
+       character it marks. */
+    padding-block: 0.25rem;
+    padding-inline: 2px;
 }
 
-#search-box::placeholder {
+#search-box:empty::before {
+    content: "Input to search posts, opts: & | ~ ()";
     color: gray;
+    pointer-events: none;
 }
 
 #search-close {
@@ -110,18 +116,5 @@
 }
 
 .search-key {
-    color: #ee5555;
-}
-
-.search-error {
-    width: 100%;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    margin-top: 1rem;
-    word-break: break-all;
-}
-
-.search-error-msg {
-    font-weight: bold;
     color: #ee5555;
 }
