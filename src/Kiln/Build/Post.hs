@@ -28,11 +28,10 @@ import System.FilePath (takeBaseName, takeDirectory, takeExtension, (</>))
 import System.IO (readFile')
 import System.Process (callProcess)
 
--- | Every filesystem path touched while rendering one post, besides its
--- own standalone page (optional -- see `Kiln.Config.PostPageConfig` --
--- so handled separately rather than kept here). Grouping these avoids
--- passing a run of same-typed `FilePath` arguments positionally, where
--- it's easy to pass them in the wrong order.
+-- | Every path touched while rendering one post, grouped so a run of
+-- same-typed `FilePath` arguments can't be passed in the wrong order.
+-- The standalone page is left out, being optional (see
+-- `Kiln.Config.PostPageConfig`).
 data PostPaths = PostPaths
   { postSrcPath             :: FilePath -- ^ the post's original markdown
   , postRewrittenPath       :: FilePath -- ^ language-mark-rewritten, abstract-split body fed to pandoc
@@ -49,16 +48,13 @@ data PostPaths = PostPaths
   , postSearchCachePath     :: FilePath -- ^ cached search text, under @\<cache\>/search@
   }
 
--- | The slug of every post kiln knows about: those with a source file in
--- `envSrcDir` right now, plus any it has rendered before and still holds
--- a cache entry for.
+-- | Every slug kiln knows about: sourced in `envSrcDir` now, or rendered
+-- before and still cached.
 --
--- This -- kiln's own record of what it built -- is the authority on which
--- files in a post output directory are kiln's, which both `sweepOrphans`
--- and @kiln clean@ need. Listing the output directory instead would take
--- every @.html@ in it for a post page, which is wrong as soon as the
--- directory holds anything else (a site putting its posts at the root
--- alongside @index.html@, say).
+-- kiln's own record is the authority on which files in an output
+-- directory are its, as `sweepOrphans` and @kiln clean@ both need:
+-- listing the directory would take every @.html@ for a post page, wrong
+-- the moment posts sit beside an @index.html@.
 postSlugs :: FilePath -> FilePath -> IO [String]
 postSlugs srcDir cacheDir = do
   current <- sourceSlugs srcDir
@@ -79,38 +75,31 @@ cachedSlugs cacheDir = do
   where
     stageDir = cacheDir </> "stage"
 
--- | The markdown files in `srcDir`, sorted.
+-- | The markdown files in `srcDir`.
 --
--- Sorted because the order posts are rendered in reaches the output:
--- it's the order of the generated search index, and it's baked into the
--- fingerprint every page's cache is keyed on. Left in `listDirectory`'s
--- order -- which is the filesystem's, not any order a reader would
--- recognise -- the search index churned between rebuilds and pages could
--- miss their cache for no reason at all, differently on each machine.
+-- Sorted because the render order reaches the output -- it is the search
+-- index's order and part of every page's cache fingerprint -- and
+-- `listDirectory`'s order is the filesystem's, so it would churn both
+-- differently on each machine.
 --
--- Filtered to actual files: a *directory* named @foo.md@ passes an
--- extension test just as happily, and then reading it as a post fails
--- with an error about the directory rather than about the config.
+-- Files only: a *directory* named @foo.md@ passes the extension test and
+-- then fails as an error about the directory rather than the config.
 sourceNames :: FilePath -> IO [FilePath]
 sourceNames srcDir = do
   names <- listDirectory srcDir
   files <- filterM (doesFileExist . (srcDir </>)) names
   pure (sort (filter ((== ".md") . takeExtension) files))
 
--- | Render every markdown post in `env`'s source directory -- its own
--- standalone page too, if `env` configures one (see
--- `Kiln.Config.PostPageConfig`). Returns each post's `PostEntry` (fed
--- into every page's @posts@ metadata, see `Kiln.Build.Page`) paired with
--- its plain-text content (for the search database).
+-- | Render every markdown post in `env`'s source directory, its
+-- standalone page included if one is configured. Returns each post's
+-- `PostEntry` (for every page's @posts@ metadata) paired with its
+-- plain-text content (for the search database).
 --
--- A post is skipped (and its cached outputs reused) when neither its
--- source nor anything that could affect every post's rendering --
--- `envWebroot`, the toc/prism/math settings, the post page template, or
--- kiln's own version -- has changed since the last build; see
--- `Kiln.Build.Cache`. Posts whose source has disappeared are warned
--- about but left in place, since they may still be linked from
--- elsewhere; a post's cache is only dropped once both its source and its
--- rendered output are gone.
+-- A post is served from cache when neither its source nor anything
+-- affecting every post -- `envWebroot`, the toc\/prism\/math settings,
+-- the post page template, kiln's version -- has changed. A post whose
+-- source is gone is warned about but left in place, as it may still be
+-- linked from elsewhere.
 renderPosts :: BuildEnv -> IO [(PostEntry, String)]
 renderPosts env = do
   warnAboutSubdirectories (envSrcDir env)
@@ -145,10 +134,8 @@ frontmatterTemplatePath env = workPath env ["frontmatter.tpl"]
 tocTemplatePath :: BuildEnv -> FilePath
 tocTemplatePath env = workPath env ["toc.tpl"]
 
--- | Warn about any directory sitting in the source directory. Posts are
--- read from it non-recursively, so a directory of markdown there is
--- quietly built into nothing at all -- cheaper to say so than to leave
--- someone wondering where their posts went.
+-- | Warn about a directory in the source directory: posts are read
+-- non-recursively, so markdown in there silently builds into nothing.
 warnAboutSubdirectories :: FilePath -> IO ()
 warnAboutSubdirectories srcDir = do
   exists <- doesDirectoryExist srcDir
@@ -157,11 +144,10 @@ warnAboutSubdirectories srcDir = do
     dirs <- filterM (doesDirectoryExist . (srcDir </>)) names
     mapM_ (\d -> warn (srcDir </> d ++ " is a directory; posts are only read from " ++ srcDir ++ " itself")) dirs
 
--- | Warn about any post kiln has rendered whose source is no longer
--- among `currentSlugs` -- left alone, since it may still be linked from
--- elsewhere -- and silently drop the cache entry for any post that has
--- neither a source nor a rendered output left: pure bookkeeping nobody
--- can see, so there's nothing to warn about.
+-- | Warn about a rendered post missing from `currentSlugs`, leaving it
+-- in place in case it is still linked. A post with neither source nor
+-- output left is dropped from the cache silently -- bookkeeping nobody
+-- can see.
 sweepOrphans :: BuildEnv -> [String] -> IO ()
 sweepOrphans env currentSlugs = do
   known <- cachedSlugs (envCacheDir env)
@@ -198,10 +184,9 @@ renderPost env globalFresh name =
         content <- readFile' (postSearchCachePath paths)
         pure (entry, content)
       else do
-        -- Only the posts actually rendered are named. A post served from
-        -- cache produced no work to report, and on a site of a few
-        -- hundred saying so for each would bury the handful that did --
-        -- which is the one thing an incremental build has to tell you.
+        -- Only posts actually rendered are named: on a site of a few
+        -- hundred, reporting the cached ones would bury the handful an
+        -- incremental build exists to tell you about.
         logMsg ("  " ++ name)
         rebuild
   where
@@ -251,9 +236,8 @@ renderPost env globalFresh name =
       recordFile (postStageCachePath paths) (postSrcPath paths)
       pure (entry, content)
 
--- | Run an abstract's markdown through pandoc's HTML writer (no
--- template, just the rendered fragment) so it can be spliced into the
--- post page as the @abstract@ variable.
+-- | The abstract as an HTML fragment, for the post page's @abstract@
+-- variable.
 renderAbstractHtml :: PostPaths -> String -> IO String
 renderAbstractHtml paths abstractSrc = do
   writeFile (postAbstractSrcPath paths) abstractSrc
@@ -267,11 +251,8 @@ renderAbstractHtml paths abstractSrc = do
     ]
   readFile' (postAbstractHtmlPath paths)
 
--- | Run the post's rewritten body (already written to
--- `postRewrittenPath`) through pandoc's HTML writer (no template, just
--- the rendered fragment), so other pages can include this post's full
--- content in their own @posts@ metadata without re-rendering it
--- themselves.
+-- | The post body as an HTML fragment, so other pages can carry this
+-- post's content in their @posts@ metadata without re-rendering it.
 renderContentHtml :: PostPaths -> IO String
 renderContentHtml paths = do
   callProcess
@@ -284,12 +265,10 @@ renderContentHtml paths = do
     ]
   readFile' (postContentHtmlPath paths)
 
--- | Run the rewritten post body through pandoc using `ppc`'s page
--- template, writing the rendered post page. The table of contents, if
--- enabled, is rendered separately (see `renderTocHtml`) so that -- when
--- the site asks for a numbered one -- its @<ul>@s can be rewritten into
--- @<ol>@s before being spliced in as the @toc@ variable; pandoc's own
--- @--toc@ flag only ever emits @<ul>@s.
+-- | Write the post's standalone page through `ppc`'s template. The toc
+-- is rendered separately (see `renderTocHtml`) so a numbered one can have
+-- its @<ul>@s rewritten before being spliced in: pandoc's @--toc@ only
+-- ever emits @<ul>@s.
 renderPostHtml :: BuildEnv -> PostPageConfig -> String -> PostPaths -> Maybe String -> IO ()
 renderPostHtml env ppc slug paths abstractHtml = do
   tocFlag <-
@@ -316,9 +295,8 @@ renderPostHtml env ppc slug paths abstractHtml = do
     toc = envToc env
     abstractFlag = maybe [] (\h -> ["--variable=abstract=" ++ h]) abstractHtml
 
--- | Render the post body's table of contents on its own, via a template
--- that's just @$toc$@, so it can be post-processed independently of the
--- post's own body (which may contain unrelated @<ul>@s of its own).
+-- | The toc alone, via a template that is just @$toc$@, so rewriting it
+-- can't reach the @<ul>@s in the post's own body.
 renderTocHtml :: TocConfig -> PostPaths -> IO String
 renderTocHtml toc paths = do
   callProcess
@@ -332,8 +310,8 @@ renderTocHtml toc paths = do
     ]
   readFile' (postTocHtmlPath paths)
 
--- | Run the post's source through pandoc using `frontmatterTemplate` to
--- extract its title, date and tags.
+-- | Write the post's title, date and tags to `postFrontmatterPath`,
+-- via `frontmatterTemplate`.
 renderFrontmatter :: PostPaths -> IO ()
 renderFrontmatter paths =
   callProcess
@@ -347,8 +325,8 @@ renderFrontmatter paths =
     , postSrcPath paths
     ]
 
--- | Run the post's source through pandoc's plain writer (no template,
--- just the body) for the search database to index.
+-- | Write the post as plain text to `postSearchTextPath`, for the
+-- search database to index.
 renderPostSearchText :: PostPaths -> IO ()
 renderPostSearchText paths =
   callProcess

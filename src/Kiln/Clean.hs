@@ -24,17 +24,12 @@ import System.FilePath (normalise, takeBaseName, takeDirectory, (</>))
 -- | Remove everything @kiln build@ generated, the cache included, so the
 -- next build is a full one.
 --
--- Only files kiln itself wrote are removed, never a configured directory
--- wholesale. The cache directory is the one exception, because kiln owns
--- every byte of it. Everywhere else the config names a location kiln
--- *writes into*, not one it owns: @target.post.output-dir@ may be the
--- site root beside @index.html@ (and @"."@ is a perfectly reasonable
--- value for it), and @target.fonts.subset-dir@ may be a directory of
--- other assets. Removing those recursively -- as this used to -- turned
--- a reasonable config into a command that deleted the sources, the
--- templates and the config itself. Deriving the file list from what kiln
--- recorded building makes that impossible to reach, with nothing to
--- validate up front.
+-- The file list comes from what kiln recorded building, never from
+-- listing a configured directory: the config names places kiln writes
+-- into, not ones it owns -- @target.post.output-dir@ may be the site
+-- root, @target.fonts.subset-dir@ a directory of other assets -- so a
+-- recursive remove there would take the sources and the config with it.
+-- The cache directory is the one exception, kiln owning every byte.
 kilnClean :: IO ()
 kilnClean = do
   config <- readConfig
@@ -48,9 +43,8 @@ kilnClean = do
   mapM_ removeFontSubsets (targetFonts target)
   removeDirectoryIfExists cacheDir
 
-  -- Directories kiln created to hold those files have no reason to
-  -- outlive them, so any that this emptied goes too -- but only if it is
-  -- empty, which is what keeps a shared directory intact.
+  -- Directories kiln created for those files go too, but only if this
+  -- emptied them, which is what keeps a shared directory intact.
   mapM_
     pruneIfEmpty
     ( map (takeDirectory . pageOutput) (targetPages target)
@@ -58,14 +52,14 @@ kilnClean = do
         ++ maybe [] ((: []) . fontsSubsetDir) (targetFonts target)
     )
 
--- | Remove the page kiln rendered for each of `slugs`, and nothing else
--- in the directory.
+-- | Remove only the pages kiln rendered for `slugs`, never the
+-- directory.
 removePostPages :: [String] -> PostPageConfig -> IO ()
 removePostPages slugs ppc =
   mapM_ (\slug -> removeFileIfExists (postPageOutputDir ppc </> slug ++ ".html")) slugs
 
--- | Remove the @.woff2@ each configured font source subsets to, and
--- nothing else in the directory.
+-- | Remove only the @.woff2@ each font source subsets to, never the
+-- directory.
 removeFontSubsets :: FontsConfig -> IO ()
 removeFontSubsets fonts =
   mapM_
@@ -82,10 +76,9 @@ removeDirectoryIfExists path = do
   isDir <- doesDirectoryExist path
   when isDir (removeDirectoryRecursive path)
 
--- | Remove `path` if it is a directory kiln could have created and is
--- now empty. The current directory is never removed, however the config
--- spelled it: a site whose outputs live at its root is asking for the
--- files to go, not the project.
+-- | Remove `path` if it is an empty directory -- never the current one,
+-- however the config spelled it: a site whose outputs live at its root
+-- is asking for the files to go, not the project.
 pruneIfEmpty :: FilePath -> IO ()
 pruneIfEmpty path = do
   isDir <- doesDirectoryExist path

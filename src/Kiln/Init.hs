@@ -8,9 +8,8 @@ import System.Directory (listDirectory)
 import System.Exit (die)
 import System.FilePath ((</>))
 
--- | Every template `kiln init` can scaffold -- the directory name under
--- `template/` (both here and in this package's own @data-files@)
--- doubles as its name.
+-- | Templates `kiln init` can scaffold; each name is its directory under
+-- @template\/@, here and in this package's @data-files@.
 templateNames :: [String]
 templateNames = ["default", "flow"]
 

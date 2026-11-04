@@ -1,24 +1,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <!-- Icons -->
     <link rel="icon" href="$webroot$res/kiln.png" type="image/png">
     <link rel="apple-touch-icon" href="$webroot$res/kiln.png">
     <!-- Feed: lets a reader subscribe from the site's URL alone -->
     <link rel="alternate" type="application/atom+xml" title="Kiln Example Site" href="$webroot$atom.xml">
-    <!-- Stylesheets -->
     <link id="anti-flash" href="$webroot$style/anti-flash-light.css" rel="stylesheet">
     <link href="$webroot$style/wrapper.css" rel="stylesheet">
     <link id="code-style" href="$webroot$res/latex-css-1.13.0/prism/prism-one-light.css" rel="stylesheet">
     <link id="img-invert" href="" rel="stylesheet">
 
-    <!-- Must run right after the stylesheets above, before first paint, to swap in the dark variant -->
+    <!-- Must run right after the stylesheets, before first paint: swaps in the dark variant -->
     <script src="$webroot$scripts/classic/anti-flash.js"></script>
 
     <!-- Must run before tex-chtml.js: sets window.MathJax before MathJax's own script executes -->
     <script src="$webroot$scripts/classic/mathjax-config.js"></script>
     <script src="$webroot$res/mathjax-4.0.0/tex-chtml.js" id="MathJax-script" async></script>
 
-    <!-- Feature scripts -->
     <script src="$webroot$res/latex-css-1.13.0/prism/prism.js"></script>
     <script src="$webroot$scripts/init.js" defer type="module"></script>
 

@@ -17,85 +17,71 @@ import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:), (.:?
 import System.Directory (doesFileExist)
 import System.Exit (die)
 
--- | The read-only directories kiln finds its own source material in --
--- never written to, never cleaned.
+-- | Where kiln reads from -- never written to, never cleaned.
 data InputConfig = InputConfig
   { inputSrcDir      :: FilePath
   , inputTemplateDir :: FilePath
   } deriving (Show, Eq)
 
--- | Site-wide behavior, as opposed to filesystem locations. Every field
--- here is optional with a default, unlike `TargetConfig`'s: a missing
--- `opt` key is a site that hasn't got an opinion, whereas a missing
--- `target` key is a site that hasn't said where something goes.
+-- | Site-wide behavior rather than locations. Every field is optional,
+-- unlike `TargetConfig`'s: a missing `opt` key is a site with no
+-- opinion, a missing `target` key a site that hasn't said where
+-- something goes.
 data OptConfig = OptConfig
   { optWebroot :: FilePath
   , optSiteUrl :: String
-    -- ^ the site's own origin (@"https:\/\/example.com"@), with no
-    -- trailing slash required -- the one thing a site built entirely
-    -- from `optWebroot`-relative links never had to know, and the one
-    -- thing a feed cannot do without: an entry's @\<link\>@ and @\<id\>@
+    -- ^ the site's own origin (@"https:\/\/example.com"@), trailing slash
+    -- optional. Only a feed needs it: an entry's @\<link\>@ and @\<id\>@
     -- are read on someone else's domain, where a root-relative path
-    -- resolves against the reader, not the site. Defaults to empty,
-    -- which leaves every URL exactly as relative as it is today -- so a
-    -- site generating no feed never has to state it.
+    -- resolves against the reader. Defaults to empty, leaving every URL
+    -- relative.
   , optToc     :: TocConfig
   , optPrism   :: Bool
-    -- ^ whether a fenced code block's language mark is rewritten into
-    -- the pandoc attribute form Prism's line-numbers/match-braces
-    -- plugins key off of (see
-    -- `Kiln.Build.Markdown.rewriteLanguageMarks`). Defaults to true,
-    -- matching the bundled @default@ template, which loads Prism; a
-    -- template that highlights differently, or not at all (like
-    -- @flow@), turns it off and gets pandoc's own fence handling.
+    -- ^ whether a fence's language mark is rewritten into the attribute
+    -- form Prism's plugins key off of (see
+    -- `Kiln.Build.Markdown.rewriteLanguageMarks`). Off for a template
+    -- that highlights differently or not at all (@flow@), which then
+    -- gets pandoc's own fence handling. Defaults to true, as @default@ loads
+    -- Prism.
   , optMath    :: Bool
-    -- ^ whether post pages are rendered with pandoc's @--mathjax@.
-    -- Defaults to true, matching the bundled @default@ template, which
-    -- loads MathJax; a template with no math (like @flow@) turns it off.
+    -- ^ whether post pages are rendered with pandoc's @--mathjax@. Off
+    -- for a template with no math (@flow@). Defaults to true, as @default@ loads
+    -- MathJax.
   } deriving (Show, Eq)
 
--- | Where to write subset fonts (`fontsSubsetDir`), and the font files
--- (full paths) to subset into it. A site with no local fonts to subset
--- states this as JSON @null@ instead, same as `targetPost` -- see
--- `Kiln.Build.FontSubset.subsetFonts`.
+-- | Where to write subset fonts, and the font files to subset into it.
+-- JSON @null@ for a site with no local fonts, as with `targetPost` --
+-- see `Kiln.Build.FontSubset.subsetFonts`.
 data FontsConfig = FontsConfig
   { fontsSubsetDir :: FilePath
   , fontsSources   :: [FilePath]
   } deriving (Show, Eq)
 
--- | One page to generate: its own template (a path under
--- `inputTemplateDir`), and the site-relative path to write it to. A
--- page's `pageOutput` doubles as its own identity -- two pages can't
--- share one without one silently overwriting the other's output
--- regardless of caching, so it's already a safe, unique key for the
--- page's own build cache; there's no separate name to keep in sync.
+-- | One page to generate: its template (under `inputTemplateDir`) and
+-- the site-relative path to write it to. `pageOutput` doubles as the
+-- page's identity -- two pages sharing one would overwrite each other
+-- anyway, so it is already a unique cache key with no second name to
+-- keep in sync.
 data PageConfig = PageConfig
   { pageTemplate     :: FilePath
   , pageOutput       :: FilePath
   , pageAbsoluteUrls :: Bool
-    -- ^ whether this page's @posts@ list is handed to the template with
-    -- every URL made absolute against `optSiteUrl` -- the post links
-    -- themselves, and the ones inside each post's rendered HTML (see
+    -- ^ whether this page's @posts@ list arrives with every URL made
+    -- absolute against `optSiteUrl` -- the post links and the ones
+    -- inside each post's rendered HTML (see
     -- `Kiln.Build.Page.absoluteItems`).
     --
-    -- A property of the page rather than of the content, because it's a
-    -- property of where the page is read: an HTML page is read on the
-    -- site, where a root-relative link is exactly right, while a feed is
-    -- read inside an aggregator, where the same link points at the
-    -- aggregator. So this is one setting per page instead of a second,
-    -- absolute copy of every URL-bearing field for every template to
-    -- choose between. Defaults to false.
+    -- Per page, because it is a property of where the page is read: on
+    -- the site a root-relative link is right, in an aggregator the same
+    -- link points at the aggregator. One setting, rather than a second
+    -- absolute copy of every URL-bearing field. Defaults to false.
   } deriving (Show, Eq)
 
--- | The per-post standalone page @kiln build@ renders for every
--- markdown file in `inputSrcDir`, if any -- a site like a flat
--- card-flow feed may not want one at all (see `Kiln.Config.readConfig`'s
--- caller, which requires this to be stated explicitly as either this or
--- JSON @null@, never silently defaulted). `postPageOutputDir` is a
--- directory; a post with slug @s@ is written to
--- @postPageOutputDir </> s <> ".html"@, and published at the matching
--- URL -- see `Kiln.Build.Env.postUrl`, which derives the link from this
--- rather than assuming a directory name.
+-- | The standalone page rendered per markdown file, or JSON @null@ for a
+-- site that wants none (a flat card-flow feed, say) -- stated
+-- explicitly either way, never defaulted. A post with slug @s@ lands at
+-- @postPageOutputDir </> s <> ".html"@; `Kiln.Build.Env.postUrl` derives
+-- its link from that rather than assuming a directory name.
 data PostPageConfig = PostPageConfig
   { postPageTemplate  :: FilePath
   , postPageOutputDir :: FilePath
@@ -105,26 +91,21 @@ data TocConfig = TocConfig
   { tocEnable  :: Bool
   , tocDepth   :: Int
   , tocOrdered :: Bool
-    -- ^ whether the rendered table of contents' @<ul>@s are rewritten
-    -- into @<ol>@s (see `Kiln.Build.Markdown.olify`).
-    --
-    -- Not a styling choice a stylesheet could make for itself: latex.css,
-    -- which the bundled @default@ template loads, numbers a nested toc
-    -- from CSS counters keyed on @nav ol@, and those rules don't match a
-    -- @<ul>@ at all however it's styled. So this is the same kind of
-    -- setting as `optPrism` and `optMath` -- the markup shape some
-    -- library the template loads needs -- and it lives under `toc`
-    -- because that's where someone changing the table of contents looks,
-    -- whether or not a given field happens to reach pandoc as an
-    -- argument. Defaults to true, matching @default@.
+    -- ^ whether the rendered toc's @<ul>@s become @<ol>@s (see
+    -- `Kiln.Build.Markdown.olify`). Not a choice a stylesheet could make
+    -- for itself: latex.css, which @default@ loads, numbers a nested toc
+    -- from counters keyed on @nav ol@, which no @<ul>@ matches however it
+    -- is styled. Under
+    -- `toc` because that is where someone changing the toc looks.
+    -- Defaults to true.
   } deriving (Show, Eq)
 
 -- | Everything kiln generates and `kiln clean` removes.
 data TargetConfig = TargetConfig
   { targetSearchDb :: Maybe FilePath
-    -- ^ Output path for the generated search index JSON, or JSON @null@
-    -- if the site has no search feature to feed -- same convention as
-    -- `targetPost`/`targetFonts`. See `Kiln.Build.SearchDb.writeSearchDb`.
+    -- ^ Output path for the search index JSON, or JSON @null@ for a site
+    -- with no search to feed -- see
+    -- `Kiln.Build.SearchDb.writeSearchDb`.
   , targetCacheDir :: FilePath
   , targetPost     :: Maybe PostPageConfig
   , targetPages    :: [PageConfig]

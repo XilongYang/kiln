@@ -21,8 +21,7 @@ configJson =
   \\"pages\":[{\"template\":\"index.html\",\"output\":\"dist/index.html\"}]}}"
 
 -- | A config whose post pages land at the project root, beside the
--- sources and the config itself -- a reasonable thing to want, and the
--- shape that made a recursive clean catastrophic.
+-- sources and the config -- the shape a recursive clean would wipe.
 configJsonAtRoot :: String
 configJsonAtRoot =
   "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
@@ -31,8 +30,8 @@ configJsonAtRoot =
   \\"post\":{\"template\":\"post.html\",\"output-dir\":\".\"},\
   \\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}"
 
--- | Stand in for what a build recorded: one cache entry per post it
--- rendered, which is what tells `kilnClean` which output files are its.
+-- | What a build would have recorded: the cache entries that tell
+-- `kilnClean` which outputs are its.
 recordBuilt :: FilePath -> [String] -> IO ()
 recordBuilt cacheDir slugs = do
   createDirectoryIfMissing True (cacheDir </> "stage")
@@ -78,8 +77,8 @@ spec = describe "kilnClean" $ do
 
         doesPathExist "dist/post/hello.html" `shouldReturn` False
 
-  -- The whole point of deriving the file list from what kiln recorded:
-  -- a post output directory may be shared, and used to be removed whole.
+  -- A post output directory may be shared, which is why the file list
+  -- comes from what kiln recorded rather than from the directory.
   it "leaves a file in the post output directory that it never built" $
     withTempDir $ \dir ->
       withCurrentDirectory dir $ do

@@ -14,9 +14,8 @@ spec = describe "parseFrontmatter" $ do
     parseFrontmatter (rendered "A Title" "2024-03-15" "long,image")
       `shouldBe` PostFrontmatter "A Title" "2024-03-15" "long,image"
 
-  -- Every one of these used to produce JSON that didn't parse, failing
-  -- the build on an error that named neither the field nor the post.
-  it "reads a title carrying the straight quotes that broke the old JSON" $
+  -- Characters JSON would need escaping; labelled lines need none.
+  it "reads a title carrying straight quotes" $
     fmTitle (parseFrontmatter (rendered "Using \"quotes\" in code" "2024-03-15" ""))
       `shouldBe` "Using \"quotes\" in code"
 

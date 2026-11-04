@@ -9,16 +9,10 @@ window.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        // Measured before any DOM surgery below, while `post` still holds
-        // its original markup -- this is the height collapsing is actually
-        // deciding about. Flattening `fullText` into one running paragraph
-        // can read as short even when the original is tall (e.g. a poem
-        // with one short line per `<p>`, each carrying its own paragraph
-        // margin), so the flattened preview's own overflow is not a
-        // reliable stand-in for "is the real post long". Media is hidden
-        // for this measurement only: a single image/video's min-height
-        // alone can exceed the 5-line budget, which would collapse posts
-        // that have barely any text just because they carry one picture.
+        // Measured on the original markup, before the surgery below: the
+        // flattened preview can read as short where the real post is tall
+        // (a poem of one-line `<p>`s). Media is hidden for the measurement
+        // only -- one image's min-height alone can exceed the line budget.
         var media = post.querySelectorAll(".post-image, .post-video, .post-media-grid");
         media.forEach(function (el) {
             el.style.display = "none";
@@ -45,10 +39,8 @@ window.addEventListener("DOMContentLoaded", function () {
         var overflowing = originalHeight > lineHeight * clampLines + 1;
 
         if (!overflowing) {
-            // Not collapsing: restore the original flat structure instead
-            // of leaving the `.post-full-content` wrapper in place, since
-            // that extra layer breaks CSS selectors written against
-            // `.post > p > .post-image` et al.
+            // Restore the flat structure rather than leave the wrapper:
+            // the extra layer breaks `.post > p > .post-image` et al.
             post.removeChild(preview);
             while (fullContent.firstChild) {
                 post.appendChild(fullContent.firstChild);
@@ -56,10 +48,8 @@ window.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        // The expand button lives as `preview`'s sibling, not a child
-        // appended inline after its text: a child placed past the 5th
-        // line would itself fall inside the clamp's `overflow: hidden`
-        // and never be visible or clickable.
+        // A sibling of `preview`, not a child past its 5th line: that
+        // would fall inside the clamp's `overflow: hidden`, unclickable.
         var expandButton = document.createElement("button");
         expandButton.type = "button";
         expandButton.className = "post-toggle";

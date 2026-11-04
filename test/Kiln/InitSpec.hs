@@ -7,8 +7,8 @@ import System.Directory (doesFileExist, withCurrentDirectory)
 import System.Exit (ExitCode (..))
 import Test.Hspec
 
--- Sample paths at various depths of the "default" template, used to
--- check that the whole tree (not just the top level) gets copied.
+-- Paths at various depths, so the whole tree is checked, not just the
+-- top level.
 defaultSampleFiles :: [FilePath]
 defaultSampleFiles =
   [ "template/404.html"
@@ -20,7 +20,7 @@ defaultSampleFiles =
   , "scripts/classic/anti-flash.js"
   ]
 
--- Likewise, a few sample paths from the "flow" template.
+-- Likewise for "flow".
 flowSampleFiles :: [FilePath]
 flowSampleFiles =
   [ "kiln-config.json"

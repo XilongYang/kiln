@@ -11,20 +11,15 @@ import System.FilePath (takeBaseName, takeDirectory, (</>))
 import System.IO (readFile')
 import System.Process (callProcess)
 
--- | Subset every font listed in `env`'s `fonts.sources` down to just
--- the characters the whole site's rendered HTML actually uses, writing
--- each to a predictable @<fonts.subset-dir>/<font file base name>.woff2@
--- path. style/fonts.css (hand-maintained, untouched by this) declares the
--- matching @font-face rules directly against those paths.
+-- | Subset every font in `fonts.sources` down to the characters the
+-- site's rendered HTML uses, each to
+-- @<fonts.subset-dir>\/<base name>.woff2@ -- a predictable path, since
+-- the hand-maintained style/fonts.css names it in its @\@font-face@
+-- rules. Nothing happens for a site whose `fonts` is JSON @null@.
 --
--- A site with no local fonts to subset states `fonts` as JSON @null@;
--- nothing is subset and the subset directory is never created.
---
--- `pyftsubset` scans every rendered page to determine a font's required
--- characters, so a font only needs re-subsetting when its own file, or at
--- least one of those pages, has changed since the last build (tracked via
--- `Kiln.Build.Cache`, the same way as a post's source) -- or when its
--- previous output is simply missing.
+-- The characters come from the rendered pages, so a font is re-subset
+-- only when its own file or one of those pages changed, or when its
+-- output is missing.
 subsetFonts :: BuildEnv -> [PostEntry] -> IO ()
 subsetFonts env entries = mapM_ go (envFonts env)
   where
@@ -40,33 +35,23 @@ subsetFonts env entries = mapM_ go (envFonts env)
     htmlPaths = postPaths ++ map pageOutput (envPages env)
     postPaths = [p | e <- entries, Just p <- [postOutputPath env (postSlug e)]]
 
-    -- | Pages are watched, not produced, by this step, so a changed page
-    -- has its snapshot refreshed here -- whether or not that leaves any
-    -- font needing to be re-subset.
+    -- | Pages are watched here, not produced, so a changed one has its
+    -- snapshot refreshed. Only a changed one: a fresh answer already
+    -- means the snapshot matches, and re-recording would re-hash every
+    -- page and font on every build.
     --
-    -- Only a changed one, though: `isFileFresh` answering `True` already
-    -- means the snapshot matches the file, so re-recording it would buy
-    -- nothing and cost a full hash of the file. Recording regardless was
-    -- re-hashing every rendered page and every font source on every
-    -- build -- around 11 MB on the bundled @default@ template, almost
-    -- all of it one CJK font -- and throwing away exactly the work the
-    -- mtime/size precheck exists to avoid.
-    --
-    -- The cache entry mirrors the page's own output path, the way
-    -- `Kiln.Build.Page` does: keyed on the base name alone, two pages
-    -- whose outputs merely share a name ("post/a.html" and
-    -- "about/a.html") would have shared one entry and masked each
-    -- other's changes.
+    -- The entry mirrors the page's output path, so two outputs sharing a
+    -- base name ("post/a.html", "about/a.html") can't mask each other's
+    -- changes.
     checkPage path = do
       let cache = cachePath env ["fonts", "pages", path ++ ".src"]
       fresh <- isFileFresh cache path
       unless fresh (recordFile cache path)
       pure fresh
 
-    -- | Concatenate every rendered page into one file for pyftsubset's
-    -- @--text-file@. One flag rather than one per page: the flags are a
-    -- command line, and a site of a few thousand posts would overrun the
-    -- system's limit on how long one can be.
+    -- | Every rendered page in one file for pyftsubset's @--text-file@:
+    -- a flag per page would overrun the command-line length limit on a
+    -- site of a few thousand posts.
     writeSubsetText = do
       let path = workPath env ["subset-text.txt"]
       createDirectoryIfMissing True (takeDirectory path)
@@ -91,10 +76,9 @@ readIfExists path = do
   exists <- doesFileExist path
   if exists then readFile' path else pure ""
 
--- | Warn when two configured font sources share a base name. The subset
--- output is named after it, so the second would silently overwrite the
--- first -- and since @fonts.css@ names that output by hand, renaming it
--- here would break the stylesheet instead. Saying so is the useful part.
+-- | Warn when two font sources share a base name: the outputs are named
+-- after it, so one overwrites the other. Renaming instead would break
+-- the @fonts.css@ that names it by hand.
 warnOnSharedBaseNames :: [FilePath] -> IO ()
 warnOnSharedBaseNames sources =
   mapM_ complain (duplicates (sort (map takeBaseName sources)))
@@ -112,9 +96,8 @@ warnOnSharedBaseNames sources =
             ++ ".woff2 and only the last one survives"
         )
 
--- | Run `pyftsubset` (from the `fonttools` package) against `fontPath`
--- (which must already exist), writing the characters covered by
--- `textFile` to `woffPath` as WOFF2.
+-- | Run @pyftsubset@ (from @fonttools@) over `fontPath`, writing the
+-- characters `textFile` covers to `woffPath` as WOFF2.
 subsetFont :: FilePath -> FilePath -> FilePath -> IO ()
 subsetFont fontPath woffPath textFile =
   callProcess

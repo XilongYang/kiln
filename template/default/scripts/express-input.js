@@ -1,16 +1,13 @@
 import {expressionValidate, expressionParse} from './express-matcher.js'
 
-// A contenteditable box holding a search expression: reading back what was
-// typed, marking a bad character in place, and committing on Enter or on blur.
-// The post filter and the search panel each drive one, so the
-// read -> validate -> report -> parse cycle lives here and a caller only says
-// what to do with the tree that comes out.
+// A contenteditable box holding a search expression: read it back, mark a bad
+// character in place, commit on Enter or blur. The post filter and the search
+// panel each drive one, so a caller only says what to do with the tree.
 
 // What the user typed. The error tooltip is a child of the box, hidden by CSS
-// alone, so its text is skipped here rather than read back as part of the
-// expression -- a commit may run while the error is still shown. A
-// contenteditable also keeps a NBSP where a plain space would not survive as
-// markup, so fold those back.
+// alone, so its text is skipped rather than read back as part of the
+// expression. A contenteditable keeps NBSP where a plain space would not
+// survive as markup, so fold it back.
 function inputText(el) {
     var text = ""
     for (var node of el.childNodes) {
@@ -33,9 +30,9 @@ function moveCursorToEnd(target) {
     selection.addRange(range);
 }
 
-// Built as nodes rather than as a string: the expression is shown back to the
-// user inside the box it came from, so anything that looks like a tag has to
-// stay text. "C++ & vector<int> &" lost its <int> when this was innerHTML.
+// Nodes rather than a string: the expression is shown back inside the box it
+// came from, so anything tag-shaped has to stay text -- as innerHTML,
+// "C++ & vector<int> &" loses its <int>.
 function showError(el, info) {
     var errorMsg = document.createElement('span')
     errorMsg.className = 'error-msg'
@@ -96,15 +93,13 @@ function commitExpression(el, apply) {
 // through the expression again. Returns the two ways a caller drives the box
 // outside of those events: commit reads it, refresh does not.
 function bindExpressionInput(el, apply) {
-    // The expression as of the last commit, or null once focus has wiped an
-    // error marker. A commit replaces what it produced, which would cancel a
-    // click landing on that output, so blurring on an unchanged expression
-    // commits nothing.
+    // The expression as of the last commit, or null once focus wiped an error
+    // marker. A commit replaces apply's output, cancelling a click landing on
+    // it, so an unchanged expression commits nothing on blur.
     var lastText = null
 
-    // The tree of the last expression that was actually applied, so it can be
-    // applied again without reading the box. A rejected expression leaves it
-    // alone, which is why apply is wrapped rather than called directly.
+    // The last applied tree, so it can be applied again without reading the
+    // box. A rejected expression leaves it alone, hence the wrapper.
     var lastTree = null
     const record = tree => {
         lastTree = tree
@@ -134,9 +129,8 @@ function bindExpressionInput(el, apply) {
             moveCursorToEnd(el)
         }
 
-        // Deleting the last character leaves a <br> behind, and the box counts
-        // as :empty only while it has no children at all -- which is the one
-        // thing holding the placeholder up.
+        // Deleting the last character leaves a <br>, and only a box with no
+        // children at all counts as :empty -- which the placeholder needs.
         if (el.textContent == "" && el.childNodes.length > 0) {
             el.innerHTML = ""
             moveCursorToEnd(el)
@@ -159,9 +153,9 @@ function bindExpressionInput(el, apply) {
     return {
         // Read the box and apply what it says.
         commit,
-        // Apply the last committed expression again, leaving the box untouched:
-        // for when what apply draws on has changed rather than the expression.
-        // Reading the box here would report an error over a half-typed one.
+        // Apply the last committed expression again, box untouched: for when
+        // what apply draws on changed rather than the expression. Reading the
+        // box would report an error over a half-typed one.
         refresh: () => apply(lastTree),
     }
 }

@@ -20,14 +20,12 @@ instance ToJSON SearchEntry where
       , "content" .= searchContent e
       ]
 
--- | Build the searchdb.json array (title/url/content per post) from each
--- post's `PostEntry` paired with its plain-text content, and write it to
--- `env`'s search-db output path -- or do nothing if the site has no
--- search feature to feed (`envSearchDb` is JSON @null@).
+-- | Write the search index -- title, url and plain-text content per post
+-- -- or nothing at all for a site with no search to feed.
 --
--- The array is in the order `Kiln.Build.Post.renderPosts` returns, which
--- is sorted by source file name, so rebuilding an unchanged site rewrites
--- a byte-identical file.
+-- Kept in `Kiln.Build.Post.renderPosts`' order, which is sorted by
+-- source file name, so rebuilding an unchanged site rewrites a
+-- byte-identical file.
 writeSearchDb :: BuildEnv -> [(PostEntry, String)] -> IO ()
 writeSearchDb env entries =
   case envSearchDb env of

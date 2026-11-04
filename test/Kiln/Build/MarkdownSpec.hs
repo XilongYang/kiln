@@ -3,14 +3,14 @@ module Kiln.Build.MarkdownSpec (spec) where
 import Kiln.Build.Markdown (absolutizeUrls, olify, rewriteLanguageMarks, splitAbstract, splitFrontmatter)
 import Test.Hspec
 
--- | `absolutizeUrls` as a feed page calls it: against a site at
--- @https:\/\/example.com@ whose posts are published under @\/post\/@,
--- rewriting the body of the post at @\/post\/a.html@.
+-- | `absolutizeUrls` as a feed page calls it: a site at
+-- @https:\/\/example.com@ with posts under @\/post\/@, rewriting the body
+-- of @\/post\/a.html@.
 absolutize :: String -> String
 absolutize = absolutizeUrls siteAbsolute (Just "https://example.com/post/a.html")
 
--- | A site-relative path as `Kiln.Build.Env.absoluteUrl` would resolve
--- it for that site.
+-- | A site-relative path as `Kiln.Build.Env.absoluteUrl` resolves it for
+-- a site at @https:\/\/example.com@.
 siteAbsolute :: String -> String
 siteAbsolute path = "https://example.com/" ++ dropWhile (== '/') path
 
@@ -37,10 +37,8 @@ spec = do
       rewriteLanguageMarks "```c++\nint main();\n```\n"
         `shouldBe` attrs "c++" ++ "\nint main();\n```\n"
 
-    -- Splicing into an info string that already carried attributes
-    -- produced a nested attribute block, which pandoc rendered as a
-    -- paragraph of inline code -- losing the entire code block, with a
-    -- zero exit status and no warning.
+    -- Splicing into attributes already there nests them, which pandoc
+    -- renders as inline code -- losing the block, and silently.
     it "leaves a fence whose info string already carries pandoc attributes alone" $
       rewriteLanguageMarks "```python {.numberLines}\nx = 1\n```\n"
         `shouldBe` "```python {.numberLines}\nx = 1\n```\n"
@@ -49,8 +47,8 @@ spec = do
       rewriteLanguageMarks "```haskell ghci\nx\n```\n"
         `shouldBe` "```haskell ghci\nx\n```\n"
 
-    -- A post about markdown quotes fences inside a longer fence. Those
-    -- are the post's content, not markup for the builder to rewrite.
+    -- A post about markdown quotes fences inside a longer fence: its
+    -- content, not markup for the builder.
     it "leaves a fence quoted inside a longer fence alone" $
       rewriteLanguageMarks "````\n```python\nx = 1\n```\n````\n"
         `shouldBe` "````\n```python\nx = 1\n```\n````\n"
@@ -80,8 +78,8 @@ spec = do
       splitAbstract "intro\n\n  <!--more-->  \n\nbody\n"
         `shouldBe` (Just "intro", "\n\nbody\n")
 
-    -- The marker is an instruction only in prose; inside a fence it is
-    -- part of the HTML the post is showing its reader.
+    -- An instruction only in prose; inside a fence it is HTML the post
+    -- is showing its reader.
     it "ignores a marker inside a fenced code block" $
       splitAbstract "intro\n\n```html\n<!--more-->\n```\n\nbody\n"
         `shouldBe` (Nothing, "intro\n\n```html\n<!--more-->\n```\n\nbody\n")
@@ -132,9 +130,8 @@ spec = do
       absolutize "<p><img src=\"imgs/a.png\"></p>"
         `shouldBe` "<p><img src=\"https://example.com/post/imgs/a.png\"></p>"
 
-    -- Every footnote reference and back-link pandoc generates is one of
-    -- these, and in a reader the page they'd resolve against is the
-    -- reader's own.
+    -- Every footnote pandoc generates is one, and in a reader these
+    -- would resolve against the reader's own page.
     it "resolves a bare fragment against the post's own page" $
       absolutize "<p><a href=\"#fn1\">1</a></p>"
         `shouldBe` "<p><a href=\"https://example.com/post/a.html#fn1\">1</a></p>"
@@ -154,14 +151,14 @@ spec = do
       absolutize "<p><img src='/res/a.png'></p>"
         `shouldBe` "<p><img src='https://example.com/res/a.png'></p>"
 
-    -- `href` is a suffix of plenty of attribute names that hold
-    -- something else entirely; only a whole attribute name counts.
+    -- `href` is a suffix of attribute names holding something else
+    -- entirely; only a whole name counts.
     it "leaves an attribute that merely ends in a url attribute's name alone" $
       absolutize "<p><a data-href=\"/res/a.png\">x</a></p>"
         `shouldBe` "<p><a data-href=\"/res/a.png\">x</a></p>"
 
-    -- An alt or title beginning with a slash is prose, and rewriting it
-    -- would corrupt text the reader displays.
+    -- An alt or title beginning with a slash is prose the reader
+    -- displays.
     it "leaves an attribute that isn't a url alone, however its value starts" $
       absolutize "<p><img src=\"/res/a.png\" alt=\"/usr/bin/env\"></p>"
         `shouldBe` "<p><img src=\"https://example.com/res/a.png\" alt=\"/usr/bin/env\"></p>"
@@ -170,9 +167,8 @@ spec = do
       absolutize "<p>write it as src=\"/res/a.png\" to embed it</p>"
         `shouldBe` "<p>write it as src=\"/res/a.png\" to embed it</p>"
 
-    -- A post *about* HTML is the one this would otherwise corrupt: in a
-    -- code block the markup is already escaped, so there is no tag here
-    -- at all -- just text that reads like one.
+    -- In a code block the markup is already escaped: no tag at all,
+    -- just text that reads like one.
     it "leaves the HTML a post quotes in a code block alone" $
       absolutize "<pre><code>&lt;img src=\"/res/a.png\"&gt;</code></pre>"
         `shouldBe` "<pre><code>&lt;img src=\"/res/a.png\"&gt;</code></pre>"
@@ -188,9 +184,8 @@ spec = do
     it "leaves a body with no urls in it untouched" $
       absolutize "<p>nothing here</p>" `shouldBe` "<p>nothing here</p>"
 
-    -- A site rendering no standalone post pages has no base to resolve
-    -- these against; a link that still points where it always did beats
-    -- a confidently wrong one.
+    -- No post pages means no base to resolve against, and a link that
+    -- still points where it did beats a confidently wrong one.
     it "leaves relative urls alone for a post with no page of its own" $
       absolutizeUrls siteAbsolute Nothing "<p><a href=\"#fn1\">1</a><img src=\"a.png\"></p>"
         `shouldBe` "<p><a href=\"#fn1\">1</a><img src=\"a.png\"></p>"
@@ -199,8 +194,7 @@ spec = do
       absolutizeUrls siteAbsolute Nothing "<p><img src=\"/res/a.png\"></p>"
         `shouldBe` "<p><img src=\"https://example.com/res/a.png\"></p>"
 
-    -- A site that declared no origin: there is nothing to absolutize
-    -- against, and `Kiln.Build.Env.absoluteUrl` hands back what it got.
+    -- No origin declared, so there is nothing to absolutize against.
     it "leaves every url alone for a site with no declared origin" $
       absolutizeUrls id (Just "/post/a.html") "<p><img src=\"/res/a.png\"><a href=\"#fn1\">1</a></p>"
         `shouldBe` "<p><img src=\"/res/a.png\"><a href=\"/post/a.html#fn1\">1</a></p>"

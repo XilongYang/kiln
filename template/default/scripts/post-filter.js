@@ -5,8 +5,6 @@ import {bindExpressionInput} from './express-input.js'
 // its own events.
 var filterInput = {commit: () => {}}
 
-// ============= Private Method =================
-
 // A null tree means an empty expression: every post matches. A year heading
 // goes away with the last post under it.
 function applyFilter(matchTree) {
@@ -22,8 +20,6 @@ function applyFilter(matchTree) {
         postYear.style.display = atLeastOne ? 'block' : 'none'
     }
 }
-
-// ==============================================
 
 function toggleInput() {
     var filterIcon = document.getElementById("post-filter")

@@ -12,8 +12,8 @@ spec = do
       postUrl (testEnv "/" (Just (PostPageConfig "post.html" "post"))) "slug"
         `shouldBe` Just "/post/slug.html"
 
-    -- The directory used to be assumed to be "post", so every link on
-    -- the site 404'd as soon as the config named a different one.
+    -- Assuming "post" instead would 404 every link on a site that
+    -- named a different directory.
     it "follows the output directory wherever the config points it" $
       postUrl (testEnv "/" (Just (PostPageConfig "post.html" "articles"))) "slug"
         `shouldBe` Just "/articles/slug.html"
@@ -26,8 +26,7 @@ spec = do
       postUrl (testEnv "/blog/" (Just (PostPageConfig "post.html" "post"))) "slug"
         `shouldBe` Just "/blog/post/slug.html"
 
-    -- A webroot without its trailing slash used to be concatenated
-    -- straight onto the path, producing "/blogpost/slug.html".
+    -- Plain concatenation would produce "/blogpost/slug.html".
     it "joins a webroot spelled without a trailing slash" $
       postUrl (testEnv "/blog" (Just (PostPageConfig "post.html" "post"))) "slug"
         `shouldBe` Just "/blog/post/slug.html"

@@ -24,8 +24,7 @@ import Test.Hspec
 inputOptPrefix :: String -> String
 inputOptPrefix webroot = inputOptFields ("\"webroot\":\"" ++ webroot ++ "\"")
 
--- | `inputOptPrefix`, plus the site's own origin -- the one setting a
--- feed page needs and an on-site page never did.
+-- | `inputOptPrefix`, plus the origin only a feed page needs.
 inputOptWithOrigin :: String -> String -> String
 inputOptWithOrigin webroot siteUrl =
   inputOptFields ("\"webroot\":\"" ++ webroot ++ "\",\"site-url\":\"" ++ siteUrl ++ "\"")
@@ -44,9 +43,8 @@ configJson =
   "\"target\":{\"searchdb\":\"searchdb.json\",\"cache-dir\":\".cache\",\"fonts\":null," ++ postConfigField ++
   "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}"
 
--- | `configJson`, plus a second configured page (a stand-in for a 404
--- page, with a distinct output to prove `kilnBuild` renders every
--- configured page generically, not just one hardcoded as "the index").
+-- | `configJson`, plus a second page with its own output, so pages are
+-- proven to be rendered generically rather than as "the index".
 configJsonWithExtraPage :: String
 configJsonWithExtraPage =
   "{" ++ inputOptPrefix "/blog/" ++
@@ -74,9 +72,8 @@ postTemplate =
 navbarComponent :: String
 navbarComponent = "<nav><a href=\"$webroot$\">THE-NAVBAR</a></nav>"
 
--- | A feed template, in the one shape that distinguishes a feed from
--- every other page: the post urls and the urls inside the post bodies
--- both have to be absolute.
+-- | A feed template: what distinguishes one is that the post urls and
+-- the urls inside the post bodies must both be absolute.
 feedTemplate :: String
 feedTemplate =
   "<feed>\n\
@@ -85,9 +82,8 @@ feedTemplate =
   \$endfor$\n\
   \</feed>"
 
--- | `configJson`, plus a feed page beside the index -- the feed asking
--- for absolute urls and the index not, in one build, so that the setting
--- is proven to be the page's own rather than the site's.
+-- | `configJson`, plus a feed asking for absolute urls beside an index
+-- that doesn't, so the setting is proven to be the page's own.
 configJsonWithFeed :: String
 configJsonWithFeed =
   "{" ++ inputOptWithOrigin "/blog/" "https://example.com" ++
@@ -95,9 +91,8 @@ configJsonWithFeed =
   "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"},\
   \{\"template\":\"atom.xml\",\"output\":\"atom.xml\",\"absolute-urls\":true}]}}"
 
--- | `setUpProject`, with a feed configured and a post whose body
--- carries the urls a feed has to rewrite: one root-relative, one
--- already absolute.
+-- | `setUpProject`, with a feed and a post carrying both urls a feed
+-- has to tell apart: one root-relative, one already absolute.
 setUpProjectWithFeed :: IO ()
 setUpProjectWithFeed = do
   setUpProject
@@ -144,10 +139,8 @@ configJsonWithFont =
   \\"fonts\":{\"subset-dir\":\"fonts-subset\",\"sources\":[\"fonts/" ++ fontFileName ++ "\"]}," ++ postConfigField ++
   "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}"
 
--- | `setUpProject`, plus a real font (borrowed from the shipped
--- default template, via the same `Paths_kiln` data-dir lookup `Init`
--- uses) declared in `kiln-config.json`, so `subsetFonts` has something
--- to actually subset.
+-- | `setUpProject`, plus a real font from the shipped default template,
+-- so `subsetFonts` has something to subset.
 setUpProjectWithFont :: IO ()
 setUpProjectWithFont = do
   setUpProject
@@ -156,11 +149,9 @@ setUpProjectWithFont = do
   fontSrc <- getDataFileName ("template/default/res/fonts/" ++ fontFileName)
   copyFile fontSrc ("fonts/" ++ fontFileName)
 
--- | Run `action` with `exe`'s directory removed from @PATH@, so that any
--- step of `kilnBuild` that actually tries to invoke `exe` (i.e. any
--- cache miss affecting it) fails instead of silently succeeding -- the
--- cleanest way to prove a given build served everything from cache
--- without having to inspect logs or stub the executable out.
+-- | Run `action` with `exe`'s directory off @PATH@: a build that invokes
+-- `exe` at all then fails, which proves a cache hit without inspecting
+-- logs or stubbing the executable out.
 withoutExecutable :: String -> IO a -> IO a
 withoutExecutable exe action = do
   original <- lookupEnv "PATH"
@@ -200,8 +191,7 @@ spec = describe "kilnBuild" $ do
         indexHtml `shouldSatisfy` ("$for(posts)$" `notIsInfixOf`)
         indexHtml `shouldSatisfy` ("$webroot$" `notIsInfixOf`)
         indexHtml `shouldSatisfy` ("<h3>2024</h3>" `isInfixOf`)
-        -- Newer post's abstract (before its <!--more--> marker) and full
-        -- content (including the text after it) must both reach the page.
+        -- Abstract and full content both reach the page.
         indexHtml `shouldSatisfy` ("abstract=[<p>\nNewer intro.\n</p>]" `isInfixOf`)
         indexHtml `shouldSatisfy` ("content=[<p>\nNewer body.\n</p>]" `isInfixOf`)
         -- A post with no <!--more--> marker has no abstract at all.
@@ -219,8 +209,8 @@ spec = describe "kilnBuild" $ do
             seUrl e `shouldBe` Just "/blog/post/Newer_Post.html"
             seContent e `shouldSatisfy` ("Newer body." `isInfixOf`)
 
-        -- The build's scratch space lives under the cache dir, inside the
-        -- boundary the config declares, and does not outlive the build.
+        -- Scratch space stays inside the cache dir the config declares,
+        -- and does not outlive the build.
         doesDirectoryExist ".temp" `shouldReturn` False
         doesDirectoryExist ".cache/work" `shouldReturn` False
         doesDirectoryExist ".cache" `shouldReturn` True
@@ -304,8 +294,8 @@ spec = describe "kilnBuild" $ do
 
         feed <- readFile "atom.xml"
         feed `shouldSatisfy` ("<id>https://example.com/blog/post/Newer_Post.html</id>" `isInfixOf`)
-        -- The post body's own urls: the root-relative one joined onto the
-        -- origin, the external one left exactly as the post wrote it.
+        -- The body's own urls: root-relative joined onto the origin, the
+        -- external one left as written.
         feed `shouldSatisfy` ("src=\"https://example.com/res/a.png\"" `isInfixOf`)
         feed `shouldSatisfy` ("href=\"https://pandoc.org\"" `isInfixOf`)
         feed `shouldSatisfy` ("src=\"/res/a.png\"" `notIsInfixOf`)

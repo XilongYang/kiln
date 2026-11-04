@@ -6,8 +6,8 @@ import qualified Kiln.FileTree as FileTree
 import System.Directory (getTemporaryDirectory, removeFile)
 import System.IO (hClose, openTempFile)
 
--- | Create a fresh empty directory under the system temp root for the
--- duration of the action, then remove it afterwards.
+-- | A fresh empty directory under the system temp root, removed
+-- afterwards.
 withTempDir :: (FilePath -> IO a) -> IO a
 withTempDir action = do
   tmpRoot <- getTemporaryDirectory
@@ -16,12 +16,11 @@ withTempDir action = do
   removeFile path
   FileTree.withTempDir path action
 
--- | A `BuildEnv` for the pure parts of the builder, built directly
--- rather than through `Kiln.Build.Env.mkBuildEnv`, which reads a whole
--- `Kiln.Config.KilnConfig` a test of a pure function has no reason to
--- assemble. Only the webroot and the post page config vary across the
--- tests that use it; everything else is a placeholder a test needing
--- something else (an `envSiteUrl`, say) overrides by record update.
+-- | A `BuildEnv` built directly rather than through
+-- `Kiln.Build.Env.mkBuildEnv`, which would want a whole
+-- `Kiln.Config.KilnConfig` a pure test has no reason to assemble. Only
+-- the webroot and post page config vary; a test needing more overrides
+-- by record update.
 testEnv :: String -> Maybe PostPageConfig -> BuildEnv
 testEnv webroot post =
   BuildEnv

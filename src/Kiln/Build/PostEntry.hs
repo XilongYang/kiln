@@ -14,41 +14,32 @@ import Data.List (find, isPrefixOf)
 import Kiln.Str (trim)
 import System.IO (readFile')
 
--- | A post's title, date and tags, as pulled from its markdown
--- frontmatter by pandoc via `frontmatterTemplate`. Kept separate from
--- `PostEntry`: these come straight back out of the source document,
--- whereas `PostEntry`'s `postAbstract`/`postContent` are rendered HTML.
+-- | A post's title, date and tags, as pandoc pulls them out of its
+-- frontmatter. Separate from `PostEntry`, whose `postAbstract` and
+-- `postContent` are rendered HTML rather than source values.
 data PostFrontmatter = PostFrontmatter
   { fmTitle :: String
   , fmDate  :: String -- ^ "YYYY-MM-DD"
   , fmTags  :: String -- ^ comma-joined frontmatter @tags@ (e.g. "long,image"), or "" if unset
   } deriving (Show, Eq)
 
--- | The label each frontmatter field is printed under by
--- `frontmatterTemplate` and found again by `parseFrontmatter`.
+-- | The labels `frontmatterTemplate` prints under and
+-- `parseFrontmatter` finds again.
 titleLabel, dateLabel, tagsLabel :: String
 titleLabel = "kiln-title:"
 dateLabel = "kiln-date:"
 tagsLabel = "kiln-tags:"
 
--- | pandoc template text that prints a post's frontmatter title, date
--- and tags, each on its own labelled line.
+-- | pandoc template printing a post's title, date and tags, each on its
+-- own labelled line.
 --
--- Deliberately not JSON. This used to be a hand-built JSON object with
--- the values interpolated into it, which meant any value carrying a
--- character JSON escapes produced a document that didn't parse -- a
--- straight quote surviving pandoc's smart quotes (one inside a code
--- span, say), or the newlines of a multi-line YAML block scalar -- and
--- the build died on an aeson error naming neither the field nor the
--- post. Labelled lines need no escaping whatsoever: a value is whatever
--- follows its label, and one that runs onto further lines simply keeps
--- what precedes the next label.
+-- Labelled lines rather than JSON, which needs escaping: a value is
+-- whatever follows its label, so a straight quote or a multi-line block
+-- scalar can't produce a document that doesn't parse.
 --
--- @tags@ is printed through @$for$@ so that both spellings a post might
--- use -- a bare string @tags: long,image@ and a YAML list
--- @tags: [long, image]@ -- come out as the same comma-separated value;
--- interpolating @$tags$@ directly concatenated a list's items with no
--- separator at all.
+-- @tags@ goes through @$for$@ so a bare @tags: long,image@ and a YAML
+-- list @tags: [long, image]@ come out the same; @$tags$@ alone
+-- concatenates a list with no separator.
 frontmatterTemplate :: String
 frontmatterTemplate =
   unlines
@@ -57,8 +48,8 @@ frontmatterTemplate =
     , tagsLabel ++ " $for(tags)$$tags$$sep$,$endfor$"
     ]
 
--- | Read a rendered `frontmatterTemplate` back. A field whose label is
--- absent reads as empty, exactly as an unset frontmatter key does.
+-- | Read a rendered `frontmatterTemplate` back. A missing label reads as
+-- empty, exactly as an unset frontmatter key does.
 parseFrontmatter :: String -> PostFrontmatter
 parseFrontmatter rendered =
   PostFrontmatter
@@ -103,7 +94,6 @@ instance FromJSON PostEntry where
       <*> o .: "abstract"
       <*> o .: "content"
 
--- | Parse a `PostEntry` previously written by `Data.Aeson.encodeFile`
--- (kiln's own cached entry json -- see `Kiln.Build.Post`).
+-- | Read back a cached entry written by `Kiln.Build.Post`.
 loadPostEntry :: FilePath -> IO PostEntry
 loadPostEntry jsonPath = either fail pure =<< eitherDecodeFileStrict jsonPath

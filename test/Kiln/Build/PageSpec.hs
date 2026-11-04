@@ -14,8 +14,7 @@ listAt webroot = postListItems (envAt webroot)
 envAt :: String -> BuildEnv
 envAt webroot = testEnv webroot (Just (PostPageConfig "post.html" "post"))
 
--- | `envAt`, for a site that has also declared its own origin -- as a
--- site generating a feed must.
+-- | `envAt`, plus the origin a site generating a feed must declare.
 envWithOrigin :: String -> BuildEnv
 envWithOrigin webroot = (envAt webroot) {envSiteUrl = "https://example.com/"}
 
@@ -98,8 +97,8 @@ postListItemsSpec = describe "postListItems" $ do
     map itemUrl (postListItems (testEnv "/" Nothing) [entry "Only Post" "2024-03-15" "only-post"])
       `shouldBe` [Nothing]
 
-  -- A feed's own <updated> is the newest post's date, which a template
-  -- can only pick out if the newest post says it is the newest.
+  -- A feed's <updated> is the newest post's date, which a template can
+  -- only pick out if that post says it is the newest.
   it "marks the newest post first and the oldest last, across years" $
     map (\i -> (itemTitle i, itemFirst i, itemLast i))
       (listAt "/" [entry "Old" "2023-01-01" "old", entry "Mid" "2024-01-01" "mid", entry "New" "2025-01-01" "new"])
@@ -109,9 +108,8 @@ postListItemsSpec = describe "postListItems" $ do
     map (\i -> (itemFirst i, itemLast i)) (listAt "/" [entry "Only" "2024-03-15" "only"])
       `shouldBe` [(True, True)]
 
--- | One post of a site whose body carries each kind of URL a rendered
--- post can: root-relative, document-relative, a bare fragment, and one
--- that is already absolute.
+-- | A post whose body carries every kind of URL: root-relative,
+-- document-relative, a bare fragment, and one already absolute.
 linkedEntry :: PostEntry
 linkedEntry =
   (entry "Linked Post" "2024-03-15" "linked-post")
@@ -150,10 +148,9 @@ absoluteItemsSpec = describe "absoluteItems" $ do
             itemContent item `shouldSatisfy` elem "https://example.com/res/a.png" . attrValues
           items -> expectationFailure ("expected exactly one item, got " ++ show (length items))
 
-  -- A site generating a feed without declaring its origin is
-  -- misconfigured, and this can't invent the missing half: what it can
-  -- still resolve (against the post's own page) it does, and what needs
-  -- an origin it leaves exactly as relative as it found it.
+  -- Nothing here can invent the missing origin: what resolves against
+  -- the post's own page still does, the rest stays as relative as it
+  -- was.
   it "resolves only what it can for a site that declared no origin" $
     case absoluteItems (envAt "/") (postListItems (envAt "/") [linkedEntry]) of
       [item] -> do

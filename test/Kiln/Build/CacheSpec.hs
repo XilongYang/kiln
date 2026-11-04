@@ -116,10 +116,8 @@ spec = do
           later <- componentsFingerprint "."
           later `shouldNotBe` earlier
 
-    -- Plain concatenation left the boundaries between files invisible,
-    -- so this edit produced an identical fingerprint -- and every page
-    -- kept its cache and its stale output, even though the two partials
-    -- are spliced at different places in the template.
+    -- Plain concatenation leaves this edit invisible, though the two
+    -- partials are spliced at different places in the template.
     it "distinguishes a block moved from one component's tail to the next's head" $
       withTempDir $ \dir ->
         withCurrentDirectory dir $ do

@@ -65,10 +65,9 @@ function openPanel() {
             if (loading != null) {
                 loading.style.display = "none"
             }
-            // An expression committed while the db was still empty matched
-            // nothing; list it again now that there is something to match. A
-            // refresh rather than a commit, so a db that lands mid-typing does
-            // not report an error over a half-typed expression.
+            // An expression committed against the empty db matched nothing;
+            // run it again. A refresh, not a commit, so a db landing
+            // mid-typing reports no error over a half-typed expression.
             searchInput.refresh()
         })
     }
@@ -121,9 +120,9 @@ function show(post, content) {
     document.getElementById("search-result").appendChild(result)
 }
 
-// A snippet is one line, so a line break and the indentation hugging it collapse
-// into a single space. Done when a piece is emitted, never on the content being
-// measured, so offsets stay valid.
+// A snippet is one line, so a break and the indentation hugging it collapse to
+// a space. Only on an emitted piece, never on measured content, so offsets
+// stay valid.
 function escapeText(text) {
     return escapeHtml(text.replace(/\s*\n\s*/g, ' '))
 }
