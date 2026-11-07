@@ -9,11 +9,13 @@ module Kiln.Config
   , TocConfig (..)
   , PageConfig (..)
   , PostPageConfig (..)
+  , configErrors
   , readConfig
   ) where
 
 import Control.Monad (unless)
 import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:), (.:?), (.!=))
+import Data.List (dropWhileEnd, intercalate)
 import System.Directory (doesFileExist)
 import System.Exit (die)
 
@@ -31,10 +33,9 @@ data OptConfig = OptConfig
   { optWebroot :: FilePath
   , optSiteUrl :: String
     -- ^ the site's own origin (@"https:\/\/example.com"@), trailing slash
-    -- optional. Only a feed needs it: an entry's @\<link\>@ and @\<id\>@
-    -- are read on someone else's domain, where a root-relative path
-    -- resolves against the reader. Defaults to empty, leaving every URL
-    -- relative.
+    -- optional. Only a page asking for @absolute-urls@ needs it, and
+    -- `configErrors` rejects an empty one once a page does. Defaults to
+    -- empty.
   , optToc     :: TocConfig
   , optPrism   :: Bool
     -- ^ whether a fence's language mark is rewritten into the attribute
@@ -181,12 +182,25 @@ instance FromJSON KilnConfig where
 configFileName :: FilePath
 configFileName = "kiln-config.json"
 
+-- | Everything wrong with a parsed config, one message per problem.
+configErrors :: KilnConfig -> [String]
+configErrors cfg =
+  [ "\"" ++ pageOutput page ++ "\" asks for \"absolute-urls\", but opt.\"site-url\" is empty"
+  | null (dropWhileEnd (== '/') (optSiteUrl (configOpt cfg)))
+  , page <- targetPages (configTarget cfg)
+  , pageAbsoluteUrls page
+  ]
+
 readConfig :: IO KilnConfig
 readConfig = do
   exists <- doesFileExist configFileName
   unless exists $ die missingErrMsg
   result <- eitherDecodeFileStrict configFileName
-  either (die . parseErrMsg) pure result
+  cfg <- either (die . parseErrMsg) pure result
+  case configErrors cfg of
+    []   -> pure cfg
+    errs -> die (intercalate "\n" (map prefixed errs))
   where
     missingErrMsg = configFileName ++ " not found"
     parseErrMsg err = "Failed to parse " ++ configFileName ++ ": " ++ err
+    prefixed err = configFileName ++ ": " ++ err

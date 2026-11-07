@@ -5,6 +5,7 @@ module Kiln.ConfigSpec (spec) where
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy.Char8 as BLC
 import Kiln.Config
 import Kiln.TestUtil (withTempDir)
 import System.Directory (withCurrentDirectory)
@@ -19,6 +20,30 @@ validJson =
   \\"fonts\":{\"subset-dir\":\"fonts-subset\",\"sources\":[\"fonts/a.ttf\"]},\
   \\"post\":{\"template\":\"post.html\",\"output-dir\":\"post\"},\
   \\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}"
+
+-- | A config with `optFields` added to its @opt@ and `pages` as its
+-- @target.pages@.
+configJson :: String -> String -> ByteString
+configJson optFields pages =
+  BLC.pack
+    ( "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+      \\"opt\":{\"webroot\":\"/\""
+        ++ optFields
+        ++ "},\"target\":{\"searchdb\":null,\"cache-dir\":\"cache\",\
+           \\"fonts\":null,\"post\":null,\"pages\":["
+        ++ pages
+        ++ "]}}"
+    )
+
+-- | `configErrors` on what `configJson` builds.
+errorsWith :: String -> String -> Either String [String]
+errorsWith optFields pages = configErrors <$> eitherDecode (configJson optFields pages)
+
+feedPage :: String
+feedPage = "{\"template\":\"atom.xml\",\"output\":\"atom.xml\",\"absolute-urls\":true}"
+
+originlessFeedErr :: String
+originlessFeedErr = "\"atom.xml\" asks for \"absolute-urls\", but opt.\"site-url\" is empty"
 
 expectedConfig :: KilnConfig
 expectedConfig =
@@ -125,6 +150,26 @@ spec = do
         Left err -> expectationFailure err
         Right cfg -> targetSearchDb (configTarget cfg) `shouldBe` Nothing
 
+  describe "configErrors" $ do
+    it "accepts a feed page on a site that declared an origin" $
+      errorsWith ",\"site-url\":\"https://example.com\"" feedPage `shouldBe` Right []
+
+    it "accepts a site with no origin and no page asking for one" $
+      errorsWith "" "{\"template\":\"index.html\",\"output\":\"index.html\"}" `shouldBe` Right []
+
+    it "reports a page asking for absolute urls the site has no origin for" $
+      errorsWith "" feedPage `shouldBe` Right [originlessFeedErr]
+
+    it "reports every such page, not just the first" $
+      errorsWith "" (feedPage ++ ",{\"template\":\"rss.xml\",\"output\":\"rss.xml\",\"absolute-urls\":true}")
+        `shouldBe` Right
+          [ originlessFeedErr
+          , "\"rss.xml\" asks for \"absolute-urls\", but opt.\"site-url\" is empty"
+          ]
+
+    it "counts an origin of nothing but slashes as none declared" $
+      errorsWith ",\"site-url\":\"/\"" feedPage `shouldBe` Right [originlessFeedErr]
+
   describe "readConfig" $ do
     it "dies when kiln-config.json is missing" $
       withTempDir $ \dir ->
@@ -135,6 +180,12 @@ spec = do
       withTempDir $ \dir ->
         withCurrentDirectory dir $ do
           writeFile "kiln-config.json" "{not valid json"
+          readConfig `shouldThrow` (== ExitFailure 1)
+
+    it "dies when a page asks for absolute urls and the site declared no origin" $
+      withTempDir $ \dir ->
+        withCurrentDirectory dir $ do
+          BL.writeFile "kiln-config.json" (configJson "" feedPage)
           readConfig `shouldThrow` (== ExitFailure 1)
 
     it "parses a well-formed kiln-config.json from disk" $

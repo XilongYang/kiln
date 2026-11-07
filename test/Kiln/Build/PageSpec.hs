@@ -148,19 +148,6 @@ absoluteItemsSpec = describe "absoluteItems" $ do
             itemContent item `shouldSatisfy` elem "https://example.com/res/a.png" . attrValues
           items -> expectationFailure ("expected exactly one item, got " ++ show (length items))
 
-  -- Nothing here can invent the missing origin: what resolves against
-  -- the post's own page still does, the rest stays as relative as it
-  -- was.
-  it "resolves only what it can for a site that declared no origin" $
-    case absoluteItems (envAt "/") (postListItems (envAt "/") [linkedEntry]) of
-      [item] -> do
-        itemUrl item `shouldBe` Just "/post/linked-post.html"
-        itemContent item
-          `shouldBe` "<p><img src=\"/res/a.png\"><img src=\"/post/imgs/b.png\">\
-                     \<a href=\"/post/linked-post.html#fn1\">1</a>\
-                     \<a href=\"https://pandoc.org\">pandoc</a></p>"
-      items -> expectationFailure ("expected exactly one item, got " ++ show (length items))
-
 -- | The quoted attribute values of an HTML fragment, in order.
 attrValues :: String -> [String]
 attrValues html = case break (== '"') html of

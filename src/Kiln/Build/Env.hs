@@ -116,15 +116,9 @@ webrootPrefix webroot
 siteRoot :: BuildEnv -> String
 siteRoot = dropWhileEnd (== '/') . envSiteUrl
 
--- | A site-relative path as an absolute URL. Handed back untouched when
--- no `Kiln.Config.optSiteUrl` was declared: there is no honest absolute
--- form, and the relative link at least still works on the site.
+-- | A site-relative path as an absolute URL.
 absoluteUrl :: BuildEnv -> String -> String
-absoluteUrl env path
-  | null root = path
-  | otherwise = root ++ "/" ++ dropWhile (== '/') path
-  where
-    root = siteRoot env
+absoluteUrl env path = siteRoot env ++ "/" ++ dropWhile (== '/') path
 
 -- | An output directory as a URL prefix -- empty at the site root, so
 -- posts beside @index.html@ link as @\/slug.html@, not @\/.\/slug.html@.

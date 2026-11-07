@@ -45,7 +45,7 @@ A feed is not a special kind of output — it's an ordinary entry in `target.pag
 { "template": "atom.xml", "output": "atom.xml", "absolute-urls": true }
 ```
 
-For that page only, every URL in its `posts` list is resolved against `opt.site-url`: each post's `url`, and the `href`, `src` and `poster` inside its `abstract`/`content` — including document-relative ones (`../res/img.png`) and the bare fragments pandoc generates for footnotes (`#fn1`), resolved against the post's own page. A URL that already carries a scheme, a protocol-relative `//cdn/…`, a hand-written `srcset`, and anything outside an HTML tag are all left exactly as written.
+For that page only, every URL in its `posts` list is resolved against `opt.site-url`: each post's `url`, and the `href`, `src` and `poster` inside its `abstract`/`content` — including document-relative ones (`../res/img.png`) and the bare fragments pandoc generates for footnotes (`#fn1`), resolved against the post's own page. A URL that already carries a scheme, a protocol-relative `//cdn/…`, a hand-written `srcset`, and anything outside an HTML tag are all left exactly as written. Asking for `absolute-urls` with no `opt.site-url` to resolve against stops the build, naming the page: the alternative is a feed whose links are silently still relative, and an `<id>` that is not the IRI Atom asks for.
 
 `template/default/template/atom.xml` is a complete Atom 1.0 feed to copy from. Three things it has to get right: titles and bodies go in `<![CDATA[...]]>`, so no amount of markup in a post can produce XML that doesn't parse; a post's `date` carries no time, so a timestamp is `$posts.date$T00:00:00Z`; and if posts use `<!--more-->`, an entry needs both `$posts.abstract$` and `$posts.content$`, since a feed carries the whole article.
 
@@ -93,7 +93,7 @@ Three groups: `input` is only ever read from, `opt` is site-wide behavior, and `
 **`opt`** — every key optional except `webroot`, each default matching what `default` needs, so a site resembling it can leave them all out and one that doesn't (like `flow`) turns off what it isn't using:
 
 - `webroot` — the site's root path, used when generating absolute links; a trailing slash makes no difference
-- `site-url` — the site's own origin, needed only by a page that asked for `absolute-urls`, i.e. in practice by a feed (default empty, leaving every URL as relative as it already is)
+- `site-url` — the site's own origin, needed only by a page that asked for `absolute-urls`, i.e. in practice by a feed (default empty, which stops the build once some page does ask)
 - `toc.enable`, `toc.depth`, `toc.ordered` — pandoc's table of contents per post (defaults `true`, `3`, `true`). `ordered` rewrites it into an `<ol>`, which is what [latex.css](https://latex.css/)'s counters number; pandoc's own `--toc` only ever emits `<ul>`
 - `prism` — rewrite a fence's language mark into the pandoc attributes [Prism](https://prismjs.com/)'s line-numbers and match-braces plugins key off of (default `true`). A fence that already carries its own attributes, or that is quoted inside a longer one, is left as written either way
 - `math` — render post pages with pandoc's `--mathjax` (default `true`)
