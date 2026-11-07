@@ -7,9 +7,13 @@ import Kiln.Build.Post (renderPosts)
 import Kiln.Build.SearchDb (writeSearchDb)
 import Kiln.Config (readConfig)
 import Kiln.FileTree (withTempDir)
+import System.IO (BufferMode (..), hSetBuffering, stderr)
 
 kilnBuild :: IO ()
 kilnBuild = do
+  -- Lines, not characters: stderr is unbuffered by default, so the
+  -- concurrent stages' logMsg would interleave mid-word.
+  hSetBuffering stderr LineBuffering
   env <- mkBuildEnv <$> readConfig
 
   withTempDir (envWorkDir env) $ \_ -> do

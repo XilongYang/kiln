@@ -47,7 +47,7 @@ library
                     , Kiln.Build.Cache
     other-modules:    Paths_kiln
     autogen-modules:  Paths_kiln
-    build-depends:    base >=4 && <5, directory, filepath, aeson, process, containers, time
+    build-depends:    base >=4 && <5, directory, filepath, aeson, process, containers, time, async
                     , bytestring, text, cryptohash-sha256, base16-bytestring
     default-language: GHC2024
 
@@ -58,7 +58,7 @@ executable kiln
     autogen-modules:  Paths_kiln
     build-depends:    base >=4 && <5, kiln
     default-language: GHC2024
-    ghc-options:      -O2
+    ghc-options:      -O2 -threaded "-with-rtsopts=-N"
 
 test-suite kiln-test
     type:               exitcode-stdio-1.0
@@ -80,3 +80,4 @@ test-suite kiln-test
     build-depends:      base >=4 && <5, kiln, hspec, aeson, bytestring, directory, filepath, containers, time
     build-tool-depends: hspec-discover:hspec-discover
     default-language:  GHC2024
+    ghc-options:        -threaded "-with-rtsopts=-N"

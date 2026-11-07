@@ -39,6 +39,21 @@ configJson optFields pages =
 errorsWith :: String -> String -> Either String [String]
 errorsWith optFields pages = configErrors <$> eitherDecode (configJson optFields pages)
 
+-- | `configErrors` on a config whose fonts subset `sources`.
+fontErrorsWith :: String -> Either String [String]
+fontErrorsWith sources =
+  configErrors
+    <$> eitherDecode
+      ( BLC.pack
+          ( "{\"input\":{\"src-dir\":\"src\",\"template-dir\":\"template\"},\
+            \\"opt\":{\"webroot\":\"/\"},\
+            \\"target\":{\"searchdb\":null,\"cache-dir\":\"cache\",\"post\":null,\"pages\":[],\
+            \\"fonts\":{\"subset-dir\":\"fonts-subset\",\"sources\":["
+              ++ sources
+              ++ "]}}}"
+          )
+      )
+
 feedPage :: String
 feedPage = "{\"template\":\"atom.xml\",\"output\":\"atom.xml\",\"absolute-urls\":true}"
 
@@ -169,6 +184,20 @@ spec = do
 
     it "counts an origin of nothing but slashes as none declared" $
       errorsWith ",\"site-url\":\"/\"" feedPage `shouldBe` Right [originlessFeedErr]
+
+    it "accepts font sources whose base names differ" $
+      fontErrorsWith "\"res/a.ttf\",\"res/b.otf\"" `shouldBe` Right []
+
+    it "reports two font sources that would subset to one output" $
+      fontErrorsWith "\"res/a.ttf\",\"other/a.otf\""
+        `shouldBe` Right ["more than one font source is named a; they would all subset to a.woff2"]
+
+    it "reports every such collision, not just the first" $
+      fontErrorsWith "\"res/a.ttf\",\"other/a.otf\",\"res/b.ttf\",\"other/b.otf\""
+        `shouldBe` Right
+          [ "more than one font source is named a; they would all subset to a.woff2"
+          , "more than one font source is named b; they would all subset to b.woff2"
+          ]
 
   describe "readConfig" $ do
     it "dies when kiln-config.json is missing" $

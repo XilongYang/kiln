@@ -10,6 +10,7 @@ import Kiln.Build.Env
   , postOutputPath
   , postWorkDir
   , logMsg
+  , mapBounded
   , warn
   , withContext
   , workPath
@@ -121,7 +122,7 @@ renderPosts env = do
           , components
           ]
   globalFresh <- isGlobalFresh globalCachePath fingerprint
-  results <- mapM (renderPost env globalFresh) names
+  results <- mapBounded (renderPost env globalFresh) names
   recordGlobal globalCachePath fingerprint
   sweepOrphans env (map takeBaseName names)
   pure results

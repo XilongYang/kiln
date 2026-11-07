@@ -1,10 +1,9 @@
 module Kiln.Build.FontSubset (subsetFonts) where
 
 import Control.Monad (unless, when)
-import Data.List (sort)
 import qualified Data.Set as Set
 import Kiln.Build.Cache (isFileFresh, isGlobalFresh, recordFile, recordGlobal)
-import Kiln.Build.Env (BuildEnv (..), cachePath, logMsg, postOutputPath, warn, withContext, workPath)
+import Kiln.Build.Env (BuildEnv (..), cachePath, logMsg, mapBounded, postOutputPath, withContext, workPath)
 import Kiln.Build.PostEntry (PostEntry (..))
 import Kiln.Config (FontsConfig (..), PageConfig (..))
 import System.Directory (createDirectoryIfMissing, doesFileExist)
@@ -28,13 +27,12 @@ subsetFonts env entries = mapM_ go (envFonts env)
     go fontsConfig
       | null (fontsSources fontsConfig) = pure ()
       | otherwise = do
-          warnOnSharedBaseNames (fontsSources fontsConfig)
           createDirectoryIfMissing True (fontsSubsetDir fontsConfig)
           charset <- siteCharset
           textFile <- writeSubsetText charset
           let fingerprint = unlines [envTools env, charset]
           charsFresh <- isGlobalFresh charsetCachePath fingerprint
-          mapM_ (trySubset fontsConfig charsFresh textFile) (fontsSources fontsConfig)
+          _ <- mapBounded (trySubset fontsConfig charsFresh textFile) (fontsSources fontsConfig)
           -- Recorded only once every font is written: a subset that died
           -- halfway must not leave the next build calling it fresh.
           recordGlobal charsetCachePath fingerprint
@@ -74,26 +72,6 @@ readIfExists :: FilePath -> IO String
 readIfExists path = do
   exists <- doesFileExist path
   if exists then readFile' path else pure ""
-
--- | Warn when two font sources share a base name: the outputs are named
--- after it, so one overwrites the other. Renaming instead would break
--- the @fonts.css@ that names it by hand.
-warnOnSharedBaseNames :: [FilePath] -> IO ()
-warnOnSharedBaseNames sources =
-  mapM_ complain (duplicates (sort (map takeBaseName sources)))
-  where
-    duplicates (a : b : rest)
-      | a == b    = a : duplicates (dropWhile (== a) (b : rest))
-      | otherwise = duplicates (b : rest)
-    duplicates _ = []
-    complain name =
-      warn
-        ( "more than one font source is named "
-            ++ name
-            ++ "; they all subset to "
-            ++ name
-            ++ ".woff2 and only the last one survives"
-        )
 
 -- | Run @pyftsubset@ (from @fonttools@) over `fontPath`, writing the
 -- characters `textFile` covers to `woffPath` as WOFF2.

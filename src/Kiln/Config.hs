@@ -15,9 +15,10 @@ module Kiln.Config
 
 import Control.Monad (unless)
 import Data.Aeson (FromJSON (..), eitherDecodeFileStrict, withObject, (.:), (.:?), (.!=))
-import Data.List (dropWhileEnd, intercalate)
+import Data.List (dropWhileEnd, group, intercalate, sort)
 import System.Directory (doesFileExist)
 import System.Exit (die)
+import System.FilePath (takeBaseName)
 
 -- | Where kiln reads from -- never written to, never cleaned.
 data InputConfig = InputConfig
@@ -190,6 +191,14 @@ configErrors cfg =
   , page <- targetPages (configTarget cfg)
   , pageAbsoluteUrls page
   ]
+    -- A subset is named after its source's base name, so two sources
+    -- sharing one would be two pyftsubset runs over a single output.
+    ++ [ "more than one font source is named " ++ name ++ "; they would all subset to " ++ name ++ ".woff2"
+       | name <- repeated (map takeBaseName fontSources)
+       ]
+  where
+    fontSources = maybe [] fontsSources (targetFonts (configTarget cfg))
+    repeated names = [name | name : _ : _ <- group (sort names)]
 
 readConfig :: IO KilnConfig
 readConfig = do

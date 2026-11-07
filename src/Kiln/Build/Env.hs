@@ -17,9 +17,13 @@ module Kiln.Build.Env
   , withContext
   , logMsg
   , warn
+  , mapBounded
   ) where
 
-import Control.Exception (IOException, catch, displayException)
+import Control.Concurrent (getNumCapabilities)
+import Control.Concurrent.Async (mapConcurrently)
+import Control.Concurrent.QSem (newQSem, signalQSem, waitQSem)
+import Control.Exception (IOException, bracket_, catch, displayException)
 import Data.List (dropWhileEnd)
 import Data.Version (showVersion)
 import Kiln.Config
@@ -157,3 +161,12 @@ logMsg = hPutStrLn stderr
 -- | Report something the build worked around rather than failed on.
 warn :: String -> IO ()
 warn = logMsg . ("Warning: " ++)
+
+-- | `mapConcurrently`, capped at the capability count: every task here
+-- spawns pandoc or pyftsubset processes of its own, so one task per core
+-- is already the machine's worth of work. Order is preserved -- only the
+-- log lines come out of it.
+mapBounded :: (a -> IO b) -> [a] -> IO [b]
+mapBounded act xs = do
+  gate <- newQSem =<< getNumCapabilities
+  mapConcurrently (bracket_ (waitQSem gate) (signalQSem gate) . act) xs
