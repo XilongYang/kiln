@@ -214,8 +214,8 @@ renderPost env globalFresh name =
       let prepared = if envPrism env then rewriteLanguageMarks src else src
           (abstractSrc, bodySrc) = splitAbstract prepared
       writeFile (postRewrittenPath paths) bodySrc
-      abstractHtml <- traverse (renderAbstractHtml paths) abstractSrc
-      contentHtml <- renderContentHtml paths
+      abstractHtml <- traverse (renderAbstractHtml env paths) abstractSrc
+      contentHtml <- renderContentHtml env paths
       mapM_ (\ppc -> renderPostHtml env ppc slug paths abstractHtml) (envPost env)
       renderFrontmatter paths
       renderPostSearchText paths
@@ -236,33 +236,43 @@ renderPost env globalFresh name =
       recordFile (postStageCachePath paths) (postSrcPath paths)
       pure (entry, content)
 
+-- | Pandoc's own highlighter, off once `Kiln.Config.optPrism` has taken
+-- the job: a rewritten fence's classes name no language pandoc knows,
+-- and it searches every syntax it has, per code block.
+noHighlight :: BuildEnv -> [String]
+noHighlight env = ["--no-highlight" | envPrism env]
+
 -- | The abstract as an HTML fragment, for the post page's @abstract@
 -- variable.
-renderAbstractHtml :: PostPaths -> String -> IO String
-renderAbstractHtml paths abstractSrc = do
+renderAbstractHtml :: BuildEnv -> PostPaths -> String -> IO String
+renderAbstractHtml env paths abstractSrc = do
   writeFile (postAbstractSrcPath paths) abstractSrc
   callProcess
     "pandoc"
-    [ "--quiet"
-    , "--to=html"
-    , "--wrap=none"
-    , "--output=" ++ postAbstractHtmlPath paths
-    , postAbstractSrcPath paths
-    ]
+    ( [ "--quiet"
+      , "--to=html"
+      , "--wrap=none"
+      , "--output=" ++ postAbstractHtmlPath paths
+      , postAbstractSrcPath paths
+      ]
+        ++ noHighlight env
+    )
   readFile' (postAbstractHtmlPath paths)
 
 -- | The post body as an HTML fragment, so other pages can carry this
 -- post's content in their @posts@ metadata without re-rendering it.
-renderContentHtml :: PostPaths -> IO String
-renderContentHtml paths = do
+renderContentHtml :: BuildEnv -> PostPaths -> IO String
+renderContentHtml env paths = do
   callProcess
     "pandoc"
-    [ "--quiet"
-    , "--to=html"
-    , "--wrap=none"
-    , "--output=" ++ postContentHtmlPath paths
-    , postRewrittenPath paths
-    ]
+    ( [ "--quiet"
+      , "--to=html"
+      , "--wrap=none"
+      , "--output=" ++ postContentHtmlPath paths
+      , postRewrittenPath paths
+      ]
+        ++ noHighlight env
+    )
   readFile' (postContentHtmlPath paths)
 
 -- | Write the post's standalone page through `ppc`'s template. The toc
@@ -274,7 +284,7 @@ renderPostHtml env ppc slug paths abstractHtml = do
   tocFlag <-
     if tocEnable toc
       then do
-        tocHtml <- renderTocHtml toc paths
+        tocHtml <- renderTocHtml env paths
         pure ["--variable=toc=" ++ (if tocOrdered toc then olify tocHtml else tocHtml)]
       else pure []
   callProcess
@@ -288,6 +298,7 @@ renderPostHtml env ppc slug paths abstractHtml = do
       , postRewrittenPath paths
       ]
         ++ ["--mathjax" | envMath env]
+        ++ noHighlight env
         ++ tocFlag
         ++ abstractFlag
     )
@@ -297,17 +308,19 @@ renderPostHtml env ppc slug paths abstractHtml = do
 
 -- | The toc alone, via a template that is just @$toc$@, so rewriting it
 -- can't reach the @<ul>@s in the post's own body.
-renderTocHtml :: TocConfig -> PostPaths -> IO String
-renderTocHtml toc paths = do
+renderTocHtml :: BuildEnv -> PostPaths -> IO String
+renderTocHtml env paths = do
   callProcess
     "pandoc"
-    [ "--quiet"
-    , "--toc"
-    , "--toc-depth=" ++ show (tocDepth toc)
-    , "--template=" ++ postTocTemplate paths
-    , "--output=" ++ postTocHtmlPath paths
-    , postRewrittenPath paths
-    ]
+    ( [ "--quiet"
+      , "--toc"
+      , "--toc-depth=" ++ show (tocDepth (envToc env))
+      , "--template=" ++ postTocTemplate paths
+      , "--output=" ++ postTocHtmlPath paths
+      , postRewrittenPath paths
+      ]
+        ++ noHighlight env
+    )
   readFile' (postTocHtmlPath paths)
 
 -- | Write the post's title, date and tags to `postFrontmatterPath`,

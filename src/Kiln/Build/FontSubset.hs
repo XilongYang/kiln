@@ -2,7 +2,8 @@ module Kiln.Build.FontSubset (subsetFonts) where
 
 import Control.Monad (unless, when)
 import Data.List (sort)
-import Kiln.Build.Cache (isFileFresh, recordFile)
+import qualified Data.Set as Set
+import Kiln.Build.Cache (isFileFresh, isGlobalFresh, recordFile, recordGlobal)
 import Kiln.Build.Env (BuildEnv (..), cachePath, logMsg, postOutputPath, warn, withContext, workPath)
 import Kiln.Build.PostEntry (PostEntry (..))
 import Kiln.Config (FontsConfig (..), PageConfig (..))
@@ -17,9 +18,10 @@ import System.Process (callProcess)
 -- the hand-maintained style/fonts.css names it in its @\@font-face@
 -- rules. Nothing happens for a site whose `fonts` is JSON @null@.
 --
--- The characters come from the rendered pages, so a font is re-subset
--- only when its own file or one of those pages changed, or when its
--- output is missing.
+-- A font is re-subset only when its own file changed, when its output is
+-- missing, or when the site's rendered pages brought a character the
+-- last subset didn't cover -- rewording a post leaves every glyph it
+-- needs already in there.
 subsetFonts :: BuildEnv -> [PostEntry] -> IO ()
 subsetFonts env entries = mapM_ go (envFonts env)
   where
@@ -28,37 +30,34 @@ subsetFonts env entries = mapM_ go (envFonts env)
       | otherwise = do
           warnOnSharedBaseNames (fontsSources fontsConfig)
           createDirectoryIfMissing True (fontsSubsetDir fontsConfig)
-          pagesFresh <- and <$> mapM checkPage htmlPaths
-          textFile <- writeSubsetText
-          mapM_ (trySubset fontsConfig pagesFresh textFile) (fontsSources fontsConfig)
+          charset <- siteCharset
+          textFile <- writeSubsetText charset
+          let fingerprint = unlines [envTools env, charset]
+          charsFresh <- isGlobalFresh charsetCachePath fingerprint
+          mapM_ (trySubset fontsConfig charsFresh textFile) (fontsSources fontsConfig)
+          -- Recorded only once every font is written: a subset that died
+          -- halfway must not leave the next build calling it fresh.
+          recordGlobal charsetCachePath fingerprint
 
     htmlPaths = postPaths ++ map pageOutput (envPages env)
     postPaths = [p | e <- entries, Just p <- [postOutputPath env (postSlug e)]]
+    charsetCachePath = cachePath env ["fonts", "charset"]
 
-    -- | Pages are watched here, not produced, so a changed one has its
-    -- snapshot refreshed. Only a changed one: a fresh answer already
-    -- means the snapshot matches, and re-recording would re-hash every
-    -- page and font on every build.
-    --
-    -- The entry mirrors the page's output path, so two outputs sharing a
-    -- base name ("post/a.html", "about/a.html") can't mask each other's
-    -- changes.
-    checkPage path = do
-      let cache = cachePath env ["fonts", "pages", path ++ ".src"]
-      fresh <- isFileFresh cache path
-      unless fresh (recordFile cache path)
-      pure fresh
+    -- | Every character the rendered site uses, once each and in order.
+    -- A set, not the pages themselves: it is what a subset is made of,
+    -- and what decides whether an existing one still covers the site.
+    siteCharset = Set.toAscList . Set.unions <$> mapM charsOf htmlPaths
+    charsOf = fmap Set.fromList . readIfExists
 
-    -- | Every rendered page in one file for pyftsubset's @--text-file@:
-    -- a flag per page would overrun the command-line length limit on a
-    -- site of a few thousand posts.
-    writeSubsetText = do
+    -- | The characters in one file for pyftsubset's @--text-file@: a
+    -- flag per character would overrun the command-line length limit.
+    writeSubsetText charset = do
       let path = workPath env ["subset-text.txt"]
       createDirectoryIfMissing True (takeDirectory path)
-      writeFile path . concat =<< mapM readIfExists htmlPaths
+      writeFile path charset
       pure path
 
-    trySubset fontsConfig pagesFresh textFile fontPath =
+    trySubset fontsConfig charsFresh textFile fontPath =
       withContext ("while subsetting " ++ fontPath) $ do
         let woffPath = fontsSubsetDir fontsConfig </> (takeBaseName fontPath ++ ".woff2")
             fontCachePath = cachePath env ["fonts", "files", fontPath ++ ".src"]
@@ -67,7 +66,7 @@ subsetFonts env entries = mapM_ go (envFonts env)
           fontFresh <- isFileFresh fontCachePath fontPath
           unless fontFresh (recordFile fontCachePath fontPath)
           woffExists <- doesFileExist woffPath
-          unless (pagesFresh && fontFresh && woffExists) $ do
+          unless (charsFresh && fontFresh && woffExists) $ do
             logMsg ("  " ++ fontPath)
             subsetFont fontPath woffPath textFile
 

@@ -43,6 +43,14 @@ configJson =
   "\"target\":{\"searchdb\":\"searchdb.json\",\"cache-dir\":\".cache\",\"fonts\":null," ++ postConfigField ++
   "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}"
 
+-- | `configJson` with pandoc's own highlighter left on, as a template
+-- that loads no Prism wants it.
+configJsonNoPrism :: String
+configJsonNoPrism =
+  "{" ++ inputOptFields "\"webroot\":\"/blog/\",\"prism\":false" ++
+  "\"target\":{\"searchdb\":\"searchdb.json\",\"cache-dir\":\".cache\",\"fonts\":null," ++ postConfigField ++
+  "\"pages\":[{\"template\":\"index.html\",\"output\":\"index.html\"}]}}"
+
 -- | `configJson`, plus a second page with its own output, so pages are
 -- proven to be rendered generically rather than as "the index".
 configJsonWithExtraPage :: String
@@ -250,6 +258,27 @@ spec = describe "kilnBuild" $ do
         -- Nor is anything rewrapped at pandoc's 72 columns.
         indexHtml `shouldSatisfy` ((">" ++ longTitle ++ "</a>") `isInfixOf`)
 
+  it "leaves fence highlighting to Prism when it is on, to pandoc when it is off" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        setUpProject
+        writeFile "src/Fenced_Post.md"
+          (postMd "Fenced Post" "2024-07-01" "```haskell\nmain = pure ()\n```")
+        kilnBuild
+
+        prismHtml <- readFile "post/Fenced_Post.html"
+        prismHtml
+          `shouldSatisfy` ( "<pre class=\"language-haskell line-numbers match-braces\">\
+                            \<code>main = pure ()</code></pre>"
+                              `isInfixOf`
+                          )
+        prismHtml `shouldSatisfy` ("sourceCode" `notIsInfixOf`)
+
+        writeFile "kiln-config.json" configJsonNoPrism
+        kilnBuild
+        pandocHtml <- readFile "post/Fenced_Post.html"
+        pandocHtml `shouldSatisfy` ("class=\"sourceCode haskell\"" `isInfixOf`)
+
   it "serves an unchanged post from cache, without needing pandoc again" $
     withTempDir $ \dir ->
       withCurrentDirectory dir $ do
@@ -349,13 +378,26 @@ spec = describe "kilnBuild" $ do
 
         doesFileExist "fonts-subset/JetBrainsMono-Regular.woff2" `shouldReturn` True
 
-  it "re-subsets every font when a rendered page's content changes" $
+  it "re-subsets every font when a page brings a character the subset lacks" $
     withTempDir $ \dir ->
       withCurrentDirectory dir $ do
         setUpProjectWithFont
         kilnBuild
-        writeFile "src/Older_Post.md" (postMd "Older Post" "2024-01-01" "Edited body with new words.")
+        writeFile "src/Older_Post.md" (postMd "Older Post" "2024-01-01" "Older body, 漢.")
         withoutPyftsubset kilnBuild `shouldThrow` anyIOException
+
+  it "serves the subset from cache when a changed page brings no new character" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        setUpProjectWithFont
+        kilnBuild
+        writeFile "src/Older_Post.md" (postMd "Older Post" "2024-01-01" "Older body. Older body.")
+        withoutPyftsubset kilnBuild
+
+        -- The post really was re-rendered: only the subset was skipped.
+        olderHtml <- readFile "post/Older_Post.html"
+        olderHtml `shouldSatisfy` ("Older body. Older body." `isInfixOf`)
+        doesFileExist "fonts-subset/JetBrainsMono-Regular.woff2" `shouldReturn` True
 
   it "re-subsets every font when the font file itself changes" $
     withTempDir $ \dir ->
