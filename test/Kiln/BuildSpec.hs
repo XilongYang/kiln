@@ -108,6 +108,11 @@ notFoundTemplate =
   \<h1>Not Found</h1>\n\
   \</body></html>"
 
+-- | A title long enough that pandoc's default wrapping would break the
+-- line it lands on.
+longTitle :: String
+longTitle = "A title long enough that pandoc would otherwise wrap the line it lands on"
+
 postMd :: String -> String -> String -> String
 postMd title date body =
   "---\ntitle: " ++ title ++ "\ndate: " ++ date ++ "\n---\n\n" ++ body
@@ -191,11 +196,12 @@ spec = describe "kilnBuild" $ do
         indexHtml `shouldSatisfy` ("$for(posts)$" `notIsInfixOf`)
         indexHtml `shouldSatisfy` ("$webroot$" `notIsInfixOf`)
         indexHtml `shouldSatisfy` ("<h3>2024</h3>" `isInfixOf`)
-        -- Abstract and full content both reach the page.
-        indexHtml `shouldSatisfy` ("abstract=[<p>\nNewer intro.\n</p>]" `isInfixOf`)
-        indexHtml `shouldSatisfy` ("content=[<p>\nNewer body.\n</p>]" `isInfixOf`)
+        -- Abstract and full content both reach the page, as the HTML
+        -- they already were.
+        indexHtml `shouldSatisfy` ("abstract=[<p>Newer intro.</p>]" `isInfixOf`)
+        indexHtml `shouldSatisfy` ("content=[<p>Newer body.</p>]" `isInfixOf`)
         -- A post with no <!--more--> marker has no abstract at all.
-        indexHtml `shouldSatisfy` ("abstract=[] content=[<p>\nOlder body.\n</p>]" `isInfixOf`)
+        indexHtml `shouldSatisfy` ("abstract=[] content=[<p>Older body.</p>]" `isInfixOf`)
         -- Newer post must be listed before the older one (same year, newest first).
         let Just newerPos = substringIndex "/blog/post/Newer_Post.html" indexHtml
             Just olderPos = substringIndex "/blog/post/Older_Post.html" indexHtml
@@ -226,6 +232,23 @@ spec = describe "kilnBuild" $ do
         notFoundHtml <- readFile "404.html"
         notFoundHtml `shouldSatisfy` ("<a href=\"/blog/\">THE-NAVBAR</a>" `isInfixOf`)
         notFoundHtml `shouldSatisfy` ("<h1>Not Found</h1>" `isInfixOf`)
+
+  it "hands a page its posts list as data, not as markdown to read again" $
+    withTempDir $ \dir ->
+      withCurrentDirectory dir $ do
+        setUpProject
+        writeFile "src/Dash--Post.md"
+          (postMd longTitle "2024-06-01" "Run `--flag \"q\" *stars*` here.")
+        kilnBuild
+
+        indexHtml <- readFile "index.html"
+        -- A slug's own dashes survive: en-dashed, the link 404s.
+        indexHtml `shouldSatisfy` ("\"/blog/post/Dash--Post.html\"" `isInfixOf`)
+        -- Rendered HTML arrives as written: no en dash, no curly quote,
+        -- no emphasis found inside a code span.
+        indexHtml `shouldSatisfy` ("<code>--flag \"q\" *stars*</code>" `isInfixOf`)
+        -- Nor is anything rewrapped at pandoc's 72 columns.
+        indexHtml `shouldSatisfy` ((">" ++ longTitle ++ "</a>") `isInfixOf`)
 
   it "serves an unchanged post from cache, without needing pandoc again" $
     withTempDir $ \dir ->

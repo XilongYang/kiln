@@ -155,6 +155,12 @@ writePage env entries page = withContext ("while building " ++ outputPath) $ do
       callProcess
         "pandoc"
         [ "--quiet"
+        -- A metadata value is read as markdown, but every one here is
+        -- already rendered HTML or a plain string: without these, the
+        -- @--@ in a code span, a url or a tag comes out an en dash, and
+        -- markup inside a post's own HTML gets found a second time.
+        , "--from=markdown-smart-markdown_in_html_blocks"
+        , "--wrap=none"
         , "--template=" ++ templatePath
         , "--variable=webroot=" ++ envWebroot env
         , "--variable=site-url=" ++ siteRoot env
